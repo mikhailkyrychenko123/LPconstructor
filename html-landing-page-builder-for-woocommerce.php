@@ -2,7 +2,7 @@
 /**
  * Plugin Name: HTML Landing Page Builder for WooCommerce
  * Description: Build HTML landing pages in WooCommerce and configure visual product attributes.
- * Version: 0.1.8
+ * Version: 0.2.0
  * Requires at least: 6.2
  * Requires PHP: 7.4
  * Text Domain: html-landing-page-builder-for-woocommerce
@@ -15,22 +15,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'HLPB_VERSION', '0.1.8' );
+define( 'HLPB_VERSION', '0.2.0' );
 define( 'HLPB_FILE', __FILE__ );
 define( 'HLPB_PATH', plugin_dir_path( __FILE__ ) );
 define( 'HLPB_URL', plugin_dir_url( __FILE__ ) );
 
 require_once HLPB_PATH . 'includes/class-hlpb-landing-builder.php';
 require_once HLPB_PATH . 'includes/class-hlpb-attribute-admin.php';
+require_once HLPB_PATH . 'includes/class-hlpb-demo-importer.php';
 
 add_action( 'plugins_loaded', array( 'HLPB_Landing_Builder', 'init' ) );
 add_action( 'plugins_loaded', array( 'HLPB_Attribute_Admin', 'init' ) );
+add_action( 'plugins_loaded', array( 'HLPB_Demo_Importer', 'init' ) );
 
 register_activation_hook(
 	__FILE__,
 	static function () {
 		HLPB_Landing_Builder::register_post_type();
 		HLPB_Landing_Builder::register_export_route();
+		HLPB_Demo_Importer::queue_activation_prompt();
 		flush_rewrite_rules();
 	}
 );

@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "name": "HTML Landing Page Builder WooCommerce demo products",
+  "media": {
+    "38": "media/38_shop-item-2_optimized.webp",
+    "123": "media/123_for_color_test.png",
+    "118": "media/118_02-front-mens-model.webp",
+    "119": "media/119_03-front-womens-model.webp",
+    "121": "media/121_05-back-womens-model.webp",
+    "133": "media/133_01-front-flatlay-1.webp",
+    "134": "media/134_02-front-mens-model-1.webp",
+    "135": "media/135_03-front-womens-model-1.webp",
+    "136": "media/136_04-back-mens-model-1.webp",
+    "137": "media/137_05-back-womens-model-1.webp",
+    "138": "media/138_06-artwork-1.webp",
+    "139": "media/139_01-front-flatlay-2.webp",
+    "140": "media/140_01-front-flatlay.jpg",
+    "141": "media/141_02-front-mens-model.jpg",
+    "142": "media/142_03-front-womens-model.jpg",
+    "143": "media/143_04-back-mens-model.jpg",
+    "144": "media/144_05-back-womens-model.jpg",
+    "145": "media/145_01-front-flatlay-3.webp",
+    "146": "media/146_02-front-mens-model-2.webp",
+    "147": "media/147_03-front-womens-model-2.webp",
+    "148": "media/148_04-back-mens-model-2.webp",
+    "149": "media/149_05-back-womens-model-2.webp",
+    "150": "media/150_06-artwork-2.webp",
+    "151": "media/151_01-front-flatlay-4.webp",
+    "152": "media/152_02-front-mens-model-3.webp",
+    "153": "media/153_03-front-womens-model-3.webp",
+    "154": "media/154_04-back-mens-model-3.webp",
+    "155": "media/155_05-back-womens-model-3.webp",
+    "156": "media/156_06-artwork-3.webp",
+    "157": "media/157_01-front-flatlay-5.webp",
+    "158": "media/158_02-front-mens-model-4.webp",
+    "159": "media/159_03-front-womens-model-4.webp",
+    "160": "media/160_04-back-mens-model-4.webp",
+    "161": "media/161_05-back-womens-model-4.webp",
+    "162": "media/162_06-artwork-4.webp",
+    "163": "media/163_01-front-flatlay-6.webp",
+    "164": "media/164_02-front-mens-model-5.webp",
+    "165": "media/165_03-front-womens-model-5.webp",
+    "166": "media/166_04-back-mens-model-5.webp",
+    "167": "media/167_05-back-womens-model-5.webp",
+    "168": "media/168_06-artwork-5.webp",
+    "174": "media/174_1.jpg",
+    "175": "media/175_2.jpg",
+    "176": "media/176_3.jpg",
+    "177": "media/177_1-1.jpg",
+    "178": "media/178_2-1.jpg",
+    "179": "media/179_3-1.jpg"
+  },
+  "attributes": [
+    {
+      "slug": "color",
+      "label": "Color",
+      "type": "color-image-picker",
+      "order_by": "menu_order",
+      "terms": [
+        { "name": "Black", "slug": "black", "color": "#000", "image": 0 },
+        { "name": "Bone", "slug": "bone", "color": "#FFFFFF", "image": 0 },
+        { "name": "Clay", "slug": "clay", "color": "#b67031", "image": 0 },
+        { "name": "Cream", "slug": "cream", "color": "#e3d7c7", "image": 0 },
+        { "name": "Day grey", "slug": "day-grey", "color": "#d0d1cc", "image": 0 },
+        { "name": "Flower", "slug": "flower", "color": "", "image": 123 },
+        { "name": "Graphite black", "slug": "graphite-black", "color": "#585558", "image": 0 },
+        { "name": "Light olive", "slug": "light-olive", "color": "#867f56", "image": 0 },
+        { "name": "Midnight navy", "slug": "midnight-navy", "color": "#37404d", "image": 0 }
+      ]
+    },
+    {
+      "slug": "size",
+      "label": "Size",
+      "type": "button",
+      "order_by": "menu_order",
+      "terms": [
+        { "name": "Double", "slug": "double", "color": "", "image": 0 },
+        { "name": "King", "slug": "king", "color": "", "image": 0 },
+        { "name": "Single", "slug": "single", "color": "", "image": 0 },
+        { "name": "XS", "slug": "xs", "color": "", "image": 0 },
+        { "name": "S", "slug": "s", "color": "", "image": 0 },
+        { "name": "M", "slug": "m", "color": "", "image": 0 },
+        { "name": "L", "slug": "l", "color": "", "image": 0 },
+        { "name": "XL", "slug": "xl", "color": "", "image": 0 },
+        { "name": "XXL", "slug": "xxl", "color": "", "image": 0 }
+      ]
+    }
+  ],
+  "products": [
+    {
+      "source_slug": "blankets",
+      "name": "Blankets",
+      "type": "variable",
+      "sku": "blankets-123",
+      "description": "blankets",
+      "short_description": "",
+      "price": "79",
+      "stock_status": "instock",
+      "image": 178,
+      "gallery": [],
+      "attributes": [
+        { "slug": "color", "options": ["cream", "day-grey"], "visible": true, "variation": true },
+        { "slug": "size", "options": ["double", "king"], "visible": true, "variation": true }
+      ],
+      "default_attributes": { "color": "cream", "size": "double" },
+      "variations": [
+        { "attributes": { "color": "cream", "size": "double" }, "price": "79", "manage_stock": false, "stock_status": "instock", "backorders": "no", "image": 174, "gallery": [175, 176] },
+        { "attributes": { "color": "cream", "size": "king" }, "price": "79", "manage_stock": false, "stock_status": "instock", "backorders": "no", "image": 174, "gallery": [176, 175] },
+        { "attributes": { "color": "day-grey", "size": "double" }, "price": "79", "manage_stock": false, "stock_status": "instock", "backorders": "no", "image": 177, "gallery": [178, 179] },
+        { "attributes": { "color": "day-grey", "size": "king" }, "price": "79", "manage_stock": false, "stock_status": "instock", "backorders": "no", "image": 177, "gallery": [179, 178] }
+      ]
+    },
+    {
+      "source_slug": "hoodies",
+      "name": "Hoodies",
+      "type": "variable",
+      "sku": "Hoodies-123",
+      "description": "Hoodies",
+      "short_description": "",
+      "price": "189",
+      "stock_status": "instock",
+      "image": 134,
+      "gallery": [],
+      "attributes": [
+        { "slug": "color", "options": ["black", "bone", "clay", "flower", "graphite-black", "light-olive", "midnight-navy"], "visible": true, "variation": true }
+      ],
+      "default_attributes": { "color": "black" },
+      "variations": [
+        { "attributes": { "color": "black" }, "price": "189", "manage_stock": false, "stock_status": "instock", "backorders": "no", "image": 133, "gallery": [134, 135, 136, 137, 138] },
+        { "attributes": { "color": "bone" }, "price": "189", "manage_stock": true, "stock_quantity": 100, "stock_status": "instock", "backorders": "yes", "image": 139, "gallery": [118, 119, 121] },
+        { "attributes": { "color": "clay" }, "price": "189", "manage_stock": true, "stock_quantity": 0, "stock_status": "outofstock", "backorders": "no", "image": 145, "gallery": [146, 147, 148, 149, 150] },
+        { "attributes": { "color": "flower" }, "price": "189", "manage_stock": true, "stock_quantity": 999, "stock_status": "instock", "backorders": "no", "image": 140, "gallery": [141, 142, 143, 144] },
+        { "attributes": { "color": "graphite-black" }, "price": "189", "manage_stock": true, "stock_quantity": 0, "stock_status": "onbackorder", "backorders": "notify", "image": 151, "gallery": [152, 153, 154, 155, 156] },
+        { "attributes": { "color": "light-olive" }, "price": "189", "manage_stock": false, "stock_status": "instock", "backorders": "no", "image": 157, "gallery": [158, 159, 160, 161, 162] },
+        { "attributes": { "color": "midnight-navy" }, "price": "189", "manage_stock": false, "stock_status": "instock", "backorders": "no", "image": 163, "gallery": [164, 165, 166, 167, 168] }
+      ]
+    },
+    {
+      "source_slug": "test-simple-discount-product1",
+      "name": "Test Simple (Discount product1)",
+      "type": "simple",
+      "sku": "111-1",
+      "description": "test simple",
+      "short_description": "",
+      "price": "299",
+      "stock_status": "instock",
+      "image": 38,
+      "gallery": [],
+      "attributes": [],
+      "default_attributes": {},
+      "variations": []
+    }
+  ]
+}
