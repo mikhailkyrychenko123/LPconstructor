@@ -105,8 +105,8 @@
 
 	$list.on('change', '.hlpb-order', sortByEnteredNumbers);
 
-	$list.on('click', '.hlpb-select-image:not([data-image-target="logo"])', function () {
-		var $card = $(this).closest('.hlpb-section-card');
+	$list.on('click', '.hlpb-select-image:not([data-image-target="logo"]):not([data-image-target="footer-logo"])', function () {
+		var $control = $(this).closest('.hlpb-image-control');
 		var frame = wp.media({
 			title: $(this).text(),
 			button: { text: $(this).text() },
@@ -115,16 +115,99 @@
 		});
 		frame.on('select', function () {
 			var image = frame.state().get('selection').first().toJSON();
-			$card.find('.hlpb-image-id').val(image.id);
-			$card.find('.hlpb-image-preview').attr('src', image.sizes && image.sizes.large ? image.sizes.large.url : image.url);
+			var previewUrl = $control.find('.hlpb-review-image-preview').length && image.sizes && image.sizes.thumbnail ? image.sizes.thumbnail.url : (image.sizes && image.sizes.large ? image.sizes.large.url : image.url);
+			$control.find('.hlpb-image-id').val(image.id);
+			$control.find('.hlpb-image-preview').attr('src', previewUrl);
+			if ($control.closest('.hlpb-review-item').length) {
+				$control.closest('.hlpb-review-item').find('[name$="[image_alt]"]').val(image.alt || '');
+			}
 		});
 		frame.open();
 	});
 
 	$list.on('click', '.hlpb-clear-image', function () {
+		var $control = $(this).closest('.hlpb-image-control');
+		$control.find('.hlpb-image-id').val('0');
+		$control.find('.hlpb-image-preview').attr('src', HLPBBuilder.imageBase + $control.find('.hlpb-demo-image').val());
+	});
+
+	function reindexReviewRows($card) {
+		$card.find('.hlpb-review-items .hlpb-review-item').each(function (index) {
+			var $row = $(this);
+			$row.find('[name]').each(function () {
+				this.name = this.name.replace(/\[reviews\]\[\d+\]/, '[reviews][' + index + ']');
+			});
+			$row.find('.hlpb-review-item-heading strong').text(HLPBBuilder.reviewLabel + ' ' + (index + 1));
+		});
+	}
+
+	$list.on('click', '.hlpb-add-review', function () {
 		var $card = $(this).closest('.hlpb-section-card');
-		$card.find('.hlpb-image-id').val('0');
-		$card.find('.hlpb-image-preview').attr('src', HLPBBuilder.imageBase + $card.find('.hlpb-demo-image').val());
+		var $items = $card.find('.hlpb-review-items');
+		if ($items.children('.hlpb-review-item').length >= 20) {
+			return;
+		}
+		var template = $card.find('.hlpb-review-template')[0];
+		if (!template || !template.content || !template.content.firstElementChild) {
+			return;
+		}
+		var row = template.content.firstElementChild.cloneNode(true);
+		var $row = $(row);
+		var sectionId = String($card.attr('data-section-id') || '');
+		$row.find('[name]').each(function () {
+			this.name = this.name.replace('hlpb_sections[__hlpb_review_template__]', 'hlpb_sections[' + sectionId + ']');
+		});
+		$row.find('.hlpb-review-text-fields input[type="text"], .hlpb-review-text-fields textarea').each(function () {
+			if (this.name.indexOf('[verified_text]') === -1) {
+				$(this).val('');
+			}
+		});
+		$row.find('.hlpb-review-image-id').val('0');
+		$row.find('.hlpb-review-image-preview').attr('src', HLPBBuilder.imageBase + $row.find('.hlpb-demo-image').val());
+		$items.append($row);
+		reindexReviewRows($card);
+	});
+
+	$list.on('click', '.hlpb-remove-review', function () {
+		var $card = $(this).closest('.hlpb-section-card');
+		$(this).closest('.hlpb-review-item').remove();
+		reindexReviewRows($card);
+	});
+
+	function reindexFaqRows($card) {
+		$card.find('.hlpb-faq-items .hlpb-faq-item').each(function (index) {
+			var $row = $(this);
+			$row.find('[name]').each(function () {
+				this.name = this.name.replace(/\[faqs\]\[\d+\]/, '[faqs][' + index + ']');
+			});
+			$row.find('.hlpb-faq-item-heading strong').text(HLPBBuilder.faqQuestionLabel + ' ' + (index + 1));
+		});
+	}
+
+	$list.on('click', '.hlpb-add-faq', function () {
+		var $card = $(this).closest('.hlpb-section-card');
+		var $items = $card.find('.hlpb-faq-items');
+		if ($items.children('.hlpb-faq-item').length >= 30) {
+			return;
+		}
+		var template = $card.find('.hlpb-faq-template')[0];
+		if (!template || !template.content || !template.content.firstElementChild) {
+			return;
+		}
+		var $row = $(template.content.firstElementChild.cloneNode(true));
+		var sectionId = String($card.attr('data-section-id') || '');
+		$row.find('[name]').each(function () {
+			this.name = this.name.replace('hlpb_sections[__hlpb_faq_template__]', 'hlpb_sections[' + sectionId + ']');
+		});
+		$row.find('input, textarea').val('');
+		$items.append($row);
+		reindexFaqRows($card);
+	});
+
+	$list.on('click', '.hlpb-remove-faq', function () {
+		var $card = $(this).closest('.hlpb-section-card');
+		$(this).closest('.hlpb-faq-item').remove();
+		reindexFaqRows($card);
 	});
 
 	$list.on('click', '.hlpb-select-image[data-image-target="logo"]', function () {
@@ -148,6 +231,73 @@
 		var template = $('#hlpb-template-select').val() || 'cozy-mix';
 		$card.find('.hlpb-logo-id').val('0');
 		$card.find('.hlpb-logo-preview').attr('src', HLPBBuilder.pluginUrl + 'templates/' + template + '/assets/icons/nest-stack.svg');
+	});
+
+	$list.on('click', '.hlpb-select-image[data-image-target="footer-logo"]', function () {
+		var $card = $(this).closest('.hlpb-section-card');
+		var frame = wp.media({
+			title: $(this).text(),
+			button: { text: $(this).text() },
+			multiple: false,
+			library: { type: 'image' }
+		});
+		frame.on('select', function () {
+			var image = frame.state().get('selection').first().toJSON();
+			$card.find('.hlpb-footer-logo-id').val(image.id);
+			$card.find('.hlpb-footer-logo-preview').attr('src', image.sizes && image.sizes.medium ? image.sizes.medium.url : image.url);
+		});
+		frame.open();
+	});
+
+	$list.on('click', '.hlpb-clear-footer-logo', function () {
+		var $card = $(this).closest('.hlpb-section-card');
+		var template = $('#hlpb-template-select').val() || 'cozy-mix';
+		$card.find('.hlpb-footer-logo-id').val('0');
+		$card.find('.hlpb-footer-logo-preview').attr('src', HLPBBuilder.pluginUrl + 'templates/' + template + '/assets/icons/nest-stack.svg');
+	});
+
+	function reindexFooterRows($card, group) {
+		var sectionId = String($card.attr('data-section-id') || '');
+		var $rows = $card.find('.hlpb-footer-rows[data-footer-group="' + group + '"] .hlpb-footer-row');
+		$rows.each(function (index) {
+			var $row = $(this);
+			$row.find('[name]').each(function () {
+				this.name = this.name
+					.replace('hlpb_sections[__hlpb_footer_template__]', 'hlpb_sections[' + sectionId + ']')
+					.replace(new RegExp('\\[' + group + '\\]\\[\\d+\\]'), '[' + group + '][' + index + ']');
+			});
+			$row.children('strong').text((group === 'social_links' ? HLPBBuilder.footerSocialLabel : HLPBBuilder.footerLinkLabel) + ' ' + (index + 1));
+		});
+	}
+
+	$list.on('click', '.hlpb-add-footer-row', function () {
+		var $card = $(this).closest('.hlpb-section-card');
+		var group = String($(this).data('footer-group') || '');
+		var $rows = $card.find('.hlpb-footer-rows[data-footer-group="' + group + '"]');
+		if (!$rows.length || $rows.children('.hlpb-footer-row').length >= 20) {
+			return;
+		}
+		var selector = group === 'social_links' ? '.hlpb-footer-social-template' : '.hlpb-footer-link-template[data-footer-group="' + group + '"]';
+		var template = $card.find(selector)[0];
+		if (!template || !template.content || !template.content.firstElementChild) {
+			return;
+		}
+		var $row = $(template.content.firstElementChild.cloneNode(true));
+		var sectionId = String($card.attr('data-section-id') || '');
+		$row.find('[name]').each(function () {
+			this.name = this.name.replace('hlpb_sections[__hlpb_footer_template__]', 'hlpb_sections[' + sectionId + ']');
+		});
+		$row.find('input').val('');
+		$rows.append($row);
+		reindexFooterRows($card, group);
+		$row.find('input').first().trigger('focus');
+	});
+
+	$list.on('click', '.hlpb-remove-footer-row', function () {
+		var $card = $(this).closest('.hlpb-section-card');
+		var group = $(this).closest('.hlpb-footer-rows').data('footer-group');
+		$(this).closest('.hlpb-footer-row').remove();
+		reindexFooterRows($card, String(group || ''));
 	});
 
 	function updateMenuMode($editor) {

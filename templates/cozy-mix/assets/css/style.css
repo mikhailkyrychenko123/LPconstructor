@@ -152,7 +152,7 @@ h1{font-size:clamp(28px,3vw,39px);line-height:1.05;margin:0 0 7px}
 .faq-list details{border:1px solid #e0e5e5;border-radius:5px;margin-bottom:5px;padding:0 12px;background:#fff}
 .faq-list summary{position:relative;list-style:none;cursor:pointer;padding:7px 22px 7px 0;font-size:12px;font-weight:700}
 .faq-list summary::-webkit-details-marker{display:none}
-.faq-list summary:after{content:"";position:absolute;right:4px;top:50%;width:7px;height:7px;border-right:1.8px solid #6e7d86;border-bottom:1.8px solid #6e7d86;border-radius:0 1px 1px 1px;transform:translateY(-50%) rotate(45deg);transition:transform .18s ease}
+.faq-list summary:after{content:"";position:absolute;right:4px;top:50%;width:7px;height:7px;border-right:1.8px solid var(--hlpb-faq-arrow,#6e7d86);border-bottom:1.8px solid var(--hlpb-faq-arrow,#6e7d86);border-radius:0 1px 1px 1px;transform:translateY(-50%) rotate(45deg);transition:transform .18s ease}
 .faq-list details[open] summary:after{transform:translateY(-50%) rotate(225deg)}
 .faq-list details p{margin:0;padding:0 0 10px;color:#63717b;font-size:12px;line-height:1.45}
 .bundle-section{padding:28px 0 18px;background:#fff7f2}
@@ -195,6 +195,8 @@ h1{font-size:clamp(28px,3vw,39px);line-height:1.05;margin:0 0 7px}
 @media(max-width:600px){.product-options{grid-template-columns:1fr}}@media(max-width:380px){.header-nav{gap:7px}.header-nav a{font-size:10.8px}.brand b{font-size:10px}.brand small{font-size:4px}.product-options{grid-template-columns:1fr}.product-option{grid-template-columns:58px minmax(0,1fr);min-height:100px}.product-option img.product-photo{width:58px;height:82px}.offer-card{padding-inline:2px}.offer-card strong{font-size:13.2px}}
 .brand img.hlpb-custom-logo{width:auto;height:auto;max-width:200px;max-height:44px}
 @media(max-width:700px){.brand img.hlpb-custom-logo{width:auto;height:auto;max-width:120px;max-height:34px}}
+.site-header .header-nav{justify-self:end;margin-right:40px}.site-header .header-story{justify-self:start;margin-left:40px}
+@media(max-width:700px){.site-header .header-nav{justify-self:start;margin-right:0}.site-header .header-story{margin-left:0}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation:none!important;transition:none!important}}
 /* User-requested typography sizes */
 .story-copy>p:not(.eyebrow){font-size:17px}

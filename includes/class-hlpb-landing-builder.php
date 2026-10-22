@@ -417,6 +417,12 @@ final class HLPB_Landing_Builder {
 				$section = array_merge( $section, self::get_default_offer_settings() );
 			} elseif ( 'mix_it' === $type ) {
 				$section = array_merge( $section, self::get_default_mix_settings() );
+			} elseif ( 'reviews' === $type ) {
+				$section = array_merge( $section, self::get_default_reviews_settings() );
+			} elseif ( 'faq' === $type ) {
+				$section = array_merge( $section, self::get_default_faq_settings() );
+			} elseif ( 'footer' === $type ) {
+				$section = array_merge( $section, self::get_default_footer_settings() );
 			}
 
 			$sections[] = $section;
@@ -452,7 +458,7 @@ final class HLPB_Landing_Builder {
 			'left_text' => __( 'Cozy Season Offer', 'html-landing-page-builder-for-woocommerce' ),
 			'left_bold' => 1,
 			'left_color' => '#376c5c',
-			'right_text' => __( 'Buy more, save more · Free UK delivery on all orders', 'html-landing-page-builder-for-woocommerce' ),
+			'right_text' => __( 'Buy more, save more · Free delivery on all orders', 'html-landing-page-builder-for-woocommerce' ),
 			'right_bold' => 0,
 			'right_color' => '#376c5c',
 			'background' => '#dff1e8',
@@ -478,6 +484,114 @@ final class HLPB_Landing_Builder {
 				array( 'icon' => 'heart', 'icon_color' => '#ec8180', 'title' => __( 'For everyone', 'html-landing-page-builder-for-woocommerce' ), 'text' => __( "Cosy combinations\nfor the whole family.", 'html-landing-page-builder-for-woocommerce' ) ),
 				array( 'icon' => 'people', 'icon_color' => '#273f5a', 'title' => __( 'Create your set', 'html-landing-page-builder-for-woocommerce' ), 'text' => __( "Build the perfect mix\nfor your home.", 'html-landing-page-builder-for-woocommerce' ) ),
 			),
+		);
+	}
+
+	/**
+	 * Default editable reviews matching the supplied design.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function get_default_reviews_settings() {
+		return array(
+			'title' => __( 'Over 200,000+ Happy Customers', 'html-landing-page-builder-for-woocommerce' ),
+			'subtitle' => __( 'Real people. Cosy homes. Brighter days.', 'html-landing-page-builder-for-woocommerce' ),
+			'overall_stars' => 5,
+			'overall_score' => '4.9 out of 5',
+			'overall_count' => __( 'Based on 2,418 reviews', 'html-landing-page-builder-for-woocommerce' ),
+			'background' => '#ffffff',
+			'heading_color' => '#082b49',
+			'subtitle_color' => '#5b6c79',
+			'star_color' => '#f1aa20',
+			'score_color' => '#122b42',
+			'count_color' => '#71808b',
+			'card_background' => '#ffffff',
+			'card_border_color' => '#e0e5e5',
+			'review_title_color' => '#122b42',
+			'review_text_color' => '#546472',
+			'reviewer_color' => '#122b42',
+			'verified_color' => '#33a67d',
+			'reviews' => array(
+				array( 'demo_image' => 'thumb-hero-family.webp', 'image_id' => 0, 'image_alt' => __( 'Mother and daughter in cosy hoodie blankets', 'html-landing-page-builder-for-woocommerce' ), 'stars' => 5, 'title' => __( '“Perfect for cosy nights!”', 'html-landing-page-builder-for-woocommerce' ), 'text' => __( 'Me and my daughter both have a hoodie and we absolutely love them. So soft and warm — we live in them!', 'html-landing-page-builder-for-woocommerce' ), 'reviewer' => 'Sophie L.', 'verified' => 1, 'verified_text' => __( '✓ Verified buyer', 'html-landing-page-builder-for-woocommerce' ) ),
+				array( 'demo_image' => 'thumb-family-evening.webp', 'image_id' => 0, 'image_alt' => __( 'Family enjoying a cosy evening together', 'html-landing-page-builder-for-woocommerce' ), 'stars' => 5, 'title' => __( '“Amazing quality”', 'html-landing-page-builder-for-woocommerce' ), 'text' => __( 'I ordered a blanket and a hoodie and the quality is unreal. Super soft, washes really well, and delivered quickly. Highly recommend!', 'html-landing-page-builder-for-woocommerce' ), 'reviewer' => 'James T.', 'verified' => 1, 'verified_text' => __( '✓ Verified buyer', 'html-landing-page-builder-for-woocommerce' ) ),
+				array( 'demo_image' => 'thumb-family-evening.webp', 'image_id' => 0, 'image_alt' => __( 'Cosy blankets shared by a family', 'html-landing-page-builder-for-woocommerce' ), 'stars' => 5, 'title' => __( '“The best gift!”', 'html-landing-page-builder-for-woocommerce' ), 'text' => __( 'Bought a mix for my family and they all love them. Such a great idea and really good value when you buy more.', 'html-landing-page-builder-for-woocommerce' ), 'reviewer' => 'Emily R.', 'verified' => 1, 'verified_text' => __( '✓ Verified buyer', 'html-landing-page-builder-for-woocommerce' ) ),
+			),
+		);
+	}
+
+	/**
+	 * Default editable FAQ content matching the supplied design.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function get_default_faq_settings() {
+		return array(
+			'title' => __( "Frequently\nAsked Questions", 'html-landing-page-builder-for-woocommerce' ),
+			'subtitle' => __( 'Everything you need to know about your cosy order.', 'html-landing-page-builder-for-woocommerce' ),
+			'background' => '#ffffff',
+			'heading_color' => '#082b49',
+			'intro_color' => '#63717b',
+			'question_color' => '#122b42',
+			'answer_color' => '#63717b',
+			'item_background' => '#ffffff',
+			'item_border_color' => '#e0e5e5',
+			'arrow_color' => '#6e7d86',
+			'faqs' => array(
+				array( 'question' => __( 'How long does delivery take?', 'html-landing-page-builder-for-woocommerce' ), 'answer' => __( 'UK delivery usually takes 2–4 working days in this demo. Delivery estimates should be updated to match your store’s actual fulfilment terms.', 'html-landing-page-builder-for-woocommerce' ) ),
+				array( 'question' => __( 'Can I mix hoodies and blankets?', 'html-landing-page-builder-for-woocommerce' ), 'answer' => __( 'Yes. Choose Mix & Match to combine hoodie blankets and weighted blankets in the colours you like.', 'html-landing-page-builder-for-woocommerce' ) ),
+				array( 'question' => __( 'What if I’m not happy with my order?', 'html-landing-page-builder-for-woocommerce' ), 'answer' => __( 'We want you to feel cosy and confident. Add your real returns and exchange policy here before launch.', 'html-landing-page-builder-for-woocommerce' ) ),
+				array( 'question' => __( 'How do I care for my hoodie and blanket?', 'html-landing-page-builder-for-woocommerce' ), 'answer' => __( 'Follow the care label on each product. Use your product’s verified washing instructions here.', 'html-landing-page-builder-for-woocommerce' ) ),
+				array( 'question' => __( 'Do you offer gift wrapping?', 'html-landing-page-builder-for-woocommerce' ), 'answer' => __( 'Gift wrapping and a personalised gift note can be selected with eligible bundles.', 'html-landing-page-builder-for-woocommerce' ) ),
+			),
+		);
+	}
+
+	/** Default editable footer values matching the supplied design. */
+	private static function get_default_footer_settings() {
+		return array(
+			'logo_id' => 0,
+			'brand_name' => 'NEST & NOOK',
+			'brand_tagline' => 'COMFORT GOODS',
+			'brand_url' => '#top',
+			'primary_links' => array(
+				array( 'label' => 'Shop', 'url' => '#shop' ),
+				array( 'label' => 'Our Story', 'url' => '#story' ),
+				array( 'label' => 'FAQs', 'url' => '#faqs' ),
+				array( 'label' => 'Contact', 'url' => '#contact' ),
+				array( 'label' => 'Reviews', 'url' => '#reviews' ),
+			),
+			'social_links' => array(
+				array( 'icon' => 'instagram', 'label' => 'Instagram', 'url' => '#instagram' ),
+				array( 'icon' => 'facebook', 'label' => 'Facebook', 'url' => '#facebook' ),
+				array( 'icon' => 'pinterest', 'label' => 'Pinterest', 'url' => '#pinterest' ),
+				array( 'icon' => 'tiktok', 'label' => 'TikTok', 'url' => '#tiktok' ),
+				array( 'icon' => 'youtube', 'label' => 'YouTube', 'url' => '#youtube' ),
+			),
+			'copyright' => '© 2024 Nest & Nook. All rights reserved.',
+			'legal_links' => array(
+				array( 'label' => 'Privacy Policy', 'url' => '#privacy' ),
+				array( 'label' => 'Terms of Service', 'url' => '#terms' ),
+				array( 'label' => 'Returns', 'url' => '#returns' ),
+			),
+			'legal_note' => '🇬🇧 UK Owned & Operated',
+			'disclaimer' => 'Demo recreation. Review totals, customer quotes, prices, delivery, and stock wording are illustrative and should be replaced with verified store information.',
+			'background' => '#082b49',
+			'text_color' => '#e9f0f2',
+			'brand_color' => '#ffffff',
+			'bottom_text_color' => '#c7d5db',
+			'disclaimer_color' => '#afc2ca',
+			'divider_color' => '#38566b',
+		);
+	}
+
+	/** Footer social networks supported by the template icon sprite. */
+	private static function get_footer_social_icons() {
+		return array(
+			'instagram' => __( 'Instagram', 'html-landing-page-builder-for-woocommerce' ),
+			'facebook' => __( 'Facebook', 'html-landing-page-builder-for-woocommerce' ),
+			'pinterest' => __( 'Pinterest', 'html-landing-page-builder-for-woocommerce' ),
+			'tiktok' => __( 'TikTok', 'html-landing-page-builder-for-woocommerce' ),
+			'youtube' => __( 'YouTube', 'html-landing-page-builder-for-woocommerce' ),
 		);
 	}
 
@@ -563,7 +677,7 @@ final class HLPB_Landing_Builder {
 					<?php echo self::render_section_card( $section, $selected_template ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Generated from escaped form controls. ?>
 				<?php endforeach; ?>
 			</div>
-			<p class="description"><?php esc_html_e( 'Header, Offer Line, Mix it your way, and Text + Image sections can be edited here. Other sections use their template demo content.', 'html-landing-page-builder-for-woocommerce' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Header, Offer Line, Mix it your way, Text + Image, Reviews, FAQ, and Footer sections can be edited here. Other sections use their template demo content.', 'html-landing-page-builder-for-woocommerce' ); ?></p>
 		</div>
 		<?php
 	}
@@ -594,6 +708,12 @@ final class HLPB_Landing_Builder {
 			$html .= self::render_offer_fields( $section, $id );
 		} elseif ( 'mix_it' === $type ) {
 			$html .= self::render_mix_fields( $section, $id );
+		} elseif ( 'reviews' === $type ) {
+			$html .= self::render_reviews_fields( $section, $id, $template_slug );
+		} elseif ( 'faq' === $type ) {
+			$html .= self::render_faq_fields( $section, $id );
+		} elseif ( 'footer' === $type ) {
+			$html .= self::render_footer_fields( $section, $id, $template_slug );
 		} else {
 			$html .= '<p class="hlpb-section-demo">' . esc_html__( 'This section displays the matching demo content from the supplied landing page.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
 		}
@@ -646,6 +766,9 @@ final class HLPB_Landing_Builder {
 	/** Render editable Offer Line controls. */
 	private static function render_offer_fields( $section, $id ) {
 		$section = array_merge( self::get_default_offer_settings(), $section );
+		if ( 'Buy more, save more · Free UK delivery on all orders' === $section['right_text'] ) {
+			$section['right_text'] = self::get_default_offer_settings()['right_text'];
+		}
 		$name = 'hlpb_sections[' . $id . ']';
 		$html = '<div class="hlpb-fields-grid">';
 		foreach ( array( 'left' => __( 'Left text', 'html-landing-page-builder-for-woocommerce' ), 'right' => __( 'Right text', 'html-landing-page-builder-for-woocommerce' ) ) as $side => $label ) {
@@ -687,6 +810,156 @@ final class HLPB_Landing_Builder {
 		$html .= self::render_color_control( $name . '[icon_color]', __( 'Icon color', 'html-landing-page-builder-for-woocommerce' ), $icon_color ? $icon_color : '#244c59', $section_id . '-icon-' . absint( $index ) );
 		$html .= '<label class="hlpb-mix-benefit-text"><span>' . esc_html__( 'Text', 'html-landing-page-builder-for-woocommerce' ) . '</span><textarea rows="2" name="' . esc_attr( $name . '[text]' ) . '">' . esc_textarea( isset( $benefit['text'] ) ? $benefit['text'] : '' ) . '</textarea></label><button type="button" class="button-link-delete hlpb-remove-mix-benefit" aria-label="' . esc_attr__( 'Remove benefit', 'html-landing-page-builder-for-woocommerce' ) . '">×</button></div></div>';
 		return $html;
+	}
+
+	/** Render editable reviews section controls. */
+	private static function render_reviews_fields( $section, $id, $template_slug ) {
+		$section = array_merge( self::get_default_reviews_settings(), $section );
+		$name = 'hlpb_sections[' . $id . ']';
+		$reviews = is_array( $section['reviews'] ) ? array_slice( $section['reviews'], 0, 20 ) : array();
+		$html = '<div class="hlpb-fields-column hlpb-reviews-fields">' . self::text_field( $name . '[title]', __( 'Heading', 'html-landing-page-builder-for-woocommerce' ), $section['title'] ) . self::text_field( $name . '[subtitle]', __( 'Subtitle', 'html-landing-page-builder-for-woocommerce' ), $section['subtitle'] ) . '<div class="hlpb-fields-grid"><div class="hlpb-field"><label>' . esc_html__( 'Overall stars', 'html-landing-page-builder-for-woocommerce' ) . '</label>' . self::render_star_select( $name . '[overall_stars]', $section['overall_stars'] ) . '</div>' . self::text_field( $name . '[overall_score]', __( 'Overall score text', 'html-landing-page-builder-for-woocommerce' ), $section['overall_score'] ) . self::text_field( $name . '[overall_count]', __( 'Review count text', 'html-landing-page-builder-for-woocommerce' ), $section['overall_count'] ) . '</div><div class="hlpb-fields-grid">';
+		$color_fields = array(
+			'background' => __( 'Section background', 'html-landing-page-builder-for-woocommerce' ),
+			'heading_color' => __( 'Heading color', 'html-landing-page-builder-for-woocommerce' ),
+			'subtitle_color' => __( 'Subtitle color', 'html-landing-page-builder-for-woocommerce' ),
+			'star_color' => __( 'Star color', 'html-landing-page-builder-for-woocommerce' ),
+			'score_color' => __( 'Overall score color', 'html-landing-page-builder-for-woocommerce' ),
+			'count_color' => __( 'Review count color', 'html-landing-page-builder-for-woocommerce' ),
+			'card_background' => __( 'Review card background', 'html-landing-page-builder-for-woocommerce' ),
+			'card_border_color' => __( 'Review card border color', 'html-landing-page-builder-for-woocommerce' ),
+			'review_title_color' => __( 'Review title color', 'html-landing-page-builder-for-woocommerce' ),
+			'review_text_color' => __( 'Review text color', 'html-landing-page-builder-for-woocommerce' ),
+			'reviewer_color' => __( 'Reviewer name color', 'html-landing-page-builder-for-woocommerce' ),
+			'verified_color' => __( 'Verified label color', 'html-landing-page-builder-for-woocommerce' ),
+		);
+		foreach ( $color_fields as $key => $label ) {
+			$html .= self::render_color_control( $name . '[' . $key . ']', $label, $section[ $key ], $id . '-reviews-' . $key );
+		}
+		$html .= '</div><fieldset class="hlpb-reviews-list"><legend>' . esc_html__( 'Reviews', 'html-landing-page-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[reviews_present]' ) . '" value="1"><div class="hlpb-review-items">';
+		foreach ( $reviews as $index => $review ) {
+			$html .= self::render_review_row( $id, $index, $review, $template_slug );
+		}
+		$html .= '</div><template class="hlpb-review-template">' . self::render_review_row( '__hlpb_review_template__', 0, self::get_default_reviews_settings()['reviews'][0], $template_slug ) . '</template><button type="button" class="button hlpb-add-review">' . esc_html__( 'Add review', 'html-landing-page-builder-for-woocommerce' ) . '</button></fieldset></div>';
+		return $html;
+	}
+
+	/** Render editable FAQ controls. */
+	private static function render_faq_fields( $section, $id ) {
+		$section = array_merge( self::get_default_faq_settings(), $section );
+		$name = 'hlpb_sections[' . $id . ']';
+		$faqs = is_array( $section['faqs'] ) ? array_slice( $section['faqs'], 0, 30 ) : array();
+		$html = '<div class="hlpb-fields-column hlpb-faq-fields"><div class="hlpb-field"><label for="hlpb-faq-title-' . esc_attr( $id ) . '">' . esc_html__( 'Heading', 'html-landing-page-builder-for-woocommerce' ) . '</label><textarea id="hlpb-faq-title-' . esc_attr( $id ) . '" rows="2" name="' . esc_attr( $name . '[title]' ) . '">' . esc_textarea( $section['title'] ) . '</textarea></div>';
+		$html .= self::text_field( $name . '[subtitle]', __( 'Intro text', 'html-landing-page-builder-for-woocommerce' ), $section['subtitle'] ) . '<div class="hlpb-fields-grid">';
+		$color_fields = array(
+			'background' => __( 'Section background', 'html-landing-page-builder-for-woocommerce' ),
+			'heading_color' => __( 'Heading color', 'html-landing-page-builder-for-woocommerce' ),
+			'intro_color' => __( 'Intro text color', 'html-landing-page-builder-for-woocommerce' ),
+			'question_color' => __( 'Question color', 'html-landing-page-builder-for-woocommerce' ),
+			'answer_color' => __( 'Answer color', 'html-landing-page-builder-for-woocommerce' ),
+			'item_background' => __( 'Question background', 'html-landing-page-builder-for-woocommerce' ),
+			'item_border_color' => __( 'Question border color', 'html-landing-page-builder-for-woocommerce' ),
+			'arrow_color' => __( 'Arrow color', 'html-landing-page-builder-for-woocommerce' ),
+		);
+		foreach ( $color_fields as $key => $label ) {
+			$html .= self::render_color_control( $name . '[' . $key . ']', $label, $section[ $key ], $id . '-faq-' . $key );
+		}
+		$html .= '</div><fieldset class="hlpb-faq-list"><legend>' . esc_html__( 'Questions and answers', 'html-landing-page-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[faqs_present]' ) . '" value="1"><div class="hlpb-faq-items">';
+		foreach ( $faqs as $index => $faq ) {
+			$html .= self::render_faq_row( $id, $index, $faq );
+		}
+		$html .= '</div><template class="hlpb-faq-template">' . self::render_faq_row( '__hlpb_faq_template__', 0, array( 'question' => '', 'answer' => '' ) ) . '</template><button type="button" class="button hlpb-add-faq">' . esc_html__( 'Add question', 'html-landing-page-builder-for-woocommerce' ) . '</button></fieldset></div>';
+		return $html;
+	}
+
+	/** Render one FAQ editor row. */
+	private static function render_faq_row( $section_id, $index, $faq ) {
+		$question = isset( $faq['question'] ) ? $faq['question'] : '';
+		$answer = isset( $faq['answer'] ) ? $faq['answer'] : '';
+		$name = 'hlpb_sections[' . $section_id . '][faqs][' . absint( $index ) . ']';
+		return '<fieldset class="hlpb-faq-item"><div class="hlpb-faq-item-heading"><strong>' . esc_html( sprintf( __( 'Question %d', 'html-landing-page-builder-for-woocommerce' ), $index + 1 ) ) . '</strong><button type="button" class="button-link-delete hlpb-remove-faq">' . esc_html__( 'Remove question', 'html-landing-page-builder-for-woocommerce' ) . '</button></div><label><span>' . esc_html__( 'Question', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[question]' ) . '" value="' . esc_attr( $question ) . '"></label><label><span>' . esc_html__( 'Answer', 'html-landing-page-builder-for-woocommerce' ) . '</span><textarea rows="3" name="' . esc_attr( $name . '[answer]' ) . '">' . esc_textarea( $answer ) . '</textarea></label></fieldset>';
+	}
+
+	/** Render editable footer settings and repeatable content. */
+	private static function render_footer_fields( $section, $id, $template_slug ) {
+		$section = array_merge( self::get_default_footer_settings(), $section );
+		$name = 'hlpb_sections[' . $id . ']';
+		$logo_id = absint( $section['logo_id'] );
+		$logo_url = $logo_id ? wp_get_attachment_image_url( $logo_id, 'medium' ) : false;
+		$logo_url = $logo_url ? $logo_url : self::get_template_asset_url( $template_slug ) . 'icons/nest-stack.svg';
+		$primary_links = is_array( $section['primary_links'] ) ? array_slice( $section['primary_links'], 0, 20 ) : array();
+		$legal_links = is_array( $section['legal_links'] ) ? array_slice( $section['legal_links'], 0, 20 ) : array();
+		$social_links = is_array( $section['social_links'] ) ? array_slice( $section['social_links'], 0, 20 ) : array();
+		$html = '<div class="hlpb-fields-column hlpb-footer-fields"><div class="hlpb-footer-brand-fields"><div class="hlpb-field"><label>' . esc_html__( 'Footer logo', 'html-landing-page-builder-for-woocommerce' ) . '</label><div class="hlpb-image-control"><img class="hlpb-footer-logo-preview" src="' . esc_url( $logo_url ) . '" alt=""><input class="hlpb-footer-logo-id" type="hidden" name="' . esc_attr( $name . '[logo_id]' ) . '" value="' . esc_attr( $logo_id ) . '"><button type="button" class="button hlpb-select-image" data-image-target="footer-logo">' . esc_html__( 'Choose logo', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button-link hlpb-clear-footer-logo">' . esc_html__( 'Use template logo', 'html-landing-page-builder-for-woocommerce' ) . '</button></div></div><div class="hlpb-fields-column">' . self::text_field( $name . '[brand_name]', __( 'Brand name', 'html-landing-page-builder-for-woocommerce' ), $section['brand_name'] ) . self::text_field( $name . '[brand_tagline]', __( 'Brand tagline', 'html-landing-page-builder-for-woocommerce' ), $section['brand_tagline'] ) . self::text_field( $name . '[brand_url]', __( 'Brand link URL', 'html-landing-page-builder-for-woocommerce' ), $section['brand_url'] ) . '</div></div>';
+		$html .= '<fieldset class="hlpb-footer-list"><legend>' . esc_html__( 'Main footer links', 'html-landing-page-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[primary_links_present]' ) . '" value="1"><div class="hlpb-footer-rows" data-footer-group="primary_links">';
+		foreach ( $primary_links as $index => $item ) {
+			$html .= self::render_footer_link_row( $id, 'primary_links', $index, $item );
+		}
+		$html .= '</div><template class="hlpb-footer-link-template" data-footer-group="primary_links">' . self::render_footer_link_row( '__hlpb_footer_template__', 'primary_links', 0, array( 'label' => '', 'url' => '' ) ) . '</template><button type="button" class="button hlpb-add-footer-row" data-footer-group="primary_links">' . esc_html__( 'Add footer link', 'html-landing-page-builder-for-woocommerce' ) . '</button></fieldset>';
+		$html .= '<fieldset class="hlpb-footer-list"><legend>' . esc_html__( 'Social links', 'html-landing-page-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[social_links_present]' ) . '" value="1"><div class="hlpb-footer-rows" data-footer-group="social_links">';
+		foreach ( $social_links as $index => $item ) {
+			$html .= self::render_footer_social_row( $id, $index, $item );
+		}
+		$html .= '</div><template class="hlpb-footer-social-template">' . self::render_footer_social_row( '__hlpb_footer_template__', 0, array( 'icon' => 'instagram', 'label' => '', 'url' => '' ) ) . '</template><button type="button" class="button hlpb-add-footer-row" data-footer-group="social_links">' . esc_html__( 'Add social link', 'html-landing-page-builder-for-woocommerce' ) . '</button></fieldset>';
+		$html .= '<div class="hlpb-fields-grid">' . self::text_field( $name . '[copyright]', __( 'Copyright text', 'html-landing-page-builder-for-woocommerce' ), $section['copyright'] ) . self::text_field( $name . '[legal_note]', __( 'Bottom note', 'html-landing-page-builder-for-woocommerce' ), $section['legal_note'] ) . '<div class="hlpb-field"><label>' . esc_html__( 'Disclaimer text', 'html-landing-page-builder-for-woocommerce' ) . '</label><textarea rows="3" name="' . esc_attr( $name . '[disclaimer]' ) . '">' . esc_textarea( $section['disclaimer'] ) . '</textarea></div></div>';
+		$html .= '<fieldset class="hlpb-footer-list"><legend>' . esc_html__( 'Legal links', 'html-landing-page-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[legal_links_present]' ) . '" value="1"><div class="hlpb-footer-rows" data-footer-group="legal_links">';
+		foreach ( $legal_links as $index => $item ) {
+			$html .= self::render_footer_link_row( $id, 'legal_links', $index, $item );
+		}
+		$html .= '</div><template class="hlpb-footer-link-template" data-footer-group="legal_links">' . self::render_footer_link_row( '__hlpb_footer_template__', 'legal_links', 0, array( 'label' => '', 'url' => '' ) ) . '</template><button type="button" class="button hlpb-add-footer-row" data-footer-group="legal_links">' . esc_html__( 'Add legal link', 'html-landing-page-builder-for-woocommerce' ) . '</button></fieldset><div class="hlpb-fields-grid">';
+		$color_fields = array(
+			'background' => __( 'Footer background', 'html-landing-page-builder-for-woocommerce' ),
+			'text_color' => __( 'Main text and link color', 'html-landing-page-builder-for-woocommerce' ),
+			'brand_color' => __( 'Brand text color', 'html-landing-page-builder-for-woocommerce' ),
+			'bottom_text_color' => __( 'Bottom text color', 'html-landing-page-builder-for-woocommerce' ),
+			'disclaimer_color' => __( 'Disclaimer color', 'html-landing-page-builder-for-woocommerce' ),
+			'divider_color' => __( 'Divider color', 'html-landing-page-builder-for-woocommerce' ),
+		);
+		foreach ( $color_fields as $key => $label ) {
+			$html .= self::render_color_control( $name . '[' . $key . ']', $label, $section[ $key ], $id . '-footer-' . $key );
+		}
+		return $html . '</div></div>';
+	}
+
+	/** Render one primary or legal footer link editor row. */
+	private static function render_footer_link_row( $section_id, $group, $index, $item ) {
+		$name = 'hlpb_sections[' . $section_id . '][' . $group . '][' . absint( $index ) . ']';
+		return '<div class="hlpb-footer-row"><strong>' . esc_html( sprintf( __( 'Link %d', 'html-landing-page-builder-for-woocommerce' ), $index + 1 ) ) . '</strong><label><span>' . esc_html__( 'Label', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[label]' ) . '" value="' . esc_attr( isset( $item['label'] ) ? $item['label'] : '' ) . '"></label><label><span>' . esc_html__( 'Link URL', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[url]' ) . '" value="' . esc_attr( isset( $item['url'] ) ? $item['url'] : '' ) . '"></label><button type="button" class="button-link-delete hlpb-remove-footer-row">' . esc_html__( 'Remove', 'html-landing-page-builder-for-woocommerce' ) . '</button></div>';
+	}
+
+	/** Render one social footer link editor row. */
+	private static function render_footer_social_row( $section_id, $index, $item ) {
+		$name = 'hlpb_sections[' . $section_id . '][social_links][' . absint( $index ) . ']';
+		$icons = self::get_footer_social_icons();
+		$icon = isset( $item['icon'] ) && isset( $icons[ $item['icon'] ] ) ? $item['icon'] : 'instagram';
+		$html = '<div class="hlpb-footer-row hlpb-footer-social-row"><strong>' . esc_html( sprintf( __( 'Social link %d', 'html-landing-page-builder-for-woocommerce' ), $index + 1 ) ) . '</strong><label><span>' . esc_html__( 'Icon', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $name . '[icon]' ) . '">';
+		foreach ( $icons as $value => $label ) {
+			$html .= '<option value="' . esc_attr( $value ) . '" ' . selected( $icon, $value, false ) . '>' . esc_html( $label ) . '</option>';
+		}
+		$html .= '</select></label><label><span>' . esc_html__( 'Accessible label', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[label]' ) . '" value="' . esc_attr( isset( $item['label'] ) ? $item['label'] : '' ) . '"></label><label><span>' . esc_html__( 'Link URL', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[url]' ) . '" value="' . esc_attr( isset( $item['url'] ) ? $item['url'] : '' ) . '"></label><button type="button" class="button-link-delete hlpb-remove-footer-row">' . esc_html__( 'Remove', 'html-landing-page-builder-for-woocommerce' ) . '</button></div>';
+		return $html;
+	}
+
+	/** Render one review editor row. */
+	private static function render_review_row( $section_id, $index, $review, $template_slug ) {
+		$defaults = self::get_default_reviews_settings()['reviews'][ $index % 3 ];
+		$review = array_merge( $defaults, $review );
+		$image_id = absint( $review['image_id'] );
+		$demo_image = self::safe_demo_image( $review['demo_image'], $template_slug );
+		$image_url = $image_id ? wp_get_attachment_image_url( $image_id, 'thumbnail' ) : false;
+		$image_url = $image_url ? $image_url : self::get_template_asset_url( $template_slug ) . 'images/' . $demo_image;
+		$name = 'hlpb_sections[' . $section_id . '][reviews][' . absint( $index ) . ']';
+		$html = '<article class="hlpb-review-item"><div class="hlpb-review-item-heading"><strong>' . esc_html( sprintf( __( 'Review %d', 'html-landing-page-builder-for-woocommerce' ), $index + 1 ) ) . '</strong><button type="button" class="button-link-delete hlpb-remove-review">' . esc_html__( 'Remove review', 'html-landing-page-builder-for-woocommerce' ) . '</button></div><div class="hlpb-review-item-fields"><div class="hlpb-image-control"><img class="hlpb-image-preview hlpb-review-image-preview" src="' . esc_url( $image_url ) . '" alt=""><input type="hidden" class="hlpb-image-id hlpb-review-image-id" name="' . esc_attr( $name . '[image_id]' ) . '" value="' . esc_attr( $image_id ) . '"><input type="hidden" class="hlpb-demo-image" name="' . esc_attr( $name . '[demo_image]' ) . '" value="' . esc_attr( $demo_image ) . '"><button type="button" class="button hlpb-select-image">' . esc_html__( 'Choose photo', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button-link hlpb-clear-image">' . esc_html__( 'Use demo photo', 'html-landing-page-builder-for-woocommerce' ) . '</button></div><div class="hlpb-review-text-fields">' . self::text_field( $name . '[image_alt]', __( 'Photo description (alt text)', 'html-landing-page-builder-for-woocommerce' ), $review['image_alt'] ) . '<div class="hlpb-field"><label>' . esc_html__( 'Stars', 'html-landing-page-builder-for-woocommerce' ) . '</label>' . self::render_star_select( $name . '[stars]', $review['stars'] ) . '</div>' . self::text_field( $name . '[title]', __( 'Review title', 'html-landing-page-builder-for-woocommerce' ), $review['title'] ) . '<div class="hlpb-field"><label>' . esc_html__( 'Review text', 'html-landing-page-builder-for-woocommerce' ) . '</label><textarea rows="4" name="' . esc_attr( $name . '[text]' ) . '">' . esc_textarea( $review['text'] ) . '</textarea></div>' . self::text_field( $name . '[reviewer]', __( 'Reviewer name', 'html-landing-page-builder-for-woocommerce' ), $review['reviewer'] ) . '<label class="hlpb-checkbox"><input type="checkbox" name="' . esc_attr( $name . '[verified]' ) . '" value="1" ' . checked( ! empty( $review['verified'] ), true, false ) . '> ' . esc_html__( 'Show verified buyer label', 'html-landing-page-builder-for-woocommerce' ) . '</label>' . self::text_field( $name . '[verified_text]', __( 'Verified buyer label', 'html-landing-page-builder-for-woocommerce' ), $review['verified_text'] ) . '</div></div></article>';
+		return $html;
+	}
+
+	/** Render a five-point star selector. */
+	private static function render_star_select( $name, $value ) {
+		$value = min( 5, max( 1, absint( $value ) ) );
+		$html = '<select name="' . esc_attr( $name ) . '">';
+		for ( $stars = 1; $stars <= 5; $stars++ ) {
+			$html .= '<option value="' . esc_attr( $stars ) . '" ' . selected( $value, $stars, false ) . '>' . esc_html( $stars . ' / 5' ) . '</option>';
+		}
+		return $html . '</select>';
 	}
 
 	/** Render a WordPress color control. */
@@ -827,6 +1100,12 @@ final class HLPB_Landing_Builder {
 			$section = array_merge( $section, self::get_default_offer_settings() );
 		} elseif ( 'mix_it' === $type ) {
 			$section = array_merge( $section, self::get_default_mix_settings() );
+		} elseif ( 'reviews' === $type ) {
+			$section = array_merge( $section, self::get_default_reviews_settings() );
+		} elseif ( 'faq' === $type ) {
+			$section = array_merge( $section, self::get_default_faq_settings() );
+		} elseif ( 'footer' === $type ) {
+			$section = array_merge( $section, self::get_default_footer_settings() );
 		}
 
 		wp_send_json_success( array( 'html' => self::render_section_card( $section, $template_slug ) ) );
@@ -879,6 +1158,10 @@ final class HLPB_Landing_Builder {
 				'removeBenefit' => __( 'Remove benefit', 'html-landing-page-builder-for-woocommerce' ),
 				'collapseSection' => __( 'Collapse', 'html-landing-page-builder-for-woocommerce' ),
 				'expandSection' => __( 'Expand', 'html-landing-page-builder-for-woocommerce' ),
+				'reviewLabel' => __( 'Review', 'html-landing-page-builder-for-woocommerce' ),
+				'faqQuestionLabel' => __( 'Question', 'html-landing-page-builder-for-woocommerce' ),
+				'footerLinkLabel' => __( 'Link', 'html-landing-page-builder-for-woocommerce' ),
+				'footerSocialLabel' => __( 'Social link', 'html-landing-page-builder-for-woocommerce' ),
 			)
 		);
 	}
@@ -1202,7 +1485,16 @@ final class HLPB_Landing_Builder {
 		$upload_root = isset( $upload_info['basedir'] ) ? realpath( $upload_info['basedir'] ) : false;
 		if ( ! $upload_root ) {
 			foreach ( $sections as $section ) {
-				if ( ! empty( $section['image_id'] ) || ! empty( $section['logo_id'] ) ) {
+				$has_review_image = false;
+				if ( ! empty( $section['reviews'] ) && is_array( $section['reviews'] ) ) {
+					foreach ( $section['reviews'] as $review ) {
+						if ( ! empty( $review['image_id'] ) ) {
+							$has_review_image = true;
+							break;
+						}
+					}
+				}
+				if ( ! empty( $section['image_id'] ) || ! empty( $section['logo_id'] ) || $has_review_image ) {
 					return new WP_Error( 'hlpb_export_uploads_missing', __( 'WordPress uploads are unavailable, so the selected image cannot be included in a standalone export.', 'html-landing-page-builder-for-woocommerce' ) );
 				}
 			}
@@ -1211,6 +1503,11 @@ final class HLPB_Landing_Builder {
 		$upload_root = trailingslashit( strtolower( wp_normalize_path( $upload_root ) ) );
 		foreach ( $sections as $section ) {
 			$image_ids = array( isset( $section['image_id'] ) ? absint( $section['image_id'] ) : 0, isset( $section['logo_id'] ) ? absint( $section['logo_id'] ) : 0 );
+			if ( ! empty( $section['reviews'] ) && is_array( $section['reviews'] ) ) {
+				foreach ( $section['reviews'] as $review ) {
+					$image_ids[] = isset( $review['image_id'] ) ? absint( $review['image_id'] ) : 0;
+				}
+			}
 			foreach ( array_unique( array_filter( $image_ids ) ) as $image_id ) {
 				if ( isset( $images[ $image_id ] ) ) {
 					continue;
@@ -1727,6 +2024,96 @@ final class HLPB_Landing_Builder {
 						);
 					}
 				}
+			} elseif ( 'reviews' === $type ) {
+				$defaults = self::get_default_reviews_settings();
+				foreach ( array( 'title', 'subtitle', 'overall_score', 'overall_count' ) as $text_key ) {
+					$section[ $text_key ] = isset( $raw_section[ $text_key ] ) ? sanitize_text_field( $raw_section[ $text_key ] ) : $defaults[ $text_key ];
+				}
+				$section['overall_stars'] = isset( $raw_section['overall_stars'] ) ? min( 5, max( 1, absint( $raw_section['overall_stars'] ) ) ) : $defaults['overall_stars'];
+				foreach ( array( 'background', 'heading_color', 'subtitle_color', 'star_color', 'score_color', 'count_color', 'card_background', 'card_border_color', 'review_title_color', 'review_text_color', 'reviewer_color', 'verified_color' ) as $color_key ) {
+					$color = isset( $raw_section[ $color_key ] ) ? sanitize_hex_color( $raw_section[ $color_key ] ) : false;
+					$section[ $color_key ] = $color ? $color : $defaults[ $color_key ];
+				}
+				$raw_reviews = isset( $raw_section['reviews'] ) && is_array( $raw_section['reviews'] ) ? array_slice( $raw_section['reviews'], 0, 20 ) : ( ! empty( $raw_section['reviews_present'] ) ? array() : $defaults['reviews'] );
+				$section['reviews'] = array();
+				foreach ( $raw_reviews as $review_index => $raw_review ) {
+					if ( ! is_array( $raw_review ) ) {
+						continue;
+					}
+					$review_defaults = $defaults['reviews'][ $review_index % count( $defaults['reviews'] ) ];
+					$demo_image = isset( $raw_review['demo_image'] ) ? sanitize_file_name( $raw_review['demo_image'] ) : $review_defaults['demo_image'];
+					$section['reviews'][] = array(
+						'image_id' => isset( $raw_review['image_id'] ) ? absint( $raw_review['image_id'] ) : 0,
+						'demo_image' => self::safe_demo_image( $demo_image, $template_slug ),
+						'image_alt' => isset( $raw_review['image_alt'] ) ? sanitize_text_field( $raw_review['image_alt'] ) : $review_defaults['image_alt'],
+						'stars' => isset( $raw_review['stars'] ) ? min( 5, max( 1, absint( $raw_review['stars'] ) ) ) : $review_defaults['stars'],
+						'title' => isset( $raw_review['title'] ) ? sanitize_text_field( $raw_review['title'] ) : '',
+						'text' => isset( $raw_review['text'] ) ? sanitize_textarea_field( $raw_review['text'] ) : '',
+						'reviewer' => isset( $raw_review['reviewer'] ) ? sanitize_text_field( $raw_review['reviewer'] ) : '',
+						'verified' => ! empty( $raw_review['verified'] ) ? 1 : 0,
+						'verified_text' => isset( $raw_review['verified_text'] ) ? sanitize_text_field( $raw_review['verified_text'] ) : $review_defaults['verified_text'],
+					);
+				}
+			} elseif ( 'faq' === $type ) {
+				$defaults = self::get_default_faq_settings();
+				$section['title'] = isset( $raw_section['title'] ) ? sanitize_textarea_field( $raw_section['title'] ) : $defaults['title'];
+				$section['subtitle'] = isset( $raw_section['subtitle'] ) ? sanitize_text_field( $raw_section['subtitle'] ) : $defaults['subtitle'];
+				foreach ( array( 'background', 'heading_color', 'intro_color', 'question_color', 'answer_color', 'item_background', 'item_border_color', 'arrow_color' ) as $color_key ) {
+					$color = isset( $raw_section[ $color_key ] ) ? sanitize_hex_color( $raw_section[ $color_key ] ) : false;
+					$section[ $color_key ] = $color ? $color : $defaults[ $color_key ];
+				}
+				$raw_faqs = isset( $raw_section['faqs'] ) && is_array( $raw_section['faqs'] ) ? array_slice( $raw_section['faqs'], 0, 30 ) : ( ! empty( $raw_section['faqs_present'] ) ? array() : $defaults['faqs'] );
+				$section['faqs'] = array();
+				foreach ( $raw_faqs as $faq ) {
+					if ( ! is_array( $faq ) ) {
+						continue;
+					}
+					$section['faqs'][] = array(
+						'question' => isset( $faq['question'] ) ? sanitize_text_field( $faq['question'] ) : '',
+						'answer' => isset( $faq['answer'] ) ? sanitize_textarea_field( $faq['answer'] ) : '',
+					);
+				}
+			} elseif ( 'footer' === $type ) {
+				$defaults = self::get_default_footer_settings();
+				$section['logo_id'] = isset( $raw_section['logo_id'] ) ? absint( $raw_section['logo_id'] ) : 0;
+				foreach ( array( 'brand_name', 'brand_tagline', 'copyright', 'legal_note' ) as $text_key ) {
+					$section[ $text_key ] = isset( $raw_section[ $text_key ] ) ? sanitize_text_field( $raw_section[ $text_key ] ) : $defaults[ $text_key ];
+				}
+				$section['brand_url'] = isset( $raw_section['brand_url'] ) ? self::sanitize_menu_url( $raw_section['brand_url'] ) : $defaults['brand_url'];
+				$section['disclaimer'] = isset( $raw_section['disclaimer'] ) ? sanitize_textarea_field( $raw_section['disclaimer'] ) : $defaults['disclaimer'];
+				foreach ( array( 'background', 'text_color', 'brand_color', 'bottom_text_color', 'disclaimer_color', 'divider_color' ) as $color_key ) {
+					$color = isset( $raw_section[ $color_key ] ) ? sanitize_hex_color( $raw_section[ $color_key ] ) : false;
+					$section[ $color_key ] = $color ? $color : $defaults[ $color_key ];
+				}
+				foreach ( array( 'primary_links', 'legal_links' ) as $group ) {
+					$present_key = $group . '_present';
+					$raw_items = isset( $raw_section[ $group ] ) && is_array( $raw_section[ $group ] ) ? array_slice( $raw_section[ $group ], 0, 20 ) : ( ! empty( $raw_section[ $present_key ] ) ? array() : $defaults[ $group ] );
+					$section[ $group ] = array();
+					foreach ( $raw_items as $item ) {
+						if ( ! is_array( $item ) ) {
+							continue;
+						}
+						$label = isset( $item['label'] ) ? sanitize_text_field( $item['label'] ) : '';
+						$url = isset( $item['url'] ) ? self::sanitize_menu_url( $item['url'] ) : '';
+						if ( '' !== $label && '' !== $url ) {
+							$section[ $group ][] = array( 'label' => $label, 'url' => $url );
+						}
+					}
+				}
+				$raw_social_links = isset( $raw_section['social_links'] ) && is_array( $raw_section['social_links'] ) ? array_slice( $raw_section['social_links'], 0, 20 ) : ( ! empty( $raw_section['social_links_present'] ) ? array() : $defaults['social_links'] );
+				$social_icons = self::get_footer_social_icons();
+				$section['social_links'] = array();
+				foreach ( $raw_social_links as $item ) {
+					if ( ! is_array( $item ) ) {
+						continue;
+					}
+					$icon = isset( $item['icon'] ) ? sanitize_key( $item['icon'] ) : 'instagram';
+					$label = isset( $item['label'] ) ? sanitize_text_field( $item['label'] ) : '';
+					$url = isset( $item['url'] ) ? self::sanitize_menu_url( $item['url'] ) : '';
+					if ( isset( $social_icons[ $icon ] ) && '' !== $label && '' !== $url ) {
+						$section['social_links'][] = array( 'icon' => $icon, 'label' => $label, 'url' => $url );
+					}
+				}
 			}
 			$sections[] = $section;
 		}
@@ -1831,6 +2218,15 @@ final class HLPB_Landing_Builder {
 		if ( 'mix_it' === $type ) {
 			return self::render_mix_it( $section );
 		}
+		if ( 'reviews' === $type ) {
+			return self::render_reviews( $section, $template_slug, $asset_url, $custom_images );
+		}
+		if ( 'faq' === $type ) {
+			return self::render_faq( $section );
+		}
+		if ( 'footer' === $type ) {
+			return self::render_footer( $section, $template_slug, $asset_url, $custom_images );
+		}
 
 		$fragment_keys = array(
 			'header'        => 'header',
@@ -1897,6 +2293,9 @@ final class HLPB_Landing_Builder {
 	/** Render the editable offer/announcement line. */
 	private static function render_offer_line( $section ) {
 		$section = array_merge( self::get_default_offer_settings(), $section );
+		if ( 'Buy more, save more · Free UK delivery on all orders' === $section['right_text'] ) {
+			$section['right_text'] = self::get_default_offer_settings()['right_text'];
+		}
 		$background = sanitize_hex_color( $section['background'] ) ?: '#dff1e8';
 		$left_color = sanitize_hex_color( $section['left_color'] ) ?: '#376c5c';
 		$right_color = sanitize_hex_color( $section['right_color'] ) ?: '#376c5c';
@@ -1924,6 +2323,143 @@ final class HLPB_Landing_Builder {
 			$benefits_markup .= '<article><span class="benefit-icon ' . esc_attr( $icon ) . '" style="color:' . esc_attr( $icon_color ? $icon_color : '#244c59' ) . '"><svg class="icon" aria-hidden="true"><use href="#i-' . esc_attr( $icon ) . '"></use></svg></span><div><b style="color:' . esc_attr( $title_text_color ) . '">' . esc_html( isset( $benefit['title'] ) ? $benefit['title'] : '' ) . '</b><small style="color:' . esc_attr( $benefit_text_color ) . '">' . nl2br( esc_html( isset( $benefit['text'] ) ? $benefit['text'] : '' ) ) . '</small></div></article>';
 		}
 		return '<section class="mix-band" style="background-color:' . esc_attr( $background ) . '"><div class="container"><h2 style="color:' . esc_attr( $title_color ) . '">' . esc_html( $section['title'] ) . '</h2><p style="color:' . esc_attr( $subtitle_color ) . '">' . esc_html( $section['subtitle'] ) . '</p><div class="benefits">' . $benefits_markup . '</div></div></section>';
+	}
+
+	/** Render the editable reviews section and its review cards. */
+	private static function render_reviews( $section, $template_slug, $asset_url, $custom_images ) {
+		$section = array_merge( self::get_default_reviews_settings(), $section );
+		$colors = array();
+		foreach ( array( 'background', 'heading_color', 'subtitle_color', 'star_color', 'score_color', 'count_color', 'card_background', 'card_border_color', 'review_title_color', 'review_text_color', 'reviewer_color', 'verified_color' ) as $color_key ) {
+			$colors[ $color_key ] = sanitize_hex_color( $section[ $color_key ] ) ?: self::get_default_reviews_settings()[ $color_key ];
+		}
+		$overall_stars = min( 5, max( 1, absint( $section['overall_stars'] ) ) );
+		$score_stars = str_repeat( '★', $overall_stars );
+		$cards = '';
+		$reviews = is_array( $section['reviews'] ) ? array_slice( $section['reviews'], 0, 20 ) : array();
+		foreach ( $reviews as $index => $review ) {
+			if ( ! is_array( $review ) ) {
+				continue;
+			}
+			$review_defaults = self::get_default_reviews_settings()['reviews'][ $index % 3 ];
+			$review = array_merge( $review_defaults, $review );
+			$image_id = absint( $review['image_id'] );
+			$image_url = $image_id && isset( $custom_images[ $image_id ] ) ? $custom_images[ $image_id ] : false;
+			if ( ! $image_url && $image_id ) {
+				$image_url = wp_get_attachment_image_url( $image_id, 'thumbnail' );
+			}
+			if ( ! $image_url ) {
+				$image_url = $asset_url . 'images/' . self::safe_demo_image( $review['demo_image'], $template_slug );
+			}
+			$stars = min( 5, max( 1, absint( $review['stars'] ) ) );
+			$avatar_class = 'avatar-' . ( ( $index % 3 ) + 1 );
+			$verified = ! empty( $review['verified'] ) && '' !== trim( $review['verified_text'] );
+			$verified_markup = $verified ? '<span style="color:' . esc_attr( $colors['verified_color'] ) . '">' . esc_html( $review['verified_text'] ) . '</span>' : '';
+			$cards .= '<article class="review-card" style="background-color:' . esc_attr( $colors['card_background'] ) . ';border-color:' . esc_attr( $colors['card_border_color'] ) . '"><img class="avatar ' . esc_attr( $avatar_class ) . '" src="' . esc_url( $image_url ) . '" width="184" height="152" alt="' . esc_attr( $review['image_alt'] ) . '" loading="lazy"><div><span class="stars" style="color:' . esc_attr( $colors['star_color'] ) . '" aria-label="' . esc_attr( sprintf( __( '%d out of 5 stars', 'html-landing-page-builder-for-woocommerce' ), $stars ) ) . '">' . esc_html( str_repeat( '★', $stars ) ) . '</span><b style="color:' . esc_attr( $colors['review_title_color'] ) . '">' . esc_html( $review['title'] ) . '</b><p style="color:' . esc_attr( $colors['review_text_color'] ) . '">' . nl2br( esc_html( $review['text'] ) ) . '</p><footer style="color:' . esc_attr( $colors['reviewer_color'] ) . '">' . esc_html( $review['reviewer'] ) . $verified_markup . '</footer></div></article>';
+		}
+		return '<section class="reviews-section" id="reviews" style="background-color:' . esc_attr( $colors['background'] ) . '"><div class="container"><div class="reviews-heading"><div><h2 style="color:' . esc_attr( $colors['heading_color'] ) . '">' . esc_html( $section['title'] ) . '</h2><p style="color:' . esc_attr( $colors['subtitle_color'] ) . '">' . esc_html( $section['subtitle'] ) . '</p></div><div class="review-score"><span class="stars" style="color:' . esc_attr( $colors['star_color'] ) . '" aria-label="' . esc_attr( sprintf( __( '%d out of 5 stars', 'html-landing-page-builder-for-woocommerce' ), $overall_stars ) ) . '">' . esc_html( $score_stars ) . '</span><b style="color:' . esc_attr( $colors['score_color'] ) . '">' . esc_html( $section['overall_score'] ) . '</b><small style="color:' . esc_attr( $colors['count_color'] ) . '">' . esc_html( $section['overall_count'] ) . '</small></div></div><div class="review-grid">' . $cards . '</div></div></section>';
+	}
+
+	/** Render the editable FAQ section. */
+	private static function render_faq( $section ) {
+		$section = array_merge( self::get_default_faq_settings(), $section );
+		$defaults = self::get_default_faq_settings();
+		$colors = array();
+		foreach ( array( 'background', 'heading_color', 'intro_color', 'question_color', 'answer_color', 'item_background', 'item_border_color', 'arrow_color' ) as $color_key ) {
+			$colors[ $color_key ] = sanitize_hex_color( $section[ $color_key ] ) ?: $defaults[ $color_key ];
+		}
+		$items = '';
+		$faqs = is_array( $section['faqs'] ) ? array_slice( $section['faqs'], 0, 30 ) : array();
+		foreach ( $faqs as $faq ) {
+			if ( ! is_array( $faq ) ) {
+				continue;
+			}
+			$question = isset( $faq['question'] ) ? $faq['question'] : '';
+			$answer = isset( $faq['answer'] ) ? $faq['answer'] : '';
+			$items .= '<details style="--hlpb-faq-arrow:' . esc_attr( $colors['arrow_color'] ) . ';background-color:' . esc_attr( $colors['item_background'] ) . ';border-color:' . esc_attr( $colors['item_border_color'] ) . '"><summary style="color:' . esc_attr( $colors['question_color'] ) . '">' . esc_html( $question ) . '</summary><p style="color:' . esc_attr( $colors['answer_color'] ) . '">' . nl2br( esc_html( $answer ) ) . '</p></details>';
+		}
+		return '<section class="faq-section container" id="faqs" style="background-color:' . esc_attr( $colors['background'] ) . '"><div class="faq-intro"><h2 style="color:' . esc_attr( $colors['heading_color'] ) . '">' . nl2br( esc_html( $section['title'] ) ) . '</h2><p style="color:' . esc_attr( $colors['intro_color'] ) . '">' . esc_html( $section['subtitle'] ) . '</p></div><div class="faq-list">' . $items . '</div></section>';
+	}
+
+	/** Render the editable footer section. */
+	private static function render_footer( $section, $template_slug, $asset_url, $custom_images = array() ) {
+		$defaults = self::get_default_footer_settings();
+		$section = array_merge( $defaults, $section );
+		$colors = array();
+		foreach ( array( 'background', 'text_color', 'brand_color', 'bottom_text_color', 'disclaimer_color', 'divider_color' ) as $color_key ) {
+			$colors[ $color_key ] = sanitize_hex_color( $section[ $color_key ] ) ?: $defaults[ $color_key ];
+		}
+
+		$logo_id = absint( $section['logo_id'] );
+		$logo_url = $logo_id && isset( $custom_images[ $logo_id ] ) ? $custom_images[ $logo_id ] : false;
+		if ( ! $logo_url && $logo_id ) {
+			$logo_url = wp_get_attachment_image_url( $logo_id, 'medium' );
+		}
+		$brand_url = self::sanitize_menu_url( $section['brand_url'] );
+		$brand_url = $brand_url ? $brand_url : '#top';
+		$brand_name = sanitize_text_field( $section['brand_name'] );
+		$brand_tagline = sanitize_text_field( $section['brand_tagline'] );
+		if ( $logo_url ) {
+			$logo_alt = get_post_meta( $logo_id, '_wp_attachment_image_alt', true );
+			$brand = '<a class="brand footer-brand" href="' . esc_url( $brand_url ) . '" style="color:' . esc_attr( $colors['brand_color'] ) . '"><img src="' . esc_url( $logo_url ) . '" alt="' . esc_attr( $logo_alt ? $logo_alt : $brand_name ) . '" loading="lazy"><span><b>' . esc_html( $brand_name ) . '</b><small>' . esc_html( $brand_tagline ) . '</small></span></a>';
+		} else {
+			$icon_url = $asset_url . 'icons/nest-stack.svg';
+			$brand = '<a class="brand footer-brand" href="' . esc_url( $brand_url ) . '" style="color:' . esc_attr( $colors['brand_color'] ) . '"><img src="' . esc_url( $icon_url ) . '" width="34" height="28" alt=""><span><b>' . esc_html( $brand_name ) . '</b><small>' . esc_html( $brand_tagline ) . '</small></span></a>';
+		}
+
+		$primary_markup = '';
+		$primary_links = is_array( $section['primary_links'] ) ? array_slice( $section['primary_links'], 0, 20 ) : array();
+		foreach ( $primary_links as $item ) {
+			if ( ! is_array( $item ) ) {
+				continue;
+			}
+			$label = isset( $item['label'] ) ? sanitize_text_field( $item['label'] ) : '';
+			$url = isset( $item['url'] ) ? self::sanitize_menu_url( $item['url'] ) : '';
+			if ( '' !== $label && '' !== $url ) {
+				$primary_markup .= '<a href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
+			}
+		}
+
+		$social_markup = '';
+		$social_links = is_array( $section['social_links'] ) ? array_slice( $section['social_links'], 0, 20 ) : array();
+		$social_icons = self::get_footer_social_icons();
+		foreach ( $social_links as $item ) {
+			if ( ! is_array( $item ) ) {
+				continue;
+			}
+			$icon = isset( $item['icon'] ) ? sanitize_key( $item['icon'] ) : '';
+			$label = isset( $item['label'] ) ? sanitize_text_field( $item['label'] ) : '';
+			$url = isset( $item['url'] ) ? self::sanitize_menu_url( $item['url'] ) : '';
+			if ( ! isset( $social_icons[ $icon ] ) || '' === $label || '' === $url ) {
+				continue;
+			}
+			if ( in_array( $icon, array( 'instagram', 'facebook', 'pinterest' ), true ) ) {
+				$icon_markup = '<svg class="icon" aria-hidden="true"><use href="#i-' . esc_attr( $icon ) . '"></use></svg>';
+			} else {
+				$icon_markup = 'tiktok' === $icon ? '♪' : '▶';
+			}
+			$social_markup .= '<a href="' . esc_url( $url ) . '" aria-label="' . esc_attr( $label ) . '" style="color:' . esc_attr( $colors['text_color'] ) . '">' . $icon_markup . '</a>';
+		}
+
+		$legal_markup = '';
+		$legal_links = is_array( $section['legal_links'] ) ? array_slice( $section['legal_links'], 0, 20 ) : array();
+		foreach ( $legal_links as $item ) {
+			if ( ! is_array( $item ) ) {
+				continue;
+			}
+			$label = isset( $item['label'] ) ? sanitize_text_field( $item['label'] ) : '';
+			$url = isset( $item['url'] ) ? self::sanitize_menu_url( $item['url'] ) : '';
+			if ( '' !== $label && '' !== $url ) {
+				$legal_markup .= '<a href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
+			}
+		}
+		$legal_note = sanitize_text_field( $section['legal_note'] );
+		if ( '' !== $legal_note ) {
+			$legal_markup .= '<span>' . esc_html( $legal_note ) . '</span>';
+		}
+
+		$copyright = sanitize_text_field( $section['copyright'] );
+		$disclaimer = sanitize_textarea_field( $section['disclaimer'] );
+		return '<footer class="site-footer" id="contact" style="background-color:' . esc_attr( $colors['background'] ) . ';color:' . esc_attr( $colors['text_color'] ) . '"><div class="container footer-main">' . $brand . '<nav>' . $primary_markup . '</nav><div class="socials" aria-label="' . esc_attr__( 'Social media', 'html-landing-page-builder-for-woocommerce' ) . '">' . $social_markup . '</div></div><div class="container footer-bottom" style="color:' . esc_attr( $colors['bottom_text_color'] ) . ';border-top-color:' . esc_attr( $colors['divider_color'] ) . '"><span>' . esc_html( $copyright ) . '</span><nav>' . $legal_markup . '</nav></div><div class="container demo-disclaimer" style="color:' . esc_attr( $colors['disclaimer_color'] ) . '">' . nl2br( esc_html( $disclaimer ) ) . '</div></footer>';
 	}
 
 	/**
