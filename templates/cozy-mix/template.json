@@ -1,0 +1,37 @@
+{
+  "name": "Nest & Nook — Cozy Mix",
+  "description": "The supplied Nest & Nook mix-and-match landing page design.",
+  "source": "source.html",
+  "styles": "assets/css/style.css",
+  "script": "assets/js/site.js",
+  "assets": "assets",
+  "default_image": "texture-closeup-480.webp",
+  "text_image_template": "partials/text-image.html",
+  "default_layout": [
+    "header",
+    "offer_line",
+    "cart_section",
+    "mix_it",
+    "text_image",
+    "text_image",
+    "text_image",
+    "reviews",
+    "faq",
+    "why",
+    "limited_stock",
+    "footer"
+  ],
+  "sections": {
+    "header": "~<header class=\"site-header\">.*?</header>~s",
+    "offer_line": "~<div class=\"announcement\">.*?</div>~s",
+    "cart_section": "~<section class=\"hero container\" id=\"shop\">.*?</section>~s",
+    "mix_it": "~<section class=\"mix-band\">.*?</section>~s",
+    "reviews": "~<section class=\"reviews-section container\" id=\"reviews\">.*?</section>~s",
+    "faq": "~<section class=\"faq-section container\" id=\"faqs\">.*?</section>~s",
+    "why": "~<section class=\"bundle-section\" id=\"bundles\">.*?</section>~s",
+    "limited_stock": "~<div class=\"container stock-note\">.*?</div>~s",
+    "footer": "~<footer class=\"site-footer\">.*?</footer>~s",
+    "sprite": "~<svg class=\"svg-sprite\".*?</svg>~s",
+    "buybar": "~<div class=\"mobile-buybar\">.*?</div>\\s*<div class=\"toast\".*?</div>~s"
+  }
+}
