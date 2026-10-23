@@ -1,5 +1,10 @@
 (function(){
 "use strict";
+var mobileMenus=document.querySelectorAll(".site-header .mobile-menu");
+mobileMenus.forEach(function(menu){menu.addEventListener("toggle",function(){if(!menu.open)return;mobileMenus.forEach(function(other){if(other!==menu)other.open=false})})});
+document.addEventListener("click",function(event){if(!event.target.closest(".site-header .mobile-menu")){mobileMenus.forEach(function(menu){menu.open=false})}});
+document.addEventListener("keydown",function(event){if(event.key==="Escape")mobileMenus.forEach(function(menu){menu.open=false})});
+mobileMenus.forEach(function(menu){menu.addEventListener("click",function(event){if(event.target.closest(".mobile-menu-panel a"))menu.open=false})});
 if(window.HLPBCartData)return;
 var colors=[
 {name:"Wine",value:"wine",hex:"#6c2034"},

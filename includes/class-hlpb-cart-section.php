@@ -18,12 +18,20 @@ final class HLPB_Cart_Section {
 
 	/** Register the public checkout endpoint and WooCommerce coupon filters. */
 	public static function init() {
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_cart_offer_styles' ) );
+		if ( did_action( 'woocommerce_blocks_loaded' ) ) {
+			self::register_store_api_cart_item_extension();
+		} else {
+			add_action( 'woocommerce_blocks_loaded', array( __CLASS__, 'register_store_api_cart_item_extension' ) );
+		}
 		add_action( 'admin_post_hlpb_landing_add_to_cart', array( __CLASS__, 'handle_checkout_request' ) );
 		add_action( 'admin_post_nopriv_hlpb_landing_add_to_cart', array( __CLASS__, 'handle_checkout_request' ) );
 		add_filter( 'woocommerce_coupon_is_valid', array( __CLASS__, 'validate_coupon' ), 20, 3 );
 		add_filter( 'woocommerce_coupon_is_valid_for_product', array( __CLASS__, 'coupon_valid_for_product' ), 20, 4 );
 		add_filter( 'woocommerce_coupon_get_discount_amount', array( __CLASS__, 'coupon_discount' ), 20, 5 );
 		add_filter( 'woocommerce_get_item_data', array( __CLASS__, 'display_cart_offer_data' ), 20, 2 );
+		add_filter( 'woocommerce_cart_item_price', array( __CLASS__, 'display_cart_offer_price' ), 20, 3 );
+		add_filter( 'woocommerce_cart_item_subtotal', array( __CLASS__, 'display_cart_offer_subtotal' ), 20, 3 );
 		add_action( 'woocommerce_remove_cart_item', array( __CLASS__, 'remember_removed_bundle_gift' ), 10, 2 );
 		add_action( 'woocommerce_remove_cart_item', array( __CLASS__, 'remember_removed_bundle_gift' ), 10, 2 );
 		add_action( 'woocommerce_cart_item_removed', array( __CLASS__, 'sync_bundle_after_removal' ), 20, 2 );
@@ -942,7 +950,17 @@ final class HLPB_Cart_Section {
 		if ( ! $bundle || ! self::bundle_is_current( $bundle, absint( $cart_item['_hlpb_landing_id'] ?? 0 ) ) ) {
 			return 0;
 		}
-		$rule = $bundle['rule'];
+		$line_quantity = max( 1, absint( $cart_item['quantity'] ?? 1 ) );
+		$line_discount = self::bundle_line_discount( $bundle, $cart_item );
+		if ( $line_discount <= 0 ) {
+			return 0;
+		}
+		return min( (float) $discounting_amount, $single ? round( $line_discount / $line_quantity, wc_get_price_decimals() ) : $line_discount );
+	}
+
+	/** Calculate the discount assigned to this exact cart row within its offer group. */
+	private static function bundle_line_discount( $bundle, $cart_item ) {
+		$rule = is_array( $bundle['rule'] ?? null ) ? $bundle['rule'] : array();
 		$line_quantity = max( 1, absint( $cart_item['quantity'] ?? 1 ) );
 		$base = (float) ( $cart_item['_hlpb_base_price'] ?? 0 ) * $line_quantity;
 		if ( $base <= 0 ) {
@@ -954,14 +972,12 @@ final class HLPB_Cart_Section {
 			}
 			$gift_mode = sanitize_key( $rule['gift_mode'] ?? 'none' );
 			if ( 'free' === $gift_mode ) {
-				$gift_discount = $base;
-				return min( (float) $discounting_amount, $single ? $gift_discount / $line_quantity : $gift_discount );
+				return $base;
 			}
 			if ( 'discounted' === $gift_mode ) {
 				$value = max( 0, (float) ( $rule['gift_discount_value'] ?? 0 ) );
-				$off = 'fixed_price' === ( $rule['gift_discount_type'] ?? 'percent' ) ? max( 0, $base - $value * max( 1, absint( $cart_item['quantity'] ?? 1 ) ) ) : $base * min( 100, $value ) / 100;
-				$gift_discount = round( $off, wc_get_price_decimals() );
-				return min( (float) $discounting_amount, $single ? round( $gift_discount / $line_quantity, wc_get_price_decimals() ) : $gift_discount );
+				$off = 'fixed_price' === ( $rule['gift_discount_type'] ?? 'percent' ) ? max( 0, $base - $value * $line_quantity ) : $base * min( 100, $value ) / 100;
+				return round( $off, wc_get_price_decimals() );
 			}
 			return 0;
 		}
@@ -979,7 +995,7 @@ final class HLPB_Cart_Section {
 			$discount_total = 0;
 		}
 		$line_discount = round( $discount_total * ( $base / $bundle['core_total'] ), wc_get_price_decimals() );
-		return min( (float) $discounting_amount, $single ? round( $line_discount / $line_quantity, wc_get_price_decimals() ) : $line_discount );
+		return $line_discount;
 	}
 
 	private static function get_coupon_bundles( $coupon_id ) {
@@ -1107,24 +1123,239 @@ final class HLPB_Cart_Section {
 
 	/** Mark campaign lines in cart and checkout while keeping unrelated duplicates separate. */
 	public static function display_cart_offer_data( $item_data, $cart_item ) {
-		if ( empty( $cart_item['_hlpb_bundle_key'] ) || empty( $cart_item['_hlpb_coupon_id'] ) || ! function_exists( 'WC' ) || ! WC()->cart || ! WC()->cart->has_discount( ( new WC_Coupon( absint( $cart_item['_hlpb_coupon_id'] ) ) )->get_code() ) ) {
+		$presentation = self::offer_presentation( $cart_item );
+		if ( ! $presentation ) {
 			return $item_data;
 		}
-		$bundle = self::get_coupon_bundle( absint( $cart_item['_hlpb_coupon_id'] ), (string) $cart_item['_hlpb_bundle_key'] );
-		if ( ! self::bundle_is_current( $bundle, absint( $cart_item['_hlpb_landing_id'] ?? 0 ) ) ) {
-			return $item_data;
-		}
-		$name = sanitize_text_field( $cart_item['_hlpb_campaign_name'] ?? '' );
-		if ( '' !== $name ) {
-			$item_data[] = array( 'key' => __( 'Offer', 'html-landing-page-builder-for-woocommerce' ), 'value' => esc_html( $name ) );
-		}
-		$item_data[] = array( 'key' => __( 'Offer bundle', 'html-landing-page-builder-for-woocommerce' ), 'value' => esc_html( strtoupper( substr( preg_replace( '/[^a-f0-9]/i', '', (string) $cart_item['_hlpb_bundle_key'] ), 0, 8 ) ) ) );
+		$item_data[] = array(
+			'raw_key' => 'hlpb_offer',
+			'key'     => __( 'Offer', 'html-landing-page-builder-for-woocommerce' ),
+			'value'   => '<span class="hlpb-offer-badge ' . esc_attr( $presentation['group_class'] ) . '" aria-label="' . esc_attr( $presentation['label'] ) . '">' . esc_html( $presentation['label'] ) . '</span>',
+		);
 		if ( ! empty( $cart_item['_hlpb_is_gift'] ) ) {
-			$rule = $bundle['rule'] ?? array();
+			$rule = $presentation['bundle']['rule'] ?? array();
 			$status = empty( $cart_item['_hlpb_gift_eligible'] ) ? __( 'Regular price — gift not included in this quantity', 'html-landing-page-builder-for-woocommerce' ) : ( 'free' === ( $rule['gift_mode'] ?? '' ) ? __( 'Free gift', 'html-landing-page-builder-for-woocommerce' ) : __( 'Discounted gift', 'html-landing-page-builder-for-woocommerce' ) );
 			$item_data[] = array( 'key' => __( 'Gift status', 'html-landing-page-builder-for-woocommerce' ), 'value' => esc_html( $status ) );
 		}
 		return $item_data;
+	}
+
+	/** Display the undiscounted and offer prices in cart and checkout rows. */
+	public static function display_cart_offer_price( $price_html, $cart_item, $cart_item_key ) {
+		return self::format_cart_offer_price( $price_html, $cart_item, false );
+	}
+
+	/** Display the undiscounted and offer subtotals in cart and checkout rows. */
+	public static function display_cart_offer_subtotal( $subtotal_html, $cart_item, $cart_item_key ) {
+		return self::format_cart_offer_price( $subtotal_html, $cart_item, true );
+	}
+
+	/** Load offer badge and pricing styles only on WooCommerce cart and checkout pages. */
+	public static function enqueue_cart_offer_styles() {
+		$is_cart_page = function_exists( 'is_cart' ) && is_cart();
+		$is_checkout_page = function_exists( 'is_checkout' ) && is_checkout();
+		if ( ! $is_cart_page && ! $is_checkout_page ) {
+			return;
+		}
+		wp_enqueue_style( 'hlpb-cart-offer-display', HLPB_URL . 'assets/frontend/cart-offer-display.css', array(), HLPB_VERSION );
+		if ( wp_script_is( 'wc-blocks-checkout', 'registered' ) ) {
+			wp_enqueue_script( 'hlpb-cart-offer-blocks', HLPB_URL . 'assets/frontend/cart-offer-blocks.js', array( 'wc-blocks-checkout' ), HLPB_VERSION, true );
+		}
+		$group_numbers = self::bundle_display_numbers();
+		$group_styles = '';
+		foreach ( $group_numbers as $group_number ) {
+			$hue = self::bundle_hue( $group_number );
+			$group_styles .= '.hlpb-offer-group-' . absint( $group_number ) . '{--hlpb-offer-hue:' . absint( $hue ) . ';}';
+		}
+		if ( '' !== $group_styles ) {
+			wp_add_inline_style( 'hlpb-cart-offer-display', $group_styles );
+		}
+	}
+
+	/** Extend Store API cart items so WooCommerce blocks can render our offer prices. */
+	public static function register_store_api_cart_item_extension() {
+		$schema_class = '\\Automattic\\WooCommerce\\StoreApi\\Schemas\\V1\\CartItemSchema';
+		if ( ! function_exists( 'woocommerce_store_api_register_endpoint_data' ) || ! class_exists( $schema_class ) ) {
+			return;
+		}
+		woocommerce_store_api_register_endpoint_data(
+			array(
+				'endpoint'        => $schema_class::IDENTIFIER,
+				'namespace'       => 'hlpb',
+				'data_callback'   => array( __CLASS__, 'store_api_cart_item_data' ),
+				'schema_callback' => array( __CLASS__, 'store_api_cart_item_schema' ),
+				'schema_type'     => ARRAY_A,
+			)
+		);
+	}
+
+	/** Describe the per-item extension used by WooCommerce Cart and Checkout blocks. */
+	public static function store_api_cart_item_schema() {
+		$properties = array();
+		foreach ( array( 'active', 'has_discount' ) as $boolean_property ) {
+			$properties[ $boolean_property ] = array( 'type' => 'boolean', 'readonly' => true );
+		}
+		foreach ( array( 'label', 'group_class', 'old_unit_html', 'new_unit_html', 'old_line_html', 'new_line_html' ) as $string_property ) {
+			$properties[ $string_property ] = array( 'type' => 'string', 'readonly' => true );
+		}
+		return array(
+			'offer' => array(
+				'description' => __( 'Landing page offer details for this cart item.', 'html-landing-page-builder-for-woocommerce' ),
+				'type'        => 'object',
+				'readonly'    => true,
+				'properties'  => $properties,
+			),
+		);
+	}
+
+	/** Return safe, formatted prices and the display group for one Store API cart row. */
+	public static function store_api_cart_item_data( $cart_item ) {
+		$empty_offer = array(
+			'active'          => false,
+			'has_discount'    => false,
+			'label'           => '',
+			'group_class'     => '',
+			'old_unit_html'   => '',
+			'new_unit_html'   => '',
+			'old_line_html'   => '',
+			'new_line_html'   => '',
+		);
+		$presentation = self::offer_presentation( $cart_item );
+		if ( ! $presentation ) {
+			return array( 'offer' => $empty_offer );
+		}
+		$prices = self::cart_offer_price_fragments( $cart_item, $presentation );
+		if ( ! $prices ) {
+			return array(
+				'offer' => array_merge(
+					$empty_offer,
+					array(
+						'active'      => true,
+						'label'       => $presentation['label'],
+						'group_class' => $presentation['group_class'],
+					)
+				),
+			);
+		}
+		return array(
+			'offer' => array_merge(
+				$empty_offer,
+				array(
+					'active'        => true,
+					'has_discount'  => true,
+					'label'         => $presentation['label'],
+					'group_class'   => $presentation['group_class'],
+					'old_unit_html' => $prices['old_unit_html'],
+					'new_unit_html' => $prices['new_unit_html'],
+					'old_line_html' => $prices['old_line_html'],
+					'new_line_html' => $prices['new_line_html'],
+				)
+			),
+		);
+	}
+
+	/** Return a stable label and distinct palette hue for one cart offer group. */
+	private static function offer_presentation( $cart_item ) {
+		if ( empty( $cart_item['_hlpb_bundle_key'] ) || empty( $cart_item['_hlpb_coupon_id'] ) || ! class_exists( 'WC_Coupon' ) || ! function_exists( 'WC' ) || ! WC()->cart ) {
+			return false;
+		}
+		$coupon = new WC_Coupon( absint( $cart_item['_hlpb_coupon_id'] ) );
+		if ( ! $coupon->get_id() || ! WC()->cart->has_discount( $coupon->get_code() ) ) {
+			return false;
+		}
+		$bundle_key = (string) $cart_item['_hlpb_bundle_key'];
+		$bundle = self::get_coupon_bundle( $coupon->get_id(), $bundle_key );
+		if ( ! self::bundle_is_current( $bundle, absint( $cart_item['_hlpb_landing_id'] ?? 0 ) ) ) {
+			return false;
+		}
+		$group_number = self::bundle_display_number( $bundle_key );
+		$mode = sanitize_key( $cart_item['_hlpb_mode'] ?? '' );
+		$mode_names = array(
+			'buy'    => __( 'Buy More', 'html-landing-page-builder-for-woocommerce' ),
+			'mix'    => __( 'Mix & Match', 'html-landing-page-builder-for-woocommerce' ),
+			'bundle' => __( 'Cozy Bundle', 'html-landing-page-builder-for-woocommerce' ),
+		);
+		$parts = array_filter(
+			array(
+				sanitize_text_field( $cart_item['_hlpb_campaign_name'] ?? '' ),
+				$mode_names[ $mode ] ?? '',
+				sprintf( __( 'Group %d', 'html-landing-page-builder-for-woocommerce' ), $group_number ),
+			)
+		);
+		return array(
+			'bundle'       => $bundle,
+			'group_number' => $group_number,
+			'group_class'  => 'hlpb-offer-group-' . $group_number,
+			'hue'          => self::bundle_hue( $group_number ),
+			'label'        => implode( ' · ', $parts ),
+		);
+	}
+
+	/** Assign one cart-wide ordinal to every unique bundle key, across all offer tabs. */
+	private static function bundle_display_number( $bundle_key ) {
+		$numbers = self::bundle_display_numbers();
+		return absint( $numbers[ (string) $bundle_key ] ?? 1 );
+	}
+
+	/** List each independent offer group once in cart order. */
+	private static function bundle_display_numbers() {
+		if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+			return array();
+		}
+		$numbers = array();
+		foreach ( WC()->cart->get_cart() as $item ) {
+			$key = (string) ( $item['_hlpb_bundle_key'] ?? '' );
+			if ( '' !== $key && ! isset( $numbers[ $key ] ) ) {
+				$numbers[ $key ] = count( $numbers ) + 1;
+			}
+		}
+		return $numbers;
+	}
+
+	/** Spread nearby group numbers across a distinct, readable badge palette. */
+	private static function bundle_hue( $group_number ) {
+		return (int) round( fmod( 208 + ( ( max( 1, absint( $group_number ) ) - 1 ) * 137.508 ), 360 ) );
+	}
+
+	/** Build WooCommerce-formatted original and discounted unit price or line subtotal. */
+	private static function cart_offer_price_fragments( $cart_item, $presentation ) {
+		if ( ! is_array( $presentation ) || ! is_array( $presentation['bundle'] ?? null ) || ! is_object( $cart_item['data'] ?? null ) || ! method_exists( $cart_item['data'], 'set_price' ) || ! function_exists( 'WC' ) || ! WC()->cart ) {
+			return false;
+		}
+		$discount = self::bundle_line_discount( $presentation['bundle'], $cart_item );
+		if ( $discount <= 0 ) {
+			return false;
+		}
+		$quantity = max( 1, absint( $cart_item['quantity'] ?? 1 ) );
+		$base_price = max( 0, (float) ( $cart_item['_hlpb_base_price'] ?? 0 ) );
+		$unit_discount = min( $base_price, $discount / $quantity );
+		$product = $cart_item['data'];
+		$regular_product = clone $product;
+		$regular_product->set_price( $base_price );
+		$discounted_product = clone $product;
+		$discounted_product->set_price( max( 0, $base_price - $unit_discount ) );
+		return array(
+			'old_unit_html' => wp_kses_post( WC()->cart->get_product_price( $regular_product ) ),
+			'new_unit_html' => wp_kses_post( WC()->cart->get_product_price( $discounted_product ) ),
+			'old_line_html' => wp_kses_post( WC()->cart->get_product_subtotal( $regular_product, $quantity ) ),
+			'new_line_html' => wp_kses_post( WC()->cart->get_product_subtotal( $discounted_product, $quantity ) ),
+		);
+	}
+
+	/** Build WooCommerce-formatted original and discounted unit price or line subtotal. */
+	private static function format_cart_offer_price( $price_html, $cart_item, $is_subtotal ) {
+		$presentation = self::offer_presentation( $cart_item );
+		if ( ! $presentation ) {
+			return $price_html;
+		}
+		$prices = self::cart_offer_price_fragments( $cart_item, $presentation );
+		if ( ! $prices ) {
+			return $price_html;
+		}
+		$price_type = $is_subtotal ? 'line' : 'unit';
+		$regular_html = $prices[ 'old_' . $price_type . '_html' ];
+		$discounted_html = $prices[ 'new_' . $price_type . '_html' ];
+		return '<span class="hlpb-offer-prices ' . esc_attr( $presentation['group_class'] ) . '"><del class="hlpb-offer-price-old"><span class="screen-reader-text">' . esc_html__( 'Regular price:', 'html-landing-page-builder-for-woocommerce' ) . ' </span>' . $regular_html . '</del><ins class="hlpb-offer-price-new"><span class="screen-reader-text">' . esc_html__( 'Offer price:', 'html-landing-page-builder-for-woocommerce' ) . ' </span>' . $discounted_html . '</ins></span>';
 	}
 
 	/** Remove an orphaned gift after its offer's final core line is removed. */
