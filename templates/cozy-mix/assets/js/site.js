@@ -1,5 +1,6 @@
 (function(){
 "use strict";
+if(window.HLPBCartData)return;
 var colors=[
 {name:"Wine",value:"wine",hex:"#6c2034"},
 {name:"Rose",value:"rose",hex:"#d28d91"},

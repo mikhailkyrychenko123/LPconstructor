@@ -11,6 +11,19 @@
 		return $list.children('.hlpb-section-card');
 	}
 
+	function setCardCollapsed($card, collapsed) {
+		var $button = $card.find('.hlpb-toggle-section').first();
+		$card.toggleClass('is-collapsed', collapsed);
+		$button.attr('aria-expanded', collapsed ? 'false' : 'true');
+		$button.text(collapsed ? HLPBBuilder.expandSection : HLPBBuilder.collapseSection);
+	}
+
+	function setAllSectionsCollapsed(collapsed) {
+		cards().each(function () {
+			setCardCollapsed($(this), collapsed);
+		});
+	}
+
 	function refreshTypeOptions() {
 		var used = {};
 		var singleInstanceTypes = HLPBBuilder.singleInstanceTypes || ['header', 'cart_section', 'footer'];
@@ -63,13 +76,12 @@
 	});
 
 	$list.on('click', '.hlpb-toggle-section', function () {
-		var $button = $(this);
-		var $card = $button.closest('.hlpb-section-card');
-		var collapsed = !$card.hasClass('is-collapsed');
-		$card.toggleClass('is-collapsed', collapsed);
-		$button.attr('aria-expanded', collapsed ? 'false' : 'true');
-		$button.text(collapsed ? HLPBBuilder.expandSection : HLPBBuilder.collapseSection);
+		var $card = $(this).closest('.hlpb-section-card');
+		setCardCollapsed($card, !$card.hasClass('is-collapsed'));
 	});
+	$('#hlpb-collapse-all').on('click', function () { setAllSectionsCollapsed(true); });
+	$('#hlpb-expand-all').on('click', function () { setAllSectionsCollapsed(false); });
+	setAllSectionsCollapsed(true);
 
 	$list.on('click', '.hlpb-clone-section', function () {
 		var $source = $(this).closest('.hlpb-section-card');

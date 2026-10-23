@@ -670,6 +670,8 @@ final class HLPB_Landing_Builder {
 					<strong class="hlpb-section-type-preview-label"><?php echo esc_html( $types[ $first_type ] ); ?></strong>
 				</div>
 				<button type="button" class="button" id="hlpb-add-section"><?php esc_html_e( 'Add', 'html-landing-page-builder-for-woocommerce' ); ?></button>
+				<button type="button" class="button" id="hlpb-collapse-all"><?php esc_html_e( 'Collapse all', 'html-landing-page-builder-for-woocommerce' ); ?></button>
+				<button type="button" class="button" id="hlpb-expand-all"><?php esc_html_e( 'Expand all', 'html-landing-page-builder-for-woocommerce' ); ?></button>
 				<span class="hlpb-toolbar-status" aria-live="polite"></span>
 			</div>
 			<div id="hlpb-section-list" class="hlpb-section-list">
@@ -694,14 +696,16 @@ final class HLPB_Landing_Builder {
 		$id    = isset( $section['id'] ) ? sanitize_key( $section['id'] ) : wp_generate_password( 10, false, false );
 		$order = isset( $section['order'] ) ? absint( $section['order'] ) : 1;
 		$label = $types[ $type ];
-		$html  = '<article class="hlpb-section-card" data-section-id="' . esc_attr( $id ) . '" data-section-type="' . esc_attr( $type ) . '">';
+		$html  = '<article class="hlpb-section-card is-collapsed" data-section-id="' . esc_attr( $id ) . '" data-section-type="' . esc_attr( $type ) . '">';
 		$duplicate_disabled = in_array( $type, self::get_singleton_section_types(), true );
 		$duplicate_title    = $duplicate_disabled ? __( 'This section can only appear once.', 'html-landing-page-builder-for-woocommerce' ) : __( 'Duplicate section', 'html-landing-page-builder-for-woocommerce' );
-		$html .= '<div class="hlpb-section-heading"><span class="hlpb-drag-handle" aria-hidden="true">⠿</span><span class="hlpb-section-heading-preview" title="' . esc_attr( $label ) . '">' . self::get_section_preview_svg( $type ) . '</span><span class="hlpb-section-heading-label"><small>' . esc_html__( 'Section type', 'html-landing-page-builder-for-woocommerce' ) . '</small><strong class="hlpb-section-title">' . esc_html( $label ) . '</strong></span><label class="hlpb-order-label">' . esc_html__( 'Order', 'html-landing-page-builder-for-woocommerce' ) . ' <input class="hlpb-order" type="number" min="1" step="1" name="hlpb_sections[' . esc_attr( $id ) . '][order]" value="' . esc_attr( $order ) . '"></label><button type="button" class="button hlpb-toggle-section" aria-expanded="true" aria-controls="hlpb-content-' . esc_attr( $id ) . '">' . esc_html__( 'Collapse', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button hlpb-clone-section" aria-label="' . esc_attr( $duplicate_title ) . '" title="' . esc_attr( $duplicate_title ) . '" ' . disabled( $duplicate_disabled, true, false ) . '>' . esc_html__( 'Duplicate', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button-link-delete hlpb-remove-section">' . esc_html__( 'Remove', 'html-landing-page-builder-for-woocommerce' ) . '</button></div>';
+		$html .= '<div class="hlpb-section-heading"><span class="hlpb-drag-handle" aria-hidden="true">⠿</span><span class="hlpb-section-heading-preview" title="' . esc_attr( $label ) . '">' . self::get_section_preview_svg( $type ) . '</span><span class="hlpb-section-heading-label"><small>' . esc_html__( 'Section type', 'html-landing-page-builder-for-woocommerce' ) . '</small><strong class="hlpb-section-title">' . esc_html( $label ) . '</strong></span><label class="hlpb-order-label">' . esc_html__( 'Order', 'html-landing-page-builder-for-woocommerce' ) . ' <input class="hlpb-order" type="number" min="1" step="1" name="hlpb_sections[' . esc_attr( $id ) . '][order]" value="' . esc_attr( $order ) . '"></label><button type="button" class="button hlpb-toggle-section" aria-expanded="false" aria-controls="hlpb-content-' . esc_attr( $id ) . '">' . esc_html__( 'Expand', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button hlpb-clone-section" aria-label="' . esc_attr( $duplicate_title ) . '" title="' . esc_attr( $duplicate_title ) . '" ' . disabled( $duplicate_disabled, true, false ) . '>' . esc_html__( 'Duplicate', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button-link-delete hlpb-remove-section">' . esc_html__( 'Remove', 'html-landing-page-builder-for-woocommerce' ) . '</button></div>';
 		$html .= '<div class="hlpb-section-content" id="hlpb-content-' . esc_attr( $id ) . '"><input type="hidden" name="hlpb_sections[' . esc_attr( $id ) . '][id]" value="' . esc_attr( $id ) . '"><input type="hidden" name="hlpb_sections[' . esc_attr( $id ) . '][type]" value="' . esc_attr( $type ) . '">';
 
 		if ( 'text_image' === $type ) {
 			$html .= self::render_text_image_fields( $section, $id, $template_slug );
+		} elseif ( 'cart_section' === $type ) {
+			$html .= HLPB_Cart_Section::render_editor_fields( $section, $id );
 		} elseif ( 'header' === $type ) {
 			$html .= self::render_header_fields( $section, $id, $template_slug );
 		} elseif ( 'offer_line' === $type ) {
@@ -1126,6 +1130,7 @@ final class HLPB_Landing_Builder {
 		wp_enqueue_media();
 		wp_enqueue_script( 'jquery-ui-sortable' );
 		wp_enqueue_style( 'hlpb-builder-admin', HLPB_URL . 'assets/admin/builder.css', array(), HLPB_VERSION );
+		wp_enqueue_style( 'hlpb-cart-section-admin', HLPB_URL . 'assets/frontend/cart-section.css', array( 'hlpb-builder-admin' ), HLPB_VERSION );
 		wp_enqueue_script( 'hlpb-builder-admin', HLPB_URL . 'assets/admin/builder.js', array( 'jquery', 'jquery-ui-sortable' ), HLPB_VERSION, true );
 		$template_slug = self::get_template_slug( get_the_ID() );
 		$template      = self::get_template_info( $template_slug );
@@ -1192,6 +1197,18 @@ final class HLPB_Landing_Builder {
 			self::add_export_history( $post_id, $previous_directory );
 		}
 		update_post_meta( $post_id, self::META_KEY, $sections );
+		$has_cart_section = false;
+		foreach ( $sections as $section ) {
+			if ( isset( $section['type'] ) && 'cart_section' === $section['type'] ) {
+				$has_cart_section = true;
+				HLPB_Cart_Section::ensure_coupon( $post_id, $section );
+				break;
+			}
+		}
+		if ( ! $has_cart_section && get_post_meta( $post_id, HLPB_Cart_Section::COUPON_META, true ) ) {
+			HLPB_Cart_Section::deactivate_for_landing( $post_id );
+			delete_post_meta( $post_id, HLPB_Cart_Section::COUPON_META );
+		}
 		if ( isset( $_POST['hlpb_export_promo_folder'] ) ) {
 			$promo_folder = trim( sanitize_file_name( wp_unslash( $_POST['hlpb_export_promo_folder'] ) ) );
 			if ( preg_match( '/^[a-z0-9-]+$/i', $promo_folder ) ) {
@@ -1371,9 +1388,13 @@ final class HLPB_Landing_Builder {
 		if ( ! $template_assets || ! is_dir( $template_assets ) || ! self::copy_template_directory( $template_assets, $asset_dir ) ) {
 			return new WP_Error( 'hlpb_export_assets', __( 'The selected template assets could not be copied to the export folder.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
+		$sections  = self::get_sections( $post_id );
+		$has_cart = (bool) array_filter( $sections, static function ( $section ) { return isset( $section['type'] ) && 'cart_section' === $section['type']; } );
+		if ( $has_cart && ! HLPB_Cart_Section::copy_export_assets( $asset_dir ) ) {
+			return new WP_Error( 'hlpb_export_cart_assets', __( 'The Cart Section interaction files could not be copied to the export folder.', 'html-landing-page-builder-for-woocommerce' ) );
+		}
 
 		$asset_url = trailingslashit( home_url( '/' . rawurlencode( $promo_folder ) . '/' . rawurlencode( $slug ) . '/assets/' ) );
-		$sections  = self::get_sections( $post_id );
 		$images    = self::copy_section_images( $sections, $asset_dir, $asset_url );
 		if ( is_wp_error( $images ) ) {
 			return $images;
@@ -1398,6 +1419,15 @@ final class HLPB_Landing_Builder {
 		}
 		if ( $script_path && is_file( self::resolve_template_file( $template_slug, $template['script'] ) ) ) {
 			$html .= '<script defer src="' . esc_url( $asset_url . $script_path ) . '"></script>' . "\n";
+		}
+		$cart_config = $has_cart ? HLPB_Cart_Section::build_public_config( $post_id, $sections ) : array();
+		$cart_config_json = $cart_config ? wp_json_encode( $cart_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ) : '';
+		if ( $has_cart ) {
+			$html .= '<link rel="stylesheet" href="' . esc_url( $asset_url . 'hlpb-cart.css' ) . '?v=' . esc_attr( HLPB_VERSION ) . '">' . "\n";
+			if ( $cart_config_json ) {
+				$html .= '<script>window.HLPBCartData=' . $cart_config_json . ';</script>' . "\n";
+			}
+			$html .= '<script defer src="' . esc_url( $asset_url . 'hlpb-cart.js' ) . '?v=' . esc_attr( HLPB_VERSION ) . '"></script>' . "\n";
 		}
 		$html .= "</head>\n<body class=\"hlpb-landing-page\">\n<div class=\"hlpb-page\">\n";
 		$html .= self::get_demo_fragment( 'sprite', $template_slug, $asset_url ) . "\n<main id=\"top\">\n";
@@ -1970,6 +2000,8 @@ final class HLPB_Landing_Builder {
 						);
 					}
 				}
+			} elseif ( 'cart_section' === $type ) {
+				$section = array_merge( $section, HLPB_Cart_Section::sanitize( $raw_section ) );
 			} elseif ( 'header' === $type ) {
 				$defaults = self::get_default_header_settings();
 				$section['logo_id'] = isset( $raw_section['logo_id'] ) ? absint( $raw_section['logo_id'] ) : 0;
@@ -2165,6 +2197,7 @@ final class HLPB_Landing_Builder {
 				array( 'assetsUrl' => $asset_url )
 			);
 		}
+		HLPB_Cart_Section::enqueue_public_assets( get_queried_object_id() );
 	}
 
 	/**
