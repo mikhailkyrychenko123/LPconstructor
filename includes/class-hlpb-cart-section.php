@@ -47,6 +47,8 @@ final class HLPB_Cart_Section {
 				'gift_discount_type' => 'percent',
 				'gift_discount_value' => 0,
 				'gift_label' => '',
+				'badge_enabled' => 4 === $quantity ? 1 : 0,
+				'badge_text' => 4 === $quantity ? 'BEST VALUE' : '',
 			);
 		}
 		return array(
@@ -160,6 +162,9 @@ final class HLPB_Cart_Section {
 					$gift_discount_type = 'percent';
 				}
 				$gift_discount_value = isset( $raw_rule['gift_discount_value'] ) ? (float) ( function_exists( 'wc_format_decimal' ) ? wc_format_decimal( $raw_rule['gift_discount_value'] ) : $raw_rule['gift_discount_value'] ) : (float) ( $legacy_addon['discount_value'] ?? 0 );
+				$badge_enabled = array_key_exists( 'badge_enabled', $raw_rule ) ? ( ! empty( $raw_rule['badge_enabled'] ) ? 1 : 0 ) : absint( $defaults['modes'][ $mode ]['rules'][ $quantity ]['badge_enabled'] ?? 0 );
+				$badge_text = isset( $raw_rule['badge_text'] ) && is_scalar( $raw_rule['badge_text'] ) ? sanitize_text_field( (string) $raw_rule['badge_text'] ) : (string) ( $defaults['modes'][ $mode ]['rules'][ $quantity ]['badge_text'] ?? '' );
+				$badge_text = function_exists( 'mb_substr' ) ? mb_substr( $badge_text, 0, 60 ) : substr( $badge_text, 0, 60 );
 				$section['modes'][ $mode ]['rules'][ $quantity ] = array(
 					'quantity' => $quantity,
 					'type'     => $type,
@@ -169,6 +174,8 @@ final class HLPB_Cart_Section {
 					'gift_discount_type' => $gift_discount_type,
 					'gift_discount_value' => max( 0, min( 'percent' === $gift_discount_type ? 100 : 1000000, $gift_discount_value ) ),
 					'gift_label' => isset( $raw_rule['gift_label'] ) ? sanitize_text_field( $raw_rule['gift_label'] ) : ( isset( $legacy_addon['label'] ) ? sanitize_text_field( $legacy_addon['label'] ) : '' ),
+					'badge_enabled' => $badge_enabled,
+					'badge_text' => $badge_text,
 				);
 			}
 		}
@@ -198,6 +205,16 @@ final class HLPB_Cart_Section {
 			);
 		}
 		return $section;
+	}
+
+	/** Render the optional badge controls attached to one quantity tier. */
+	private static function badge_fields_markup( $rule_name, $rule ) {
+		$enabled = ! empty( $rule['badge_enabled'] );
+		$badge_name = $rule_name . '[badge_enabled]';
+		$text_name = $rule_name . '[badge_text]';
+		$html = '<div class="hlpb-rule-badge-settings"><label class="hlpb-rule-badge-toggle"><input type="hidden" name="' . esc_attr( $badge_name ) . '" value="0"><input type="checkbox" name="' . esc_attr( $badge_name ) . '" value="1" ' . checked( $enabled, true, false ) . '><span>' . esc_html__( 'Show badge on this offer', 'html-landing-page-builder-for-woocommerce' ) . '</span></label>';
+		$html .= '<label class="hlpb-rule-badge-text"><span>' . esc_html__( 'Badge text', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" maxlength="60" name="' . esc_attr( $text_name ) . '" value="' . esc_attr( $rule['badge_text'] ?? '' ) . '" placeholder="' . esc_attr__( 'For example: MOST POPULAR', 'html-landing-page-builder-for-woocommerce' ) . '"></label></div>';
+		return $html;
 	}
 
 	/** Render editable Cart Section fields. */
@@ -252,7 +269,7 @@ final class HLPB_Cart_Section {
 				$rule = isset( $mode_data['rules'][ $quantity ] ) && is_array( $mode_data['rules'][ $quantity ] ) ? $mode_data['rules'][ $quantity ] : $defaults['modes'][ $mode ]['rules'][ $quantity ];
 				$rule_name = $name . '[modes][' . $mode . '][rules][' . $quantity . ']';
 				$rule_label = 'mix' === $mode ? sprintf( __( '%d items', 'html-landing-page-builder-for-woocommerce' ), $quantity ) : ( 'bundle' === $mode ? sprintf( _n( '%d set', '%d sets', $quantity, 'html-landing-page-builder-for-woocommerce' ), $quantity ) : sprintf( __( 'Buy %d', 'html-landing-page-builder-for-woocommerce' ), $quantity ) );
-				$html .= '<div class="hlpb-cart-rule"><div class="hlpb-cart-rule-title"><strong>' . esc_html( $rule_label ) . '</strong><span>' . esc_html__( 'Settings for this quantity', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="hidden" name="' . esc_attr( $rule_name . '[quantity]' ) . '" value="' . esc_attr( $quantity ) . '"></div><div class="hlpb-cart-rule-panels"><section class="hlpb-rule-panel hlpb-rule-offer"><h4>' . esc_html__( 'Offer price / discount', 'html-landing-page-builder-for-woocommerce' ) . '</h4><p>' . esc_html__( 'Applies to the products in this offer.', 'html-landing-page-builder-for-woocommerce' ) . '</p><div class="hlpb-rule-fields"><label><span>' . esc_html__( 'Price rule', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[type]' ) . '"><option value="none" ' . selected( $rule['type'] ?? '', 'none', false ) . '>' . esc_html__( 'No discount', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="percent" ' . selected( $rule['type'] ?? '', 'percent', false ) . '>' . esc_html__( 'Percent off', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="amount" ' . selected( $rule['type'] ?? '', 'amount', false ) . '>' . esc_html__( 'Fixed amount off', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="fixed_total" ' . selected( $rule['type'] ?? '', 'fixed_total', false ) . '>' . esc_html__( 'Fixed total price', 'html-landing-page-builder-for-woocommerce' ) . '</option></select></label><label><span>' . esc_html__( 'Discount / total value', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="number" min="0" step="0.01" name="' . esc_attr( $rule_name . '[value]' ) . '" value="' . esc_attr( $rule['value'] ?? '' ) . '"></label></div><p class="description">' . esc_html__( 'Enter a discount for Percent off or Fixed amount off. For Fixed total price, enter the final price for this offer.', 'html-landing-page-builder-for-woocommerce' ) . '</p></section><section class="hlpb-rule-panel hlpb-rule-gift"><h4>' . esc_html__( 'Gift product (optional)', 'html-landing-page-builder-for-woocommerce' ) . '</h4><p>' . esc_html__( 'The gift is added separately once and does not count toward the offer quantity.', 'html-landing-page-builder-for-woocommerce' ) . '</p><div class="hlpb-rule-fields hlpb-gift-fields"><label><span>' . esc_html__( 'Gift product', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[gift_product_id]' ) . '"><option value="0">' . esc_html__( 'No gift', 'html-landing-page-builder-for-woocommerce' ) . '</option>';
+				$html .= '<div class="hlpb-cart-rule"><div class="hlpb-cart-rule-title"><strong>' . esc_html( $rule_label ) . '</strong><span>' . esc_html__( 'Settings for this quantity', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="hidden" name="' . esc_attr( $rule_name . '[quantity]' ) . '" value="' . esc_attr( $quantity ) . '"></div><div class="hlpb-cart-rule-panels"><section class="hlpb-rule-panel hlpb-rule-offer"><h4>' . esc_html__( 'Offer price / discount', 'html-landing-page-builder-for-woocommerce' ) . '</h4><p>' . esc_html__( 'Applies to the products in this offer.', 'html-landing-page-builder-for-woocommerce' ) . '</p><div class="hlpb-rule-fields"><label><span>' . esc_html__( 'Price rule', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[type]' ) . '"><option value="none" ' . selected( $rule['type'] ?? '', 'none', false ) . '>' . esc_html__( 'No discount', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="percent" ' . selected( $rule['type'] ?? '', 'percent', false ) . '>' . esc_html__( 'Percent off', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="amount" ' . selected( $rule['type'] ?? '', 'amount', false ) . '>' . esc_html__( 'Fixed amount off', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="fixed_total" ' . selected( $rule['type'] ?? '', 'fixed_total', false ) . '>' . esc_html__( 'Fixed total price', 'html-landing-page-builder-for-woocommerce' ) . '</option></select></label><label><span>' . esc_html__( 'Discount / total value', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="number" min="0" step="0.01" name="' . esc_attr( $rule_name . '[value]' ) . '" value="' . esc_attr( $rule['value'] ?? '' ) . '"></label></div><p class="description">' . esc_html__( 'Enter a discount for Percent off or Fixed amount off. For Fixed total price, enter the final price for this offer.', 'html-landing-page-builder-for-woocommerce' ) . '</p>' . self::badge_fields_markup( $rule_name, $rule ) . '</section><section class="hlpb-rule-panel hlpb-rule-gift"><h4>' . esc_html__( 'Gift product (optional)', 'html-landing-page-builder-for-woocommerce' ) . '</h4><p>' . esc_html__( 'The gift is added separately once and does not count toward the offer quantity.', 'html-landing-page-builder-for-woocommerce' ) . '</p><div class="hlpb-rule-fields hlpb-gift-fields"><label><span>' . esc_html__( 'Gift product', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[gift_product_id]' ) . '"><option value="0">' . esc_html__( 'No gift', 'html-landing-page-builder-for-woocommerce' ) . '</option>';
 				foreach ( $products as $product ) {
 					$html .= '<option value="' . esc_attr( $product['id'] ) . '" ' . selected( absint( $rule['gift_product_id'] ?? 0 ), $product['id'], false ) . '>' . esc_html( $product['name'] ) . '</option>';
 				}

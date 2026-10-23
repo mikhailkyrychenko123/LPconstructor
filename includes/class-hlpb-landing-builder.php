@@ -417,6 +417,8 @@ final class HLPB_Landing_Builder {
 				$section = array_merge( $section, self::get_default_offer_settings() );
 			} elseif ( 'mix_it' === $type ) {
 				$section = array_merge( $section, self::get_default_mix_settings() );
+			} elseif ( 'why' === $type ) {
+				$section = array_merge( $section, self::get_default_why_settings() );
 			} elseif ( 'reviews' === $type ) {
 				$section = array_merge( $section, self::get_default_reviews_settings() );
 			} elseif ( 'faq' === $type ) {
@@ -484,6 +486,48 @@ final class HLPB_Landing_Builder {
 				array( 'icon' => 'heart', 'icon_color' => '#ec8180', 'title' => __( 'For everyone', 'html-landing-page-builder-for-woocommerce' ), 'text' => __( "Cosy combinations\nfor the whole family.", 'html-landing-page-builder-for-woocommerce' ) ),
 				array( 'icon' => 'people', 'icon_color' => '#273f5a', 'title' => __( 'Create your set', 'html-landing-page-builder-for-woocommerce' ), 'text' => __( "Build the perfect mix\nfor your home.", 'html-landing-page-builder-for-woocommerce' ) ),
 			),
+		);
+	}
+
+	/** Default editable Why section copy and colors matching the supplied design. */
+	private static function get_default_why_settings() {
+		return array(
+			'eyebrow' => __( 'COSY SETS, BETTER VALUE', 'html-landing-page-builder-for-woocommerce' ),
+			'title' => __( 'Why bundle?', 'html-landing-page-builder-for-woocommerce' ),
+			'subtitle' => __( 'The more you gift (or keep for yourself), the more you save.', 'html-landing-page-builder-for-woocommerce' ),
+			'benefits' => array(
+				__( 'Better value', 'html-landing-page-builder-for-woocommerce' ),
+				__( 'The perfect pair', 'html-landing-page-builder-for-woocommerce' ),
+				__( 'Ideal for gifting', 'html-landing-page-builder-for-woocommerce' ),
+				__( 'More cosy moments', 'html-landing-page-builder-for-woocommerce' ),
+			),
+			'background' => '#fff7f2',
+			'eyebrow_color' => '#ef555c',
+			'title_color' => '#082b49',
+			'subtitle_color' => '#536472',
+			'benefit_color' => '#4d5c68',
+			'check_color' => '#ffffff',
+			'check_background' => '#f47268',
+			'card_background' => '#ffffff',
+			'card_border_color' => '#e4e2df',
+			'card_text_color' => '#082b49',
+			'card_price_color' => '#082b49',
+			'card_label_color' => '#082b49',
+			'popular_background' => '#082b49',
+			'popular_text_color' => '#ffffff',
+			'selected_outline_color' => '#ef555c',
+			'badge_background' => '#ef555c',
+			'badge_text_color' => '#ffffff',
+			'savings_background' => '#ffe2dc',
+			'savings_color' => '#df5554',
+			'stock_enabled' => 1,
+			'stock_icon' => 'fire',
+			'stock_title' => __( 'Limited stock available', 'html-landing-page-builder-for-woocommerce' ),
+			'stock_text' => __( "Our cosy bundles are in high demand. Once they’re gone, they may not be back for a while.", 'html-landing-page-builder-for-woocommerce' ),
+			'stock_background' => '#ffe9e5',
+			'stock_title_color' => '#bf4e4c',
+			'stock_text_color' => '#596671',
+			'stock_icon_color' => '#bf4e4c',
 		);
 	}
 
@@ -679,7 +723,7 @@ final class HLPB_Landing_Builder {
 					<?php echo self::render_section_card( $section, $selected_template ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Generated from escaped form controls. ?>
 				<?php endforeach; ?>
 			</div>
-			<p class="description"><?php esc_html_e( 'Header, Offer Line, Mix it your way, Text + Image, Reviews, FAQ, and Footer sections can be edited here. Other sections use their template demo content.', 'html-landing-page-builder-for-woocommerce' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Header, Offer Line, Cart Section, Mix it your way, Why?, Text + Image, Reviews, FAQ, and Footer sections can be edited here. Other sections use their template demo content.', 'html-landing-page-builder-for-woocommerce' ); ?></p>
 		</div>
 		<?php
 	}
@@ -712,6 +756,8 @@ final class HLPB_Landing_Builder {
 			$html .= self::render_offer_fields( $section, $id );
 		} elseif ( 'mix_it' === $type ) {
 			$html .= self::render_mix_fields( $section, $id );
+		} elseif ( 'why' === $type ) {
+			$html .= self::render_why_fields( $section, $id );
 		} elseif ( 'reviews' === $type ) {
 			$html .= self::render_reviews_fields( $section, $id, $template_slug );
 		} elseif ( 'faq' === $type ) {
@@ -814,6 +860,61 @@ final class HLPB_Landing_Builder {
 		$html .= self::render_color_control( $name . '[icon_color]', __( 'Icon color', 'html-landing-page-builder-for-woocommerce' ), $icon_color ? $icon_color : '#244c59', $section_id . '-icon-' . absint( $index ) );
 		$html .= '<label class="hlpb-mix-benefit-text"><span>' . esc_html__( 'Text', 'html-landing-page-builder-for-woocommerce' ) . '</span><textarea rows="2" name="' . esc_attr( $name . '[text]' ) . '">' . esc_textarea( isset( $benefit['text'] ) ? $benefit['text'] : '' ) . '</textarea></label><button type="button" class="button-link-delete hlpb-remove-mix-benefit" aria-label="' . esc_attr__( 'Remove benefit', 'html-landing-page-builder-for-woocommerce' ) . '">×</button></div></div>';
 		return $html;
+	}
+
+	/** Render editable Why copy, benefit list, stock note and presentation colors. */
+	private static function render_why_fields( $section, $id ) {
+		$section = array_merge( self::get_default_why_settings(), $section );
+		$name = 'hlpb_sections[' . $id . ']';
+		$benefits = is_array( $section['benefits'] ) ? array_slice( $section['benefits'], 0, 8 ) : array();
+		$html = '<div class="hlpb-fields-column hlpb-why-fields">' . self::text_field( $name . '[eyebrow]', __( 'Eyebrow', 'html-landing-page-builder-for-woocommerce' ), $section['eyebrow'] ) . self::text_field( $name . '[title]', __( 'Heading', 'html-landing-page-builder-for-woocommerce' ), $section['title'] ) . self::text_field( $name . '[subtitle]', __( 'Subtitle', 'html-landing-page-builder-for-woocommerce' ), $section['subtitle'] ) . '<fieldset class="hlpb-why-benefits"><legend>' . esc_html__( 'Benefits list', 'html-landing-page-builder-for-woocommerce' ) . '</legend><p class="description">' . esc_html__( 'Add, edit, or remove the short points shown under the heading.', 'html-landing-page-builder-for-woocommerce' ) . '</p><input type="hidden" name="' . esc_attr( $name . '[benefits_present]' ) . '" value="1"><div class="hlpb-why-benefit-list">';
+		foreach ( $benefits as $index => $benefit ) {
+			$html .= self::render_why_benefit_row( $id, $index, $benefit );
+		}
+		$html .= '</div><button type="button" class="button hlpb-add-why-benefit">' . esc_html__( 'Add benefit', 'html-landing-page-builder-for-woocommerce' ) . '</button></fieldset><div class="hlpb-fields-grid">';
+		$color_fields = array(
+			'background' => __( 'Section background', 'html-landing-page-builder-for-woocommerce' ),
+			'eyebrow_color' => __( 'Eyebrow color', 'html-landing-page-builder-for-woocommerce' ),
+			'title_color' => __( 'Heading color', 'html-landing-page-builder-for-woocommerce' ),
+			'subtitle_color' => __( 'Subtitle color', 'html-landing-page-builder-for-woocommerce' ),
+			'benefit_color' => __( 'Benefit text color', 'html-landing-page-builder-for-woocommerce' ),
+			'check_color' => __( 'Checkmark color', 'html-landing-page-builder-for-woocommerce' ),
+			'check_background' => __( 'Checkmark background', 'html-landing-page-builder-for-woocommerce' ),
+			'card_background' => __( 'Offer card background', 'html-landing-page-builder-for-woocommerce' ),
+			'card_border_color' => __( 'Offer card border', 'html-landing-page-builder-for-woocommerce' ),
+			'card_text_color' => __( 'Offer card text', 'html-landing-page-builder-for-woocommerce' ),
+			'card_price_color' => __( 'Offer card price', 'html-landing-page-builder-for-woocommerce' ),
+			'card_label_color' => __( 'Offer card label', 'html-landing-page-builder-for-woocommerce' ),
+			'popular_background' => __( 'Highlighted card background', 'html-landing-page-builder-for-woocommerce' ),
+			'popular_text_color' => __( 'Highlighted card text', 'html-landing-page-builder-for-woocommerce' ),
+			'selected_outline_color' => __( 'Selected offer outline', 'html-landing-page-builder-for-woocommerce' ),
+			'badge_background' => __( 'Badge background', 'html-landing-page-builder-for-woocommerce' ),
+			'badge_text_color' => __( 'Badge text color', 'html-landing-page-builder-for-woocommerce' ),
+			'savings_background' => __( 'Savings label background', 'html-landing-page-builder-for-woocommerce' ),
+			'savings_color' => __( 'Savings label text', 'html-landing-page-builder-for-woocommerce' ),
+		);
+		foreach ( $color_fields as $key => $label ) {
+			$html .= self::render_color_control( $name . '[' . $key . ']', $label, $section[ $key ], $id . '-why-' . $key );
+		}
+		$stock_icons = self::get_icon_labels();
+		$stock_icons['fire'] = __( 'Fire', 'html-landing-page-builder-for-woocommerce' );
+		$stock_icon = isset( $stock_icons[ $section['stock_icon'] ] ) ? $section['stock_icon'] : 'fire';
+		$html .= '</div><fieldset class="hlpb-why-stock"><legend>' . esc_html__( 'Limited-stock note', 'html-landing-page-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[stock_enabled]' ) . '" value="0"><label class="hlpb-checkbox"><input type="checkbox" name="' . esc_attr( $name . '[stock_enabled]' ) . '" value="1" ' . checked( ! empty( $section['stock_enabled'] ), true, false ) . '> ' . esc_html__( 'Show this note', 'html-landing-page-builder-for-woocommerce' ) . '</label>' . self::text_field( $name . '[stock_title]', __( 'Note heading', 'html-landing-page-builder-for-woocommerce' ), $section['stock_title'] ) . '<label class="hlpb-field"><span>' . esc_html__( 'Note text', 'html-landing-page-builder-for-woocommerce' ) . '</span><textarea rows="3" name="' . esc_attr( $name . '[stock_text]' ) . '">' . esc_textarea( $section['stock_text'] ) . '</textarea></label><div class="hlpb-field"><label for="hlpb-why-stock-icon-' . esc_attr( $id ) . '">' . esc_html__( 'Note icon', 'html-landing-page-builder-for-woocommerce' ) . '</label><select id="hlpb-why-stock-icon-' . esc_attr( $id ) . '" name="' . esc_attr( $name . '[stock_icon]' ) . '">';
+		foreach ( $stock_icons as $icon_key => $icon_label ) {
+			$html .= '<option value="' . esc_attr( $icon_key ) . '" ' . selected( $stock_icon, $icon_key, false ) . '>' . esc_html( $icon_label ) . '</option>';
+		}
+		$html .= '</select></div><div class="hlpb-fields-grid">';
+		foreach ( array( 'stock_background' => __( 'Note background', 'html-landing-page-builder-for-woocommerce' ), 'stock_title_color' => __( 'Note heading color', 'html-landing-page-builder-for-woocommerce' ), 'stock_text_color' => __( 'Note text color', 'html-landing-page-builder-for-woocommerce' ), 'stock_icon_color' => __( 'Note icon color', 'html-landing-page-builder-for-woocommerce' ) ) as $key => $label ) {
+			$html .= self::render_color_control( $name . '[' . $key . ']', $label, $section[ $key ], $id . '-why-' . $key );
+		}
+		$html .= '</div></fieldset><p class="description hlpb-why-pricing-note">' . esc_html__( 'Offer cards and prices are filled from the first enabled tab: Buy More, then Mix & Match, then Cozy bundle. Change the offer rules in Cart Section.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+		return $html;
+	}
+
+	/** Render one editable Why benefit. */
+	private static function render_why_benefit_row( $section_id, $index, $benefit ) {
+		$name = 'hlpb_sections[' . $section_id . '][benefits][' . absint( $index ) . ']';
+		return '<div class="hlpb-why-benefit-row"><label><span>' . esc_html__( 'Benefit', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name ) . '" value="' . esc_attr( is_scalar( $benefit ) ? $benefit : '' ) . '"></label><button type="button" class="button-link-delete hlpb-remove-why-benefit" aria-label="' . esc_attr__( 'Remove benefit', 'html-landing-page-builder-for-woocommerce' ) . '">×</button></div>';
 	}
 
 	/** Render editable reviews section controls. */
@@ -1104,6 +1205,8 @@ final class HLPB_Landing_Builder {
 			$section = array_merge( $section, self::get_default_offer_settings() );
 		} elseif ( 'mix_it' === $type ) {
 			$section = array_merge( $section, self::get_default_mix_settings() );
+		} elseif ( 'why' === $type ) {
+			$section = array_merge( $section, self::get_default_why_settings() );
 		} elseif ( 'reviews' === $type ) {
 			$section = array_merge( $section, self::get_default_reviews_settings() );
 		} elseif ( 'faq' === $type ) {
@@ -1161,6 +1264,7 @@ final class HLPB_Landing_Builder {
 				'removeIcon'  => __( 'Remove icon', 'html-landing-page-builder-for-woocommerce' ),
 				'removeMenuItem' => __( 'Remove menu item', 'html-landing-page-builder-for-woocommerce' ),
 				'removeBenefit' => __( 'Remove benefit', 'html-landing-page-builder-for-woocommerce' ),
+				'benefitLabel' => __( 'Benefit', 'html-landing-page-builder-for-woocommerce' ),
 				'collapseSection' => __( 'Collapse', 'html-landing-page-builder-for-woocommerce' ),
 				'expandSection' => __( 'Expand', 'html-landing-page-builder-for-woocommerce' ),
 				'reviewLabel' => __( 'Review', 'html-landing-page-builder-for-woocommerce' ),
@@ -2056,6 +2160,28 @@ final class HLPB_Landing_Builder {
 						);
 					}
 				}
+			} elseif ( 'why' === $type ) {
+				$defaults = self::get_default_why_settings();
+				foreach ( array( 'eyebrow', 'title', 'subtitle', 'stock_title' ) as $text_key ) {
+					$section[ $text_key ] = isset( $raw_section[ $text_key ] ) ? sanitize_text_field( $raw_section[ $text_key ] ) : $defaults[ $text_key ];
+				}
+				$section['stock_text'] = isset( $raw_section['stock_text'] ) ? sanitize_textarea_field( $raw_section['stock_text'] ) : $defaults['stock_text'];
+				$section['stock_enabled'] = array_key_exists( 'stock_enabled', $raw_section ) ? ( ! empty( $raw_section['stock_enabled'] ) ? 1 : 0 ) : $defaults['stock_enabled'];
+				foreach ( array( 'background', 'eyebrow_color', 'title_color', 'subtitle_color', 'benefit_color', 'check_color', 'check_background', 'card_background', 'card_border_color', 'card_text_color', 'card_price_color', 'card_label_color', 'popular_background', 'popular_text_color', 'selected_outline_color', 'badge_background', 'badge_text_color', 'savings_background', 'savings_color', 'stock_background', 'stock_title_color', 'stock_text_color', 'stock_icon_color' ) as $color_key ) {
+					$color = isset( $raw_section[ $color_key ] ) ? sanitize_hex_color( $raw_section[ $color_key ] ) : false;
+					$section[ $color_key ] = $color ? $color : $defaults[ $color_key ];
+				}
+				$stock_icons = self::get_icon_labels();
+				$stock_icons['fire'] = __( 'Fire', 'html-landing-page-builder-for-woocommerce' );
+				$stock_icon = isset( $raw_section['stock_icon'] ) ? sanitize_key( $raw_section['stock_icon'] ) : $defaults['stock_icon'];
+				$section['stock_icon'] = isset( $stock_icons[ $stock_icon ] ) ? $stock_icon : $defaults['stock_icon'];
+				$raw_benefits = isset( $raw_section['benefits'] ) && is_array( $raw_section['benefits'] ) ? array_slice( $raw_section['benefits'], 0, 8 ) : ( ! empty( $raw_section['benefits_present'] ) ? array() : $defaults['benefits'] );
+				$section['benefits'] = array();
+				foreach ( $raw_benefits as $benefit ) {
+					if ( is_scalar( $benefit ) && '' !== trim( (string) $benefit ) ) {
+						$section['benefits'][] = sanitize_text_field( (string) $benefit );
+					}
+				}
 			} elseif ( 'reviews' === $type ) {
 				$defaults = self::get_default_reviews_settings();
 				foreach ( array( 'title', 'subtitle', 'overall_score', 'overall_count' ) as $text_key ) {
@@ -2251,6 +2377,9 @@ final class HLPB_Landing_Builder {
 		if ( 'mix_it' === $type ) {
 			return self::render_mix_it( $section );
 		}
+		if ( 'why' === $type ) {
+			return self::render_why( $section );
+		}
 		if ( 'reviews' === $type ) {
 			return self::render_reviews( $section, $template_slug, $asset_url, $custom_images );
 		}
@@ -2356,6 +2485,46 @@ final class HLPB_Landing_Builder {
 			$benefits_markup .= '<article><span class="benefit-icon ' . esc_attr( $icon ) . '" style="color:' . esc_attr( $icon_color ? $icon_color : '#244c59' ) . '"><svg class="icon" aria-hidden="true"><use href="#i-' . esc_attr( $icon ) . '"></use></svg></span><div><b style="color:' . esc_attr( $title_text_color ) . '">' . esc_html( isset( $benefit['title'] ) ? $benefit['title'] : '' ) . '</b><small style="color:' . esc_attr( $benefit_text_color ) . '">' . nl2br( esc_html( isset( $benefit['text'] ) ? $benefit['text'] : '' ) ) . '</small></div></article>';
 		}
 		return '<section class="mix-band" style="background-color:' . esc_attr( $background ) . '"><div class="container"><h2 style="color:' . esc_attr( $title_color ) . '">' . esc_html( $section['title'] ) . '</h2><p style="color:' . esc_attr( $subtitle_color ) . '">' . esc_html( $section['subtitle'] ) . '</p><div class="benefits">' . $benefits_markup . '</div></div></section>';
+	}
+
+	/** Render Why copy and styles; the cart script replaces fallback prices with the first enabled offer tab. */
+	private static function render_why( $section ) {
+		$defaults = self::get_default_why_settings();
+		$section = array_merge( $defaults, $section );
+		$colors = array();
+		$color_keys = array( 'background', 'eyebrow_color', 'title_color', 'subtitle_color', 'benefit_color', 'check_color', 'check_background', 'card_background', 'card_border_color', 'card_text_color', 'card_price_color', 'card_label_color', 'popular_background', 'popular_text_color', 'selected_outline_color', 'badge_background', 'badge_text_color', 'savings_background', 'savings_color', 'stock_background', 'stock_title_color', 'stock_text_color', 'stock_icon_color' );
+		foreach ( $color_keys as $color_key ) {
+			$colors[ $color_key ] = sanitize_hex_color( $section[ $color_key ] ) ?: $defaults[ $color_key ];
+		}
+		$css_vars = '--hlpb-why-card-bg:' . $colors['card_background'] . ';--hlpb-why-card-border:' . $colors['card_border_color'] . ';--hlpb-why-card-text:' . $colors['card_text_color'] . ';--hlpb-why-card-price:' . $colors['card_price_color'] . ';--hlpb-why-card-label:' . $colors['card_label_color'] . ';--hlpb-why-popular-bg:' . $colors['popular_background'] . ';--hlpb-why-popular-text:' . $colors['popular_text_color'] . ';--hlpb-why-selected-outline:' . $colors['selected_outline_color'] . ';--hlpb-why-badge-bg:' . $colors['badge_background'] . ';--hlpb-why-badge-text:' . $colors['badge_text_color'] . ';--hlpb-why-savings-bg:' . $colors['savings_background'] . ';--hlpb-why-savings-text:' . $colors['savings_color'] . ';--hlpb-why-check-bg:' . $colors['check_background'] . ';--hlpb-why-check-color:' . $colors['check_color'];
+		$benefits_markup = '';
+		$benefits = is_array( $section['benefits'] ) ? array_slice( $section['benefits'], 0, 8 ) : array();
+		foreach ( $benefits as $benefit ) {
+			if ( is_scalar( $benefit ) && '' !== trim( (string) $benefit ) ) {
+				$benefits_markup .= '<li>' . esc_html( $benefit ) . '</li>';
+			}
+		}
+		$fallback_cards = array(
+			array( 1, '£89.00', '', '' ),
+			array( 2, '£79.00', 'Save 11%', '' ),
+			array( 3, '£69.00', 'Save 22%', '' ),
+			array( 4, '£59.00', 'Save 34%', 'MOST POPULAR' ),
+		);
+		$cards_markup = '';
+		foreach ( $fallback_cards as $card ) {
+			$popular_class = 4 === $card[0] ? ' popular-bundle' : '';
+			$badge = '' !== $card[3] ? '<span class="best-label">' . esc_html( $card[3] ) . '</span>' : '';
+			$saving = '' !== $card[2] ? '<em>' . esc_html( $card[2] ) . '</em>' : '';
+			$cards_markup .= '<button class="bundle-card' . esc_attr( $popular_class ) . '" data-bundle="' . absint( $card[0] ) . '" data-why-qty="' . absint( $card[0] ) . '" type="button">' . $badge . '<b>' . esc_html( sprintf( __( 'BUY %d', 'html-landing-page-builder-for-woocommerce' ), $card[0] ) ) . '</b><strong>' . esc_html( $card[1] ) . '</strong><small>' . esc_html__( 'per bundle', 'html-landing-page-builder-for-woocommerce' ) . '</small>' . $saving . '</button>';
+		}
+		$stock_icons = self::get_icon_labels();
+		$stock_icons['fire'] = __( 'Fire', 'html-landing-page-builder-for-woocommerce' );
+		$stock_icon = isset( $stock_icons[ $section['stock_icon'] ] ) ? $section['stock_icon'] : 'fire';
+		$stock_markup = '';
+		if ( ! empty( $section['stock_enabled'] ) ) {
+			$stock_markup = '<div class="container stock-note" style="background-color:' . esc_attr( $colors['stock_background'] ) . ';color:' . esc_attr( $colors['stock_icon_color'] ) . '"><svg class="icon" aria-hidden="true"><use href="#i-' . esc_attr( $stock_icon ) . '"></use></svg><div><b style="color:' . esc_attr( $colors['stock_title_color'] ) . '">' . esc_html( $section['stock_title'] ) . '</b><small style="color:' . esc_attr( $colors['stock_text_color'] ) . '">' . nl2br( esc_html( $section['stock_text'] ) ) . '</small></div></div>';
+		}
+		return '<section class="bundle-section hlpb-why-section" id="bundles" style="background-color:' . esc_attr( $colors['background'] ) . ';--hlpb-why-eyebrow:' . esc_attr( $colors['eyebrow_color'] ) . ';--hlpb-why-title:' . esc_attr( $colors['title_color'] ) . ';--hlpb-why-subtitle:' . esc_attr( $colors['subtitle_color'] ) . ';--hlpb-why-benefit:' . esc_attr( $colors['benefit_color'] ) . ';' . esc_attr( $css_vars ) . '"><div class="container bundle-layout"><div class="bundle-copy"><p class="eyebrow" style="color:' . esc_attr( $colors['eyebrow_color'] ) . '">' . esc_html( $section['eyebrow'] ) . '</p><h2 style="color:' . esc_attr( $colors['title_color'] ) . '">' . esc_html( $section['title'] ) . '</h2><p style="color:' . esc_attr( $colors['subtitle_color'] ) . '">' . esc_html( $section['subtitle'] ) . '</p><ul>' . $benefits_markup . '</ul></div><div class="bundle-grid" data-hlpb-why-offers role="group" aria-label="' . esc_attr__( 'Current offer prices', 'html-landing-page-builder-for-woocommerce' ) . '">' . $cards_markup . '</div></div>' . $stock_markup . '</section>';
 	}
 
 	/** Render the editable reviews section and its review cards. */

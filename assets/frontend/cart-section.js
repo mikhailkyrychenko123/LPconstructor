@@ -6,6 +6,7 @@
 	var section = document.getElementById('shop');
 	var options = document.getElementById('productOptions');
 	var offerGrid = document.getElementById('offerGrid');
+	var whyOfferGrids = document.querySelectorAll('[data-hlpb-why-offers]');
 	var hero = document.getElementById('heroImage');
 	var thumbs = document.querySelector('.gallery-thumbs');
 	var addButton = document.getElementById('addToCart');
@@ -264,6 +265,35 @@
 		options.innerHTML = html;
 		options.dataset.mode = mode; options.dataset.count = items.length;
 	}
+	function renderWhyOffers() {
+		if (!whyOfferGrids.length) return;
+		var mode = enabledModes[0];
+		var quantities = 'mix' === mode ? [2, 3, 4] : [1, 2, 3, 4];
+		var selected = ensureItems(mode);
+		var prices = selected.map(function (item) {
+			var product = products[item.product_id];
+			var variation = resolveVariation(item);
+			return Number(variation ? variation.price : (product ? product.price : 0));
+		});
+		var cards = quantities.map(function (quantity) {
+			var base = 0;
+			if ('bundle' === mode) base = (Number(prices[0] || 0) + Number(prices[1] || 0)) * quantity;
+			else if (prices.length) base = (prices.reduce(function (sum, price) { return sum + price; }, 0) / prices.length) * quantity;
+			var rule = currentRule(mode, quantity);
+			var total = offerTotal(base, rule);
+			var saving = Math.max(0, base - total);
+			var badgeEnabled = 1 === Number(rule.badge_enabled || 0);
+			var badgeText = String(rule.badge_text || '').trim();
+			if (badgeEnabled && !badgeText) badgeText = 4 === quantity ? 'BEST VALUE' : 'SPECIAL OFFER';
+			var badge = badgeEnabled ? '<span class="best-label">' + escapeHtml(badgeText) + '</span>' : '';
+			var label = 'bundle' === mode ? 'BUY ' + quantity + (quantity === 1 ? ' SET' : ' SETS') : 'BUY ' + quantity;
+			var totalLabel = 'bundle' === mode ? 'bundle total' : ('mix' === mode ? 'mix total' : 'offer total');
+			var selectedClass = Number(state.quantity[mode]) === quantity ? ' is-selected' : '';
+			var popularClass = badgeEnabled ? ' popular-bundle' : '';
+			return '<button class="bundle-card' + popularClass + selectedClass + '" type="button" data-why-qty="' + quantity + '" aria-label="' + escapeHtml(label + ', ' + money(total) + ' ' + totalLabel) + '">' + badge + '<b>' + escapeHtml(label) + '</b><strong>' + money(total) + '</strong><small>' + totalLabel + '</small>' + (saving > 0 ? '<em>Save ' + money(saving) + '</em>' : '') + '</button>';
+		}).join('');
+		whyOfferGrids.forEach(function (grid) { grid.innerHTML = cards; });
+	}
 	function renderOffers() {
 		var mode = state.mode;
 		var quantities = 'mix' === mode ? [2, 3, 4] : [1, 2, 3, 4];
@@ -277,12 +307,34 @@
 			var label = 'bundle' === mode ? quantity + (quantity === 1 ? ' SET' : ' SETS') : ('mix' === mode ? quantity + ' ITEMS' : quantity + (quantity === 1 ? ' ITEM' : ' ITEMS'));
 			var totalLabel = 'bundle' === mode ? 'bundle total' : ('mix' === mode ? 'mix total' : 'offer total');
 			var saving = Math.max(0, base - total);
-			return '<button class="offer-card ' + (quantity === 4 ? 'best' : '') + '" type="button" data-qty="' + quantity + '" aria-pressed="' + active + '">' + (quantity === 4 ? '<span class="best-label">BEST VALUE</span>' : '') + '<b>' + label + '</b><strong>' + money(total) + '</strong><small>' + totalLabel + '</small>' + (saving > 0 ? '<em>Save ' + money(saving) + '</em>' : '') + '</button>';
+			var badgeEnabled = 1 === Number(rule.badge_enabled || 0);
+			var badgeText = String(rule.badge_text || '').trim();
+			if (badgeEnabled && !badgeText) badgeText = 4 === quantity ? 'BEST VALUE' : 'SPECIAL OFFER';
+			var badgeMarkup = badgeEnabled ? '<span class="best-label">' + escapeHtml(badgeText) + '</span>' : '';
+			return '<button class="offer-card ' + (quantity === 4 && badgeEnabled ? 'best' : '') + '" type="button" data-qty="' + quantity + '" aria-pressed="' + active + '">' + badgeMarkup + '<b>' + label + '</b><strong>' + money(total) + '</strong><small>' + totalLabel + '</small>' + (saving > 0 ? '<em>Save ' + money(saving) + '</em>' : '') + '</button>';
 		}).join('');
+		renderWhyOffers();
 		offerGrid.onclick = function (event) {
 			var button = event.target.closest('[data-qty]'); if (!button) return;
 			state.quantity[mode] = Number(button.dataset.qty); showLoading(function () { renderItems(); renderOffers(); ensureGiftWrap(); updatePreview(); });
 		};
+	}
+	if (whyOfferGrids.length) {
+		whyOfferGrids.forEach(function (whyOfferGrid) {
+			whyOfferGrid.onclick = function (event) {
+				var button = event.target.closest('[data-why-qty]');
+				if (!button) return;
+				var mode = enabledModes[0];
+				var quantity = Number(button.dataset.whyQty);
+				if (!quantity || (('mix' === mode && quantity < 2) || quantity > 4)) return;
+				state.mode = mode;
+				state.quantity[mode] = quantity;
+				showLoading(function () {
+					renderItems(); renderOffers(); ensureGiftWrap(); updatePreview(); updateGallery(getItems(mode)[0]);
+					section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				});
+			};
+		});
 	}
 	function onProductChange(event) {
 		var target = event.target.closest('[data-product-slot]'); if (!target) return;

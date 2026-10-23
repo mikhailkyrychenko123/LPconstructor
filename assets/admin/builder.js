@@ -585,6 +585,37 @@
 		reindexMixBenefits($card);
 	});
 
+	function makeWhyBenefitRow(sectionId, index) {
+		var $row = $('<div class="hlpb-why-benefit-row"></div>');
+		var $label = $('<label><span></span><input type="text"></label>');
+		$label.find('span').text(HLPBBuilder.benefitLabel || 'Benefit');
+		$label.find('input').attr('name', 'hlpb_sections[' + sectionId + '][benefits][' + index + ']');
+		var $remove = $('<button type="button" class="button-link-delete hlpb-remove-why-benefit" aria-label=""></button>');
+		$remove.attr('aria-label', HLPBBuilder.removeBenefit || 'Remove benefit').text('×');
+		return $row.append($label, $remove);
+	}
+
+	function reindexWhyBenefits($card) {
+		var sectionId = $card.data('section-id');
+		$card.find('.hlpb-why-benefit-row input[name]').each(function (index) {
+			$(this).attr('name', 'hlpb_sections[' + sectionId + '][benefits][' + index + ']');
+		});
+	}
+
+	$list.on('click', '.hlpb-add-why-benefit', function () {
+		var $card = $(this).closest('.hlpb-section-card');
+		var $rows = $card.find('.hlpb-why-benefit-row');
+		if ($rows.length < 8) {
+			$card.find('.hlpb-why-benefit-list').append(makeWhyBenefitRow($card.data('section-id'), $rows.length));
+		}
+	});
+
+	$list.on('click', '.hlpb-remove-why-benefit', function () {
+		var $card = $(this).closest('.hlpb-section-card');
+		$(this).closest('.hlpb-why-benefit-row').remove();
+		reindexWhyBenefits($card);
+	});
+
 	$list.on('click', '.hlpb-remove-feature', function () {
 		var $card = $(this).closest('.hlpb-section-card');
 		$(this).closest('.hlpb-feature-row').remove();

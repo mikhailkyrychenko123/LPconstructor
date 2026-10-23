@@ -171,6 +171,22 @@ h1{font-size:clamp(28px,3vw,39px);line-height:1.05;margin:0 0 7px}
 .bundle-card em{align-self:stretch;margin:5px 0 -5px;border-radius:3px;background:#ffe2dc;color:#df5554;font-size:10.8px;font-style:normal;font-weight:700;text-align:center}
 .bundle-card.popular-bundle{background:var(--navy);color:#fff;border-color:var(--navy)}
 .bundle-card.popular-bundle em{background:#ffd9d4;color:#c84949}
+.hlpb-why-section .bundle-copy .eyebrow{color:var(--hlpb-why-eyebrow,#ef555c)}
+.hlpb-why-section .bundle-copy h2{color:var(--hlpb-why-title,#082b49)}
+.hlpb-why-section .bundle-copy>p:not(.eyebrow){color:var(--hlpb-why-subtitle,#536472)}
+.hlpb-why-section .bundle-copy li{color:var(--hlpb-why-benefit,#4d5c68)}
+.hlpb-why-section .bundle-copy li:before{background:var(--hlpb-why-check-bg,#f47268);color:var(--hlpb-why-check-color,#fff)}
+.hlpb-why-section [data-hlpb-why-offers] .bundle-card{background:var(--hlpb-why-card-bg,#fff);border-color:var(--hlpb-why-card-border,#e4e2df);color:var(--hlpb-why-card-text,#082b49)}
+.hlpb-why-section [data-hlpb-why-offers] .bundle-card strong{color:var(--hlpb-why-card-price,#082b49)}
+.hlpb-why-section [data-hlpb-why-offers] .bundle-card small{color:var(--hlpb-why-card-label,#082b49)}
+.hlpb-why-section [data-hlpb-why-offers] .bundle-card em{background:var(--hlpb-why-savings-bg,#ffe2dc);color:var(--hlpb-why-savings-text,#df5554)}
+.hlpb-why-section [data-hlpb-why-offers] .bundle-card.is-selected{outline-color:var(--hlpb-why-selected-outline,#ef555c)}
+.hlpb-why-section [data-hlpb-why-offers] .best-label{background:var(--hlpb-why-badge-bg,#ef555c);color:var(--hlpb-why-badge-text,#fff)}
+.hlpb-why-section [data-hlpb-why-offers] .bundle-card.popular-bundle{background:var(--hlpb-why-popular-bg,#082b49);border-color:var(--hlpb-why-popular-bg,#082b49);color:var(--hlpb-why-popular-text,#fff)}
+.hlpb-why-section [data-hlpb-why-offers] .bundle-card.popular-bundle strong,.hlpb-why-section [data-hlpb-why-offers] .bundle-card.popular-bundle small{color:var(--hlpb-why-popular-text,#fff)}
+.hlpb-why-section [data-hlpb-why-offers] .bundle-card.popular-bundle em{background:var(--hlpb-why-savings-bg,#ffe2dc);color:var(--hlpb-why-savings-text,#df5554)}
+.hlpb-why-section [data-hlpb-why-offers] .best-label{box-sizing:border-box;max-width:calc(100% - 8px);overflow:hidden;text-overflow:ellipsis}
+.hlpb-why-section .stock-note{margin-top:18px}
 .stock-note{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:18px;padding:9px 12px;border-radius:5px;background:#ffe9e5;text-align:center;color:#bf4e4c}
 .stock-note .icon{width:19px;height:19px}
 .stock-note div{display:grid;line-height:1.25}
