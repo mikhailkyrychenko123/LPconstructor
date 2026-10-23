@@ -21,6 +21,13 @@ final class HLPB_Landing_Builder {
 	const EXPORT_FOLDER_QUERY_VAR = 'hlpb_export_folder';
 
 	/**
+	 * Static exports queued until WordPress has finished saving the post and its metadata.
+	 *
+	 * @var array<int, array<string, mixed>>
+	 */
+	private static $pending_static_exports = array();
+
+	/**
 	 * Connect the builder to WordPress.
 	 *
 	 * @return void
@@ -30,6 +37,7 @@ final class HLPB_Landing_Builder {
 		add_action( 'init', array( __CLASS__, 'register_export_route' ), 20 );
 		add_action( 'add_meta_boxes_' . self::POST_TYPE, array( __CLASS__, 'add_meta_box' ) );
 		add_action( 'save_post_' . self::POST_TYPE, array( __CLASS__, 'save_sections' ), 10, 2 );
+		add_action( 'wp_after_insert_post', array( __CLASS__, 'finish_static_export' ), 10, 4 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'show_export_notice' ) );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_frontend_assets' ) );
@@ -1333,25 +1341,50 @@ final class HLPB_Landing_Builder {
 			update_post_meta( $post_id, self::TEMPLATE_KEY, $template_slug );
 		}
 
-		if ( 'publish' !== get_post_status( $post_id ) ) {
+		self::$pending_static_exports[ $post_id ] = array(
+			'previous_directory'    => $previous_directory,
+			'previous_promo_folder' => $previous_promo_folder,
+			'export_error'          => $export_error,
+		);
+	}
+
+	/**
+	 * Generate the static copy after WordPress has saved the post, builder fields, and metadata.
+	 *
+	 * @param int          $post_id Post ID.
+	 * @param WP_Post      $post Post object.
+	 * @param bool         $update Whether this is an existing post being updated.
+	 * @param WP_Post|null $post_before Post object before the update.
+	 * @return void
+	 */
+	public static function finish_static_export( $post_id, $post, $update, $post_before ) {
+		$post_id = absint( $post_id );
+		if ( ! $post instanceof WP_Post || self::POST_TYPE !== $post->post_type || ! isset( self::$pending_static_exports[ $post_id ] ) ) {
 			return;
 		}
+
+		$export_state = self::$pending_static_exports[ $post_id ];
+		unset( self::$pending_static_exports[ $post_id ] );
+		if ( 'publish' !== $post->post_status ) {
+			return;
+		}
+
 		$current_promo_folder = self::get_export_promo_folder( $post_id );
-		if ( strtolower( $previous_promo_folder ) !== strtolower( $current_promo_folder ) || ! self::has_export_rewrite_rule( $current_promo_folder ) ) {
+		if ( strtolower( $export_state['previous_promo_folder'] ) !== strtolower( $current_promo_folder ) || ! self::has_export_rewrite_rule( $current_promo_folder ) ) {
 			self::register_export_route();
 			flush_rewrite_rules( false );
 		}
 
-		if ( $export_error ) {
+		if ( $export_state['export_error'] ) {
 			set_transient(
 				'hlpb_export_notice_' . get_current_user_id(),
-				array( 'success' => false, 'message' => $export_error ),
+				array( 'success' => false, 'message' => $export_state['export_error'] ),
 				MINUTE_IN_SECONDS
 			);
 			return;
 		}
 
-		$result             = self::generate_static_export( $post_id, $previous_directory );
+		$result = self::generate_static_export( $post_id, $export_state['previous_directory'] );
 		if ( is_wp_error( $result ) ) {
 			set_transient(
 				'hlpb_export_notice_' . get_current_user_id(),
@@ -1362,13 +1395,13 @@ final class HLPB_Landing_Builder {
 		}
 
 		$current_directory = self::get_current_export_relative_path( $post_id );
-		if ( ! $previous_directory || $previous_directory !== $current_directory ) {
-			$message = $previous_directory
+		if ( ! $export_state['previous_directory'] || $export_state['previous_directory'] !== $current_directory ) {
+			$message = $export_state['previous_directory']
 				? sprintf(
 					/* translators: %s is a folder path relative to the WordPress root. */
 					__( 'A new static copy was published in %1$s. The previous folder, %2$s, was left in place.', 'html-landing-page-builder-for-woocommerce' ),
 					$current_directory,
-					$previous_directory
+					$export_state['previous_directory']
 				)
 				: __( 'The static landing page was published.', 'html-landing-page-builder-for-woocommerce' );
 			set_transient(

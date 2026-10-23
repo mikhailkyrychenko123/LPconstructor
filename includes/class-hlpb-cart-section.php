@@ -624,6 +624,7 @@ final class HLPB_Cart_Section {
 			$coupon->update_meta_data( self::COUPON_FLAG_META, 'yes' );
 			$coupon->update_meta_data( '_hlpb_campaign_name', $name );
 			$coupon->update_meta_data( '_hlpb_offer_mode', $mode );
+			self::clear_legacy_buyget_coupon_metadata( $coupon );
 			$coupon_id = $coupon->save();
 			if ( $coupon_id ) {
 				wp_update_post( array( 'ID' => $coupon_id, 'post_title' => $name, 'post_status' => $is_active ? 'publish' : 'draft' ) );
@@ -655,6 +656,21 @@ final class HLPB_Cart_Section {
 	private static function coupon_id_for_mode( $post_id, $mode ) {
 		$ids = self::coupon_ids_for_landing( $post_id );
 		return absint( $ids[ $mode ] ?? 0 );
+	}
+
+	/** Prevent the legacy BuyGet listener from treating a landing coupon as its own. */
+	private static function clear_legacy_buyget_coupon_metadata( $coupon ) {
+		if ( ! ( $coupon instanceof WC_Coupon ) || 'yes' !== $coupon->get_meta( self::COUPON_FLAG_META, true ) ) {
+			return false;
+		}
+		$removed = false;
+		foreach ( array( '_buyget_product_id', '_buyget_campaign_name' ) as $meta_key ) {
+			if ( '' !== (string) $coupon->get_meta( $meta_key, true ) ) {
+				$coupon->delete_meta_data( $meta_key );
+				$removed = true;
+			}
+		}
+		return $removed;
 	}
 
 	/** Public data needed to render the selected WooCommerce products in the static HTML. */
@@ -1391,20 +1407,39 @@ final class HLPB_Cart_Section {
 		if ( ! $coupon->get_id() ) {
 			self::checkout_error( __( 'The offer coupon is not available.', 'html-landing-page-builder-for-woocommerce' ), 400 );
 		}
+		if ( self::clear_legacy_buyget_coupon_metadata( $coupon ) ) {
+			$coupon->save();
+		}
 		$campaign_name = (string) $coupon->get_meta( '_hlpb_campaign_name', true );
 		$cart_ids = array();
-		foreach ( $validated as $item ) {
-			$cart_data = array(
-				'_hlpb_landing_id' => $landing_id, '_hlpb_coupon_id' => $coupon_id, '_hlpb_campaign_name' => $campaign_name, '_hlpb_bundle_key' => $bundle_key,
-				'_hlpb_mode' => $mode, '_hlpb_bundle_quantity' => $quantity, '_hlpb_rule' => $rule,
-				'_hlpb_base_price' => $item['price'], '_hlpb_base_total' => $base_total, '_hlpb_is_addon' => false, '_hlpb_is_gift' => false, '_hlpb_gift_eligible' => false, '_hlpb_gift_opt_in' => $include_gift,
-			);
-			$cart_item_key = WC()->cart->add_to_cart( $item['product_id'], 1, $item['variation_id'], $item['variation'], $cart_data );
-			if ( ! $cart_item_key ) {
-				self::rollback_bundle( $bundle_key );
-				self::checkout_error( __( 'One of the selected variations is no longer available.', 'html-landing-page-builder-for-woocommerce' ), 400 );
+		$cart = WC()->cart;
+		$auto_calculate_totals = has_action( 'woocommerce_add_to_cart', array( $cart, 'calculate_totals' ) );
+		if ( false !== $auto_calculate_totals ) {
+			remove_action( 'woocommerce_add_to_cart', array( $cart, 'calculate_totals' ), $auto_calculate_totals );
+		}
+		$items_added = true;
+		try {
+			foreach ( $validated as $item ) {
+				$cart_data = array(
+					'_hlpb_landing_id' => $landing_id, '_hlpb_coupon_id' => $coupon_id, '_hlpb_campaign_name' => $campaign_name, '_hlpb_bundle_key' => $bundle_key,
+					'_hlpb_mode' => $mode, '_hlpb_bundle_quantity' => $quantity, '_hlpb_rule' => $rule,
+					'_hlpb_base_price' => $item['price'], '_hlpb_base_total' => $base_total, '_hlpb_is_addon' => false, '_hlpb_is_gift' => false, '_hlpb_gift_eligible' => false, '_hlpb_gift_opt_in' => $include_gift,
+				);
+				$cart_item_key = self::add_offer_cart_item( $item['product_id'], $item['variation_id'], $item['variation'], $cart_data );
+				if ( ! $cart_item_key ) {
+					$items_added = false;
+					break;
+				}
+				$cart_ids[] = $cart_item_key;
 			}
-			$cart_ids[] = $cart_item_key;
+		} finally {
+			if ( false !== $auto_calculate_totals ) {
+				add_action( 'woocommerce_add_to_cart', array( $cart, 'calculate_totals' ), $auto_calculate_totals, 0 );
+			}
+		}
+		if ( ! $items_added ) {
+			self::rollback_bundle( $bundle_key );
+			self::checkout_error( __( 'One of the selected variations is no longer available.', 'html-landing-page-builder-for-woocommerce' ), 400 );
 		}
 		$gift_product_id = absint( $rule['gift_product_id'] ?? 0 );
 		$gift_mode = sanitize_key( $rule['gift_mode'] ?? 'none' );
@@ -1426,13 +1461,17 @@ final class HLPB_Cart_Section {
 				'_hlpb_base_price' => $gift_validated['price'], '_hlpb_base_total' => 0,
 				'_hlpb_is_addon' => false, '_hlpb_is_gift' => true, '_hlpb_gift_eligible' => true,
 			);
-			$gift_cart_key = WC()->cart->add_to_cart( $gift_validated['product_id'], 1, $gift_validated['variation_id'], $gift_validated['variation'], $gift_data );
+			$gift_cart_key = self::add_offer_cart_item( $gift_validated['product_id'], $gift_validated['variation_id'], $gift_validated['variation'], $gift_data );
 			if ( ! $gift_cart_key ) {
 				self::rollback_bundle( $bundle_key );
 				self::checkout_error( __( 'The configured gift could not be added to your cart.', 'html-landing-page-builder-for-woocommerce' ), 400 );
 			}
 		}
-		if ( ! $coupon->get_id() || ( ! WC()->cart->has_discount( $coupon->get_code() ) && ! WC()->cart->apply_coupon( $coupon->get_code() ) ) ) {
+		$offer_coupon_applied = $coupon->get_id() && WC()->cart->has_discount( $coupon->get_code() );
+		if ( $coupon->get_id() && ! $offer_coupon_applied ) {
+			$offer_coupon_applied = WC()->cart->apply_coupon( $coupon->get_code() );
+		}
+		if ( ! $offer_coupon_applied ) {
 			self::rollback_bundle( $bundle_key );
 			self::checkout_error( __( 'WooCommerce could not apply the offer coupon. Please check the offer settings.', 'html-landing-page-builder-for-woocommerce' ), 400 );
 		}
@@ -1576,6 +1615,48 @@ final class HLPB_Cart_Section {
 		self::$syncing_cart = false;
 	}
 
+	/** Preserve a validated offer line if an add-to-cart callback removes its returned key. */
+	private static function add_offer_cart_item( $product_id, $variation_id, $variation, $cart_data ) {
+		$cart = function_exists( 'WC' ) ? WC()->cart : false;
+		if ( ! $cart ) {
+			return false;
+		}
+		$product_id = absint( $product_id );
+		$variation_id = absint( $variation_id );
+		$variation = is_array( $variation ) ? $variation : array();
+		$was_syncing_cart = self::$syncing_cart;
+		self::$syncing_cart = true;
+		try {
+			$key = $cart->add_to_cart( $product_id, 1, $variation_id, $variation, $cart_data );
+		} finally {
+			self::$syncing_cart = $was_syncing_cart;
+		}
+		if ( ! $key || array_key_exists( $key, $cart->cart_contents ) ) {
+			return $key;
+		}
+
+		$product = wc_get_product( $variation_id ? $variation_id : $product_id );
+		if ( ! $product || ! $product->is_purchasable() || ! $product->is_in_stock() ) {
+			return false;
+		}
+		$cart_item = array_merge(
+			$cart_data,
+			array(
+				'key'          => $key,
+				'product_id'   => $product_id,
+				'variation_id' => $variation_id,
+				'variation'    => $variation,
+				'quantity'     => 1,
+				'data'         => $product,
+				'data_hash'    => function_exists( 'wc_get_cart_item_data_hash' ) ? wc_get_cart_item_data_hash( $product ) : '',
+			)
+		);
+		$cart->cart_contents[ $key ] = apply_filters( 'woocommerce_add_cart_item', $cart_item, $key );
+		$cart->cart_contents = apply_filters( 'woocommerce_cart_contents_changed', $cart->cart_contents );
+
+		return array_key_exists( $key, $cart->cart_contents ) ? $key : false;
+	}
+
 	/** Restrict campaign coupons to cart rows created by this exact landing offer. */
 	public static function validate_coupon( $valid, $coupon, $discounts ) {
 		if ( 'yes' !== $coupon->get_meta( self::COUPON_FLAG_META, true ) ) {
@@ -1591,7 +1672,7 @@ final class HLPB_Cart_Section {
 			return false;
 		}
 		foreach ( self::get_coupon_bundles( $coupon->get_id() ) as $bundle ) {
-			if ( absint( $bundle['landing_id'] ?? 0 ) === $landing_id && sanitize_key( $bundle['mode'] ?? '' ) === $mode && ! empty( $bundle['core_count'] ) ) {
+			if ( absint( $bundle['landing_id'] ?? 0 ) === $landing_id && sanitize_key( $bundle['mode'] ?? '' ) === $mode && self::bundle_is_current( $bundle, $landing_id ) ) {
 				return true;
 			}
 		}
