@@ -29,7 +29,8 @@
 	var currency = config.currency || 'USD';
 
 	function allowedProducts(mode) {
-		return (modes[mode] && modes[mode].products ? modes[mode].products : []).map(Number).filter(function (id) { return products[id]; });
+		var ids = (modes[mode] && modes[mode].products ? modes[mode].products : []).map(Number).filter(function (id, index, list) { return products[id] && list.indexOf(id) === index; });
+		return 'buy' === mode ? ids.slice(0, 1) : ids;
 	}
 	function escapeHtml(value) {
 		return String(value == null ? '' : value).replace(/[&<>"']/g, function (char) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]; });
@@ -116,6 +117,14 @@
 	function currentRule(mode, quantity) {
 		var rules = (modes[mode] && modes[mode].rules) || {};
 		return rules[quantity] || rules[String(quantity)] || { type: 'none', value: 0 };
+	}
+	function hasDistinctMixProducts() {
+		return new Set(getItems('mix').map(function (item) { return Number(item.product_id); })).size >= 2;
+	}
+	function canSelectMixProduct(index, productId) {
+		if ('mix' !== state.mode) return true;
+		var otherProducts = getItems('mix').filter(function (_, itemIndex) { return itemIndex !== index; }).map(function (item) { return Number(item.product_id); });
+		return !otherProducts.length || otherProducts.some(function (id) { return id !== Number(productId); });
 	}
 	function offerTotal(base, rule) {
 		var value = Math.max(0, Number(rule.value || 0));
@@ -205,14 +214,16 @@
 		var giftTitle = isFreeGift ? 'FREE ' + product.name : (percentOff > 0 ? percentOff + '% OFF ' + product.name : product.name);
 		var giftDescription = isFreeGift ? escapeHtml(rule.gift_label || 'With your selected offer, your gift is included.') : (percentOff > 0 ? escapeHtml(rule.gift_label ? rule.gift_label + ' (included with ' + percentOff + '% off).' : 'With your selected offer, your gift is included with ' + percentOff + '% off.') : (rule.gift_label ? escapeHtml(rule.gift_label) : 'Special offer: <del>' + escapeHtml(money(original)) + '</del> ' + escapeHtml(money(giftPrice))));
 		var giftControls = renderVariantControls(state.gift, product, 'gift');
+		var showGiftOptions = state.giftOptIn[giftKey] !== false;
+		var giftFields = giftControls || !variation ? '<div class="hlpb-gift-fields"' + (showGiftOptions ? '' : ' hidden') + '><strong class="hlpb-gift-options-title">Gift options · ' + escapeHtml(product.name) + '</strong>' + giftControls + (!variation ? '<div class="hlpb-item-unavailable">Choose all available gift options</div>' : '') + '</div>' : '';
 		var box = document.createElement('div');
 		box.className = 'hlpb-gift-box';
-		box.innerHTML = '<div class="sock-gift"><svg class="icon gift-icon" aria-hidden="true"><use href="#i-gift"></use></svg><div class="hlpb-gift-copy"><strong>' + escapeHtml(giftTitle) + '</strong><span>' + giftDescription + '</span></div><label class="hlpb-gift-toggle"><input type="checkbox" data-gift-opt-in="' + escapeHtml(giftKey) + '" ' + (state.giftOptIn[giftKey] ? 'checked' : '') + '><span>Add gift</span></label>' + (image && (image.thumb || image.src) ? '<img class="hlpb-gift-photo" src="' + escapeHtml(image.thumb || image.src) + '" alt="' + escapeHtml(image.alt || product.name) + '" loading="lazy">' : '') + '</div>' + (giftControls || !variation ? '<div class="hlpb-gift-fields">' + giftControls + (!variation ? '<div class="hlpb-item-unavailable">Choose all available gift options</div>' : '') + '</div>' : '');
+		box.innerHTML = '<div class="sock-gift"><svg class="icon gift-icon" aria-hidden="true"><use href="#i-gift"></use></svg><div class="hlpb-gift-copy"><strong>' + escapeHtml(giftTitle) + '</strong><span>' + giftDescription + '</span></div><label class="hlpb-gift-toggle"><input type="checkbox" data-gift-opt-in="' + escapeHtml(giftKey) + '" ' + (showGiftOptions ? 'checked' : '') + '><span>Add gift</span></label>' + (image && (image.thumb || image.src) ? '<img class="hlpb-gift-photo" src="' + escapeHtml(image.thumb || image.src) + '" alt="' + escapeHtml(image.alt || product.name) + '" loading="lazy">' : '') + '</div>' + giftFields;
 		options.after(box);
 	}
 	function productSelect(item, allowed, index, mode) {
 		if ('bundle' === mode || allowed.length < 2) return '';
-		return '<select class="hlpb-product-select" data-product-slot="' + index + '" aria-label="Choose product">' + allowed.map(function (id) { return '<option value="' + id + '" ' + (Number(item.product_id) === Number(id) ? 'selected' : '') + '>' + escapeHtml(products[id].name) + '</option>'; }).join('') + '</select>';
+		return '<select class="hlpb-product-select" data-product-slot="' + index + '" aria-label="Choose product">' + allowed.map(function (id) { var disabled = 'mix' === mode && !canSelectMixProduct(index, id) ? ' disabled' : ''; return '<option value="' + id + '" ' + (Number(item.product_id) === Number(id) ? 'selected' : '') + disabled + '>' + escapeHtml(products[id].name) + '</option>'; }).join('') + '</select>';
 	}
 	function renderVariantControls(item, product, slot) {
 		if (!product || !product.attributes || !product.attributes.length) return '';
@@ -255,16 +266,18 @@
 	}
 	function renderOffers() {
 		var mode = state.mode;
-		offerGrid.innerHTML = [1, 2, 3, 4].map(function (quantity) {
+		var quantities = 'mix' === mode ? [2, 3, 4] : [1, 2, 3, 4];
+		offerGrid.innerHTML = quantities.map(function (quantity) {
 			var active = Number(state.quantity[mode]) === quantity;
 			var selected = ensureItems(mode); var prices = selected.map(function (item) { var product = products[item.product_id]; var variation = resolveVariation(item); return Number(variation ? variation.price : product.price); });
 			var base = 0;
 			if ('bundle' === mode) base = (Number(prices[0] || 0) + Number(prices[1] || 0)) * quantity;
 			else if (prices.length) base = (prices.reduce(function (sum, price) { return sum + price; }, 0) / prices.length) * quantity;
 			var rule = currentRule(mode, quantity); var total = offerTotal(base, rule);
-			var label = 'bundle' === mode ? 'BUY ' + quantity + ' SET' + (quantity === 1 ? '' : 'S') : 'BUY ' + quantity;
+			var label = 'bundle' === mode ? quantity + (quantity === 1 ? ' SET' : ' SETS') : ('mix' === mode ? quantity + ' ITEMS' : quantity + (quantity === 1 ? ' ITEM' : ' ITEMS'));
+			var totalLabel = 'bundle' === mode ? 'bundle total' : ('mix' === mode ? 'mix total' : 'offer total');
 			var saving = Math.max(0, base - total);
-			return '<button class="offer-card ' + (quantity === 4 ? 'best' : '') + '" type="button" data-qty="' + quantity + '" aria-pressed="' + active + '">' + (quantity === 4 ? '<span class="best-label">BEST VALUE</span>' : '') + '<b>' + label + '</b><strong>' + money(total) + '</strong><small>' + ('bundle' === mode ? 'per offer' : 'offer total') + '</small>' + (saving > 0 ? '<em>Save ' + money(saving) + '</em>' : '') + '</button>';
+			return '<button class="offer-card ' + (quantity === 4 ? 'best' : '') + '" type="button" data-qty="' + quantity + '" aria-pressed="' + active + '">' + (quantity === 4 ? '<span class="best-label">BEST VALUE</span>' : '') + '<b>' + label + '</b><strong>' + money(total) + '</strong><small>' + totalLabel + '</small>' + (saving > 0 ? '<em>Save ' + money(saving) + '</em>' : '') + '</button>';
 		}).join('');
 		offerGrid.onclick = function (event) {
 			var button = event.target.closest('[data-qty]'); if (!button) return;
@@ -274,7 +287,7 @@
 	function onProductChange(event) {
 		var target = event.target.closest('[data-product-slot]'); if (!target) return;
 		var mode = state.mode; var index = Number(target.dataset.productSlot); var id = Number(target.value); var item = getItems(mode)[index];
-		if (item && products[id]) { getItems(mode)[index] = makeItem(id); showLoading(function () { renderItems(); updatePreview(); }); }
+		if (item && products[id] && allowedProducts(mode).indexOf(id) !== -1 && canSelectMixProduct(index, id)) { getItems(mode)[index] = makeItem(id); showLoading(function () { renderItems(); updatePreview(); }); }
 	}
 	function onVariationChange(event, targetMode) {
 		var field = event.target.closest('[data-variation-slot]'); if (!field) return;
@@ -324,7 +337,8 @@
 			base += original; total += giftPrice;
 		}
 		var giftExpected = giftOptedIn && Number(rule.gift_product_id || 0) > 0 && ['free', 'discounted'].includes(rule.gift_mode);
-		return { base: round(base), total: round(total), saving: round(Math.max(0, base - total)), valid: items.every(function (item) { return resolveVariation(item) !== null; }) && (!giftExpected || (!!giftProduct && !!giftVariation)) };
+		var mixValid = 'mix' !== state.mode || hasDistinctMixProducts();
+		return { base: round(base), total: round(total), saving: round(Math.max(0, base - total)), valid: mixValid && items.every(function (item) { return resolveVariation(item) !== null; }) && (!giftExpected || (!!giftProduct && !!giftVariation)) };
 	}
 	function updateSummary() {
 		var totals = currentTotals();
@@ -333,7 +347,10 @@
 		if (mobileAdd) mobileAdd.disabled = !totals.valid;
 		section.querySelectorAll('.mode-tab').forEach(function (button) { button.setAttribute('aria-pressed', String(button.dataset.mode === state.mode)); });
 		var copy = settings.modeCopy && settings.modeCopy[state.mode] ? settings.modeCopy[state.mode] : {};
-		setText('#quantityHeading', copy.quantity_heading || 'STEP 1 · CHOOSE QUANTITY'); setText('#optionsHeading', copy.items_heading || 'STEP 2 · PICK EACH ITEM'); setText('#modeHint', copy.hint || 'Choose your product variations.');
+		var mixValid = 'mix' !== state.mode || hasDistinctMixProducts();
+		var defaultHint = 'buy' === state.mode ? 'One product, up to 4 items. Choose a colour or size for each.' : ('mix' === state.mode ? 'Choose 2 different products. Extra items can repeat either.' : 'Each set includes one of both products.');
+		setText('#quantityHeading', copy.quantity_heading || 'STEP 1 · CHOOSE QUANTITY'); setText('#optionsHeading', copy.items_heading || 'STEP 2 · PICK EACH ITEM'); setText('#modeHint', !mixValid ? 'Choose 2 different products to continue.' : (copy.hint || defaultHint));
+		var modeHint = section.querySelector('#modeHint'); if (modeHint) modeHint.classList.toggle('is-error', !mixValid);
 		setText('#subtotalLabel', copy.summary || 'Items total:');
 		var savingsLabel = section.querySelector('.saving span'); var totalLabel = section.querySelector('.you-pay span');
 		if (savingsLabel) savingsLabel.textContent = settings.savingLabel || 'You save:';
@@ -375,10 +392,13 @@
 		var input = event.target.closest('input[data-gift-opt-in]');
 		if (!input) return;
 		state.giftOptIn[input.dataset.giftOptIn] = input.checked;
+		var giftFields = input.closest('.hlpb-gift-box') && input.closest('.hlpb-gift-box').querySelector('.hlpb-gift-fields');
+		if (giftFields) giftFields.hidden = !input.checked;
 		updateSummary();
 	}
 	function addToCheckout() {
 		var totals = currentTotals();
+		if ('mix' === state.mode && !hasDistinctMixProducts()) { showError('Choose at least two different products for your mix.'); return; }
 		if (!totals.valid) { showError('Please select all required product options first.'); return; }
 		var data = new FormData(); data.append('action', config.action); data.append('ajax', '1'); data.append('landing_id', config.landingId); data.append('token', config.token); data.append('mode', state.mode); data.append('quantity', state.quantity[state.mode]); data.append('items', JSON.stringify(currentSelections()));
 		var giftKey = state.mode + '-' + state.quantity[state.mode]; var includeGift = !!state.gift && state.giftOptIn[giftKey] !== false;

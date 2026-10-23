@@ -50,6 +50,42 @@
 		refreshTypeOptions();
 	}
 
+	function normalizeOfferProducts($mode, preferred) {
+		var $selects = $mode.find('.hlpb-mode-product');
+		if (!preferred || !$(preferred).val()) {
+			preferred = null;
+		}
+		if (preferred) {
+			var preferredValue = String($(preferred).val());
+			$selects.not(preferred).each(function () {
+				if (String($(this).val()) === preferredValue) {
+					$(this).val('0');
+				}
+			});
+		}
+		var seen = {};
+		$selects.each(function () {
+			var value = String($(this).val() || '0');
+			if ('0' === value) {
+				return;
+			}
+			if (seen[value]) {
+				$(this).val('0');
+				return;
+			}
+			seen[value] = true;
+		});
+	}
+
+	$list.find('.hlpb-cart-mode').each(function () {
+		normalizeOfferProducts($(this));
+	});
+	$list.on('change', '.hlpb-mode-product', function () {
+		if ('buy' !== $(this).data('mode')) {
+			normalizeOfferProducts($(this).closest('.hlpb-cart-mode'), this);
+		}
+	});
+
 	function sortByEnteredNumbers() {
 		var ordered = cards().get().sort(function (left, right) {
 			var leftOrder = parseInt($(left).find('.hlpb-order').val(), 10) || 999999;

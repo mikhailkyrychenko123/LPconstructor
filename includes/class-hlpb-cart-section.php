@@ -62,8 +62,8 @@ final class HLPB_Cart_Section {
 			'background'     => '#ffffff',
 			'mode_labels'    => array( 'buy' => 'Buy more', 'mix' => 'Mix & Match', 'bundle' => 'Cozy bundle' ),
 			'mode_copy'      => array(
-				'buy' => array( 'quantity_heading' => 'STEP 1 · CHOOSE QUANTITY', 'items_heading' => 'STEP 2 · PICK EACH ITEM', 'hint' => 'Select a product, then choose its available variations.', 'summary' => 'Items total:' ),
-				'mix' => array( 'quantity_heading' => 'STEP 1 · CHOOSE ITEMS', 'items_heading' => 'STEP 2 · BUILD YOUR MIX', 'hint' => 'Choose from the two products configured for this offer.', 'summary' => 'Mix total:' ),
+				'buy' => array( 'quantity_heading' => 'STEP 1 · CHOOSE QUANTITY', 'items_heading' => 'STEP 2 · CHOOSE OPTIONS', 'hint' => 'One product, up to 4 items. Choose a colour or size for each.', 'summary' => 'Items total:' ),
+				'mix' => array( 'quantity_heading' => 'STEP 1 · CHOOSE MIX SIZE', 'items_heading' => 'STEP 2 · PICK EACH PRODUCT', 'hint' => 'Choose 2 different products. Extra items can repeat either.', 'summary' => 'Mix total:' ),
 				'bundle' => array( 'quantity_heading' => 'STEP 1 · CHOOSE SETS', 'items_heading' => 'STEP 2 · PICK EACH SET', 'hint' => 'Each set contains both configured products.', 'summary' => 'Bundle total:' ),
 			),
 			'saving_label'   => 'You save:',
@@ -111,10 +111,21 @@ final class HLPB_Cart_Section {
 			$section['mode_copy'][ $mode ] = array();
 			foreach ( array( 'quantity_heading', 'items_heading', 'hint', 'summary' ) as $copy_key ) {
 				$copy_value = isset( $raw_copy[ $copy_key ] ) && is_scalar( $raw_copy[ $copy_key ] ) ? (string) $raw_copy[ $copy_key ] : $defaults['mode_copy'][ $mode ][ $copy_key ];
+				$legacy_hints = array(
+					'buy' => array( 'Select a product, then choose its available variations.' ),
+					'mix' => array( 'Choose from the two products configured for this offer.' ),
+				);
+				if ( 'hint' === $copy_key && in_array( trim( $copy_value ), $legacy_hints[ $mode ] ?? array(), true ) ) {
+					$copy_value = $defaults['mode_copy'][ $mode ]['hint'];
+				}
 				$section['mode_copy'][ $mode ][ $copy_key ] = 'hint' === $copy_key ? sanitize_textarea_field( $copy_value ) : sanitize_text_field( $copy_value );
 			}
-			$max_products = 'buy' === $mode ? 2 : 2;
-			$products = isset( $raw_mode['products'] ) && is_array( $raw_mode['products'] ) ? array_slice( $raw_mode['products'], 0, $max_products ) : $defaults['modes'][ $mode ]['products'];
+			$max_products = 'buy' === $mode ? 1 : 2;
+			$raw_products = isset( $raw_mode['products'] ) && is_array( $raw_mode['products'] ) ? $raw_mode['products'] : $defaults['modes'][ $mode ]['products'];
+			if ( 'buy' === $mode && empty( $raw_products[0] ) && ! empty( $raw_products[1] ) ) {
+				$raw_products[0] = $raw_products[1];
+			}
+			$products = array_slice( $raw_products, 0, $max_products );
 			while ( count( $products ) < ( 'buy' === $mode ? 1 : 2 ) ) {
 				$products[] = 0;
 			}
@@ -218,26 +229,34 @@ final class HLPB_Cart_Section {
 			$html .= self::input( $name, 'items_heading', __( 'Products step heading', 'html-landing-page-builder-for-woocommerce' ), $mode_copy['items_heading'], 'mode_copy][' . $mode );
 			$html .= self::input( $name, 'hint', __( 'Products hint', 'html-landing-page-builder-for-woocommerce' ), $mode_copy['hint'], 'mode_copy][' . $mode );
 			$html .= self::input( $name, 'summary', __( 'Price summary label', 'html-landing-page-builder-for-woocommerce' ), $mode_copy['summary'], 'mode_copy][' . $mode );
-			$slots = 'buy' === $mode ? 2 : 2;
-			$html .= '<div class="hlpb-cart-product-slots"><strong>' . esc_html__( 'Products in this offer', 'html-landing-page-builder-for-woocommerce' ) . '</strong>';
+			$slots = 'buy' === $mode ? 1 : 2;
+			$products_heading = 'buy' === $mode ? __( 'Product to repeat', 'html-landing-page-builder-for-woocommerce' ) : ( 'mix' === $mode ? __( 'Products to mix', 'html-landing-page-builder-for-woocommerce' ) : __( 'Products in each set', 'html-landing-page-builder-for-woocommerce' ) );
+			$html .= '<div class="hlpb-cart-product-slots"><strong>' . esc_html( $products_heading ) . '</strong>';
 			for ( $slot = 0; $slot < $slots; $slot++ ) {
 				$product_id = isset( $mode_data['products'][ $slot ] ) ? absint( $mode_data['products'][ $slot ] ) : 0;
-				$html .= '<label>' . esc_html( sprintf( __( 'Product %d', 'html-landing-page-builder-for-woocommerce' ), $slot + 1 ) ) . ' <select name="' . esc_attr( $name . '[modes][' . $mode . '][products][' . $slot . ']' ) . '"><option value="0">' . esc_html__( '— Select product —', 'html-landing-page-builder-for-woocommerce' ) . '</option>';
+				$slot_label = 'buy' === $mode ? __( 'Product', 'html-landing-page-builder-for-woocommerce' ) : ( 'mix' === $mode ? sprintf( __( 'Mix option %d', 'html-landing-page-builder-for-woocommerce' ), $slot + 1 ) : sprintf( __( 'Set item %d', 'html-landing-page-builder-for-woocommerce' ), $slot + 1 ) );
+				$html .= '<label>' . esc_html( $slot_label ) . ' <select class="hlpb-mode-product" data-mode="' . esc_attr( $mode ) . '" name="' . esc_attr( $name . '[modes][' . $mode . '][products][' . $slot . ']' ) . '"><option value="0">' . esc_html__( '— Select product —', 'html-landing-page-builder-for-woocommerce' ) . '</option>';
 				foreach ( $products as $product ) {
 					$html .= '<option value="' . esc_attr( $product['id'] ) . '" ' . selected( $product_id, $product['id'], false ) . '>' . esc_html( $product['name'] ) . '</option>';
 				}
 				$html .= '</select></label>';
 			}
-			$html .= '</div><p class="description">' . esc_html( 'buy' === $mode ? __( 'Choose one primary product; the second is an optional alternative.', 'html-landing-page-builder-for-woocommerce' ) : __( 'Choose two products that shoppers can combine in this tab.', 'html-landing-page-builder-for-woocommerce' ) ) . '</p>';
-			$html .= '<div class="hlpb-cart-rules"><strong>' . esc_html__( 'Quantity offer rules and gifts', 'html-landing-page-builder-for-woocommerce' ) . '</strong><p class="description">' . esc_html__( 'A gift is attached to this exact tab and quantity. It is added once for the selected offer and does not count toward the offer quantity.', 'html-landing-page-builder-for-woocommerce' ) . '</p><div class="hlpb-cart-rule-head"><span>' . esc_html__( 'Buy', 'html-landing-page-builder-for-woocommerce' ) . '</span><span>' . esc_html__( 'Discount', 'html-landing-page-builder-for-woocommerce' ) . '</span><span>' . esc_html__( 'Value', 'html-landing-page-builder-for-woocommerce' ) . '</span><span>' . esc_html__( 'Gift product', 'html-landing-page-builder-for-woocommerce' ) . '</span><span>' . esc_html__( 'Gift offer', 'html-landing-page-builder-for-woocommerce' ) . '</span><span>' . esc_html__( 'Gift price', 'html-landing-page-builder-for-woocommerce' ) . '</span></div>';
-			for ( $quantity = 1; $quantity <= 4; $quantity++ ) {
+			$product_help = 'buy' === $mode
+				? __( 'The same product is repeated. Shoppers can choose a different colour or size for each item.', 'html-landing-page-builder-for-woocommerce' )
+				: ( 'mix' === $mode
+					? __( 'Choose two different products. Every mix includes both; extra items can repeat either.', 'html-landing-page-builder-for-woocommerce' )
+					: __( 'Choose two different products. Every set includes one of each.', 'html-landing-page-builder-for-woocommerce' ) );
+			$html .= '</div><p class="description">' . esc_html( $product_help ) . '</p>';
+			$html .= '<div class="hlpb-cart-rules"><div class="hlpb-cart-rules-heading"><strong>' . esc_html__( 'Offer price and gift by quantity', 'html-landing-page-builder-for-woocommerce' ) . '</strong><p class="description">' . esc_html__( 'Set the price or discount for the offer products in the left panel. Configure a separate optional gift in the right panel.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+			for ( $quantity = ( 'mix' === $mode ? 2 : 1 ); $quantity <= 4; $quantity++ ) {
 				$rule = isset( $mode_data['rules'][ $quantity ] ) && is_array( $mode_data['rules'][ $quantity ] ) ? $mode_data['rules'][ $quantity ] : $defaults['modes'][ $mode ]['rules'][ $quantity ];
 				$rule_name = $name . '[modes][' . $mode . '][rules][' . $quantity . ']';
-				$html .= '<div class="hlpb-cart-rule"><strong>' . esc_html( sprintf( __( 'Buy %d', 'html-landing-page-builder-for-woocommerce' ), $quantity ) ) . '<input type="hidden" name="' . esc_attr( $rule_name . '[quantity]' ) . '" value="' . esc_attr( $quantity ) . '"></strong><select aria-label="' . esc_attr__( 'Offer discount', 'html-landing-page-builder-for-woocommerce' ) . '" name="' . esc_attr( $rule_name . '[type]' ) . '"><option value="none" ' . selected( $rule['type'] ?? '', 'none', false ) . '>' . esc_html__( 'No discount', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="percent" ' . selected( $rule['type'] ?? '', 'percent', false ) . '>' . esc_html__( 'Percent off', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="amount" ' . selected( $rule['type'] ?? '', 'amount', false ) . '>' . esc_html__( 'Fixed amount off', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="fixed_total" ' . selected( $rule['type'] ?? '', 'fixed_total', false ) . '>' . esc_html__( 'Fixed total price', 'html-landing-page-builder-for-woocommerce' ) . '</option></select><input type="number" min="0" step="0.01" aria-label="' . esc_attr__( 'Offer discount value', 'html-landing-page-builder-for-woocommerce' ) . '" name="' . esc_attr( $rule_name . '[value]' ) . '" value="' . esc_attr( $rule['value'] ?? '' ) . '"><select aria-label="' . esc_attr__( 'Gift product', 'html-landing-page-builder-for-woocommerce' ) . '" name="' . esc_attr( $rule_name . '[gift_product_id]' ) . '"><option value="0">' . esc_html__( 'No gift', 'html-landing-page-builder-for-woocommerce' ) . '</option>';
+				$rule_label = 'mix' === $mode ? sprintf( __( '%d items', 'html-landing-page-builder-for-woocommerce' ), $quantity ) : ( 'bundle' === $mode ? sprintf( _n( '%d set', '%d sets', $quantity, 'html-landing-page-builder-for-woocommerce' ), $quantity ) : sprintf( __( 'Buy %d', 'html-landing-page-builder-for-woocommerce' ), $quantity ) );
+				$html .= '<div class="hlpb-cart-rule"><div class="hlpb-cart-rule-title"><strong>' . esc_html( $rule_label ) . '</strong><span>' . esc_html__( 'Settings for this quantity', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="hidden" name="' . esc_attr( $rule_name . '[quantity]' ) . '" value="' . esc_attr( $quantity ) . '"></div><div class="hlpb-cart-rule-panels"><section class="hlpb-rule-panel hlpb-rule-offer"><h4>' . esc_html__( 'Offer price / discount', 'html-landing-page-builder-for-woocommerce' ) . '</h4><p>' . esc_html__( 'Applies to the products in this offer.', 'html-landing-page-builder-for-woocommerce' ) . '</p><div class="hlpb-rule-fields"><label><span>' . esc_html__( 'Price rule', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[type]' ) . '"><option value="none" ' . selected( $rule['type'] ?? '', 'none', false ) . '>' . esc_html__( 'No discount', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="percent" ' . selected( $rule['type'] ?? '', 'percent', false ) . '>' . esc_html__( 'Percent off', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="amount" ' . selected( $rule['type'] ?? '', 'amount', false ) . '>' . esc_html__( 'Fixed amount off', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="fixed_total" ' . selected( $rule['type'] ?? '', 'fixed_total', false ) . '>' . esc_html__( 'Fixed total price', 'html-landing-page-builder-for-woocommerce' ) . '</option></select></label><label><span>' . esc_html__( 'Discount / total value', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="number" min="0" step="0.01" name="' . esc_attr( $rule_name . '[value]' ) . '" value="' . esc_attr( $rule['value'] ?? '' ) . '"></label></div><p class="description">' . esc_html__( 'Enter a discount for Percent off or Fixed amount off. For Fixed total price, enter the final price for this offer.', 'html-landing-page-builder-for-woocommerce' ) . '</p></section><section class="hlpb-rule-panel hlpb-rule-gift"><h4>' . esc_html__( 'Gift product (optional)', 'html-landing-page-builder-for-woocommerce' ) . '</h4><p>' . esc_html__( 'The gift is added separately once and does not count toward the offer quantity.', 'html-landing-page-builder-for-woocommerce' ) . '</p><div class="hlpb-rule-fields hlpb-gift-fields"><label><span>' . esc_html__( 'Gift product', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[gift_product_id]' ) . '"><option value="0">' . esc_html__( 'No gift', 'html-landing-page-builder-for-woocommerce' ) . '</option>';
 				foreach ( $products as $product ) {
 					$html .= '<option value="' . esc_attr( $product['id'] ) . '" ' . selected( absint( $rule['gift_product_id'] ?? 0 ), $product['id'], false ) . '>' . esc_html( $product['name'] ) . '</option>';
 				}
-				$html .= '</select><select aria-label="' . esc_attr__( 'Gift offer', 'html-landing-page-builder-for-woocommerce' ) . '" name="' . esc_attr( $rule_name . '[gift_mode]' ) . '"><option value="none" ' . selected( $rule['gift_mode'] ?? 'none', 'none', false ) . '>' . esc_html__( 'Not included', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="free" ' . selected( $rule['gift_mode'] ?? 'none', 'free', false ) . '>' . esc_html__( 'Free gift', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="discounted" ' . selected( $rule['gift_mode'] ?? 'none', 'discounted', false ) . '>' . esc_html__( 'Discounted price', 'html-landing-page-builder-for-woocommerce' ) . '</option></select><span class="hlpb-gift-price"><select aria-label="' . esc_attr__( 'Gift discount type', 'html-landing-page-builder-for-woocommerce' ) . '" name="' . esc_attr( $rule_name . '[gift_discount_type]' ) . '"><option value="percent" ' . selected( $rule['gift_discount_type'] ?? 'percent', 'percent', false ) . '>' . esc_html__( 'Percent off', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="fixed_price" ' . selected( $rule['gift_discount_type'] ?? 'percent', 'fixed_price', false ) . '>' . esc_html__( 'Fixed price', 'html-landing-page-builder-for-woocommerce' ) . '</option></select><input type="number" min="0" step="0.01" aria-label="' . esc_attr__( 'Gift discount or price', 'html-landing-page-builder-for-woocommerce' ) . '" name="' . esc_attr( $rule_name . '[gift_discount_value]' ) . '" value="' . esc_attr( $rule['gift_discount_value'] ?? 0 ) . '"></span></div>';
+				$html .= '</select></label><label><span>' . esc_html__( 'Gift treatment', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[gift_mode]' ) . '"><option value="none" ' . selected( $rule['gift_mode'] ?? 'none', 'none', false ) . '>' . esc_html__( 'Not included', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="free" ' . selected( $rule['gift_mode'] ?? 'none', 'free', false ) . '>' . esc_html__( 'Free gift', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="discounted" ' . selected( $rule['gift_mode'] ?? 'none', 'discounted', false ) . '>' . esc_html__( 'Discounted price', 'html-landing-page-builder-for-woocommerce' ) . '</option></select></label><label><span>' . esc_html__( 'Gift price rule', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[gift_discount_type]' ) . '"><option value="percent" ' . selected( $rule['gift_discount_type'] ?? 'percent', 'percent', false ) . '>' . esc_html__( 'Percent off', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="fixed_price" ' . selected( $rule['gift_discount_type'] ?? 'percent', 'fixed_price', false ) . '>' . esc_html__( 'Fixed price', 'html-landing-page-builder-for-woocommerce' ) . '</option></select></label><label><span>' . esc_html__( 'Gift discount / price', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="number" min="0" step="0.01" name="' . esc_attr( $rule_name . '[gift_discount_value]' ) . '" value="' . esc_attr( $rule['gift_discount_value'] ?? 0 ) . '"></label></div><p class="description">' . esc_html__( 'This value is used when Gift treatment is set to Discounted price.', 'html-landing-page-builder-for-woocommerce' ) . '</p></section></div></div>';
 			}
 			$html .= '</div></fieldset>';
 		}
@@ -639,7 +658,8 @@ final class HLPB_Cart_Section {
 			self::checkout_error( __( 'The offer coupon is not ready. Please contact the store.', 'html-landing-page-builder-for-woocommerce' ), 400 );
 		}
 		$quantity = isset( $_POST['quantity'] ) ? absint( wp_unslash( $_POST['quantity'] ) ) : 0;
-		if ( empty( $settings['modes'][ $mode ]['enabled'] ) || $quantity < 1 || $quantity > 4 ) {
+		$minimum_quantity = 'mix' === $mode ? 2 : 1;
+		if ( empty( $settings['modes'][ $mode ]['enabled'] ) || $quantity < $minimum_quantity || $quantity > 4 ) {
 			self::checkout_error( __( 'The selected offer is invalid.', 'html-landing-page-builder-for-woocommerce' ), 400 );
 		}
 		$rules = $settings['modes'][ $mode ]['rules'] ?? array();
@@ -772,6 +792,9 @@ final class HLPB_Cart_Section {
 			}
 			$validated[] = $item;
 			$counts[ $item['product_id'] ] = ( $counts[ $item['product_id'] ] ?? 0 ) + 1;
+		}
+		if ( 'mix' === $mode && count( $counts ) < 2 ) {
+			return new WP_Error( 'hlpb_mix_selection', __( 'Choose at least two different products for your mix.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
 		if ( 'bundle' === $mode ) {
 			foreach ( array_slice( $product_ids, 0, 2 ) as $product_id ) {
@@ -914,12 +937,14 @@ final class HLPB_Cart_Section {
 			}
 			$gift_mode = sanitize_key( $rule['gift_mode'] ?? 'none' );
 			if ( 'free' === $gift_mode ) {
-				return min( (float) $discounting_amount, $base / $line_quantity );
+				$gift_discount = $base;
+				return min( (float) $discounting_amount, $single ? $gift_discount / $line_quantity : $gift_discount );
 			}
 			if ( 'discounted' === $gift_mode ) {
 				$value = max( 0, (float) ( $rule['gift_discount_value'] ?? 0 ) );
 				$off = 'fixed_price' === ( $rule['gift_discount_type'] ?? 'percent' ) ? max( 0, $base - $value * max( 1, absint( $cart_item['quantity'] ?? 1 ) ) ) : $base * min( 100, $value ) / 100;
-				return min( (float) $discounting_amount, round( $off / $line_quantity, wc_get_price_decimals() ) );
+				$gift_discount = round( $off, wc_get_price_decimals() );
+				return min( (float) $discounting_amount, $single ? round( $gift_discount / $line_quantity, wc_get_price_decimals() ) : $gift_discount );
 			}
 			return 0;
 		}
@@ -937,7 +962,7 @@ final class HLPB_Cart_Section {
 			$discount_total = 0;
 		}
 		$line_discount = round( $discount_total * ( $base / $bundle['core_total'] ), wc_get_price_decimals() );
-		return min( (float) $discounting_amount, round( $line_discount / $line_quantity, wc_get_price_decimals() ) );
+		return min( (float) $discounting_amount, $single ? round( $line_discount / $line_quantity, wc_get_price_decimals() ) : $line_discount );
 	}
 
 	private static function get_coupon_bundles( $coupon_id ) {
@@ -985,6 +1010,9 @@ final class HLPB_Cart_Section {
 		if ( ! $current_rule || (int) $bundle['core_count'] !== (int) $expected || sanitize_key( $bundle['rule']['type'] ?? '' ) !== sanitize_key( $current_rule['type'] ?? '' ) || (float) ( $bundle['rule']['value'] ?? 0 ) !== (float) ( $current_rule['value'] ?? 0 ) || absint( $bundle['rule']['gift_product_id'] ?? 0 ) !== absint( $current_rule['gift_product_id'] ?? 0 ) || sanitize_key( $bundle['rule']['gift_mode'] ?? 'none' ) !== sanitize_key( $current_rule['gift_mode'] ?? 'none' ) || sanitize_key( $bundle['rule']['gift_discount_type'] ?? 'percent' ) !== sanitize_key( $current_rule['gift_discount_type'] ?? 'percent' ) || (float) ( $bundle['rule']['gift_discount_value'] ?? 0 ) !== (float) ( $current_rule['gift_discount_value'] ?? 0 ) ) {
 			return false;
 		}
+		if ( 'mix' === $mode && $quantity < 2 ) {
+			return false;
+		}
 		$allowed_ids = array_values( array_filter( array_map( 'absint', $settings['modes'][ $mode ]['products'] ?? array() ) ) );
 		$core_counts = array();
 		foreach ( $bundle['items'] ?? array() as $item ) {
@@ -1003,6 +1031,8 @@ final class HLPB_Cart_Section {
 					return false;
 				}
 			}
+		} elseif ( 'mix' === $mode && count( $core_counts ) < 2 ) {
+			return false;
 		}
 		return true;
 	}
@@ -1134,7 +1164,7 @@ final class HLPB_Cart_Section {
 
 	/** Persist a shopper's explicit gift removal; later quantity edits must not add it back. */
 	public static function remember_removed_bundle_gift( $cart_item_key, $cart ) {
-		if ( ! $cart || empty( $cart->cart_contents[ $cart_item_key ]['_hlpb_is_gift'] ) || empty( $cart->cart_contents[ $cart_item_key ]['_hlpb_bundle_key'] ) ) {
+		if ( self::$syncing_cart || ! $cart || empty( $cart->cart_contents[ $cart_item_key ]['_hlpb_is_gift'] ) || empty( $cart->cart_contents[ $cart_item_key ]['_hlpb_bundle_key'] ) ) {
 			return;
 		}
 		$bundle_key = (string) $cart->cart_contents[ $cart_item_key ]['_hlpb_bundle_key'];
@@ -1143,6 +1173,78 @@ final class HLPB_Cart_Section {
 				$cart->cart_contents[ $key ]['_hlpb_gift_removed'] = true;
 			}
 		}
+	}
+
+	/** Keep only offer-eligible units in a bundle; overflow becomes a regular cart item. */
+	private static function split_bundle_quantity_overflow( $cart, $mode, $mode_config, $core_rows, $core_count, $product_counts ) {
+		$allowed = array_values( array_unique( array_filter( array_map( 'absint', $mode_config['products'] ?? array() ) ) ) );
+		$keep_limits = array_fill_keys( array_keys( $product_counts ), 0 );
+		$should_split = false;
+
+		if ( 'buy' === $mode && $core_count > 4 && ! empty( $allowed ) ) {
+			$keep_limits[ $allowed[0] ] = 4;
+			$should_split = true;
+		} elseif ( 'mix' === $mode ) {
+			$mix_products = array_values( array_filter( $allowed, static function ( $product_id ) use ( $product_counts ) {
+				return ! empty( $product_counts[ $product_id ] );
+			} ) );
+			if ( $core_count < 2 || count( $mix_products ) < 2 ) {
+				$should_split = ! empty( $core_rows );
+			} elseif ( $core_count > 4 ) {
+				foreach ( $mix_products as $product_id ) {
+					$keep_limits[ $product_id ] = 1;
+				}
+				$remaining = 4 - count( $mix_products );
+				foreach ( $mix_products as $product_id ) {
+					$extra = max( 0, absint( $product_counts[ $product_id ] ) - 1 );
+					$keep = min( $remaining, $extra );
+					$keep_limits[ $product_id ] += $keep;
+					$remaining -= $keep;
+				}
+				$should_split = true;
+			}
+		} elseif ( 'bundle' === $mode && count( $allowed ) >= 2 ) {
+			$first_count  = absint( $product_counts[ $allowed[0] ] ?? 0 );
+			$second_count = absint( $product_counts[ $allowed[1] ] ?? 0 );
+			if ( ! $first_count || ! $second_count ) {
+				$should_split = ! empty( $core_rows );
+			} elseif ( $first_count > 4 || $second_count > 4 ) {
+				$keep_limits[ $allowed[0] ] = min( 4, $first_count );
+				$keep_limits[ $allowed[1] ] = min( 4, $second_count );
+				$should_split = true;
+			}
+		}
+
+		if ( ! $should_split ) {
+			return false;
+		}
+
+		$remaining_limits = $keep_limits;
+		self::$syncing_cart = true;
+		foreach ( $core_rows as $key => $row ) {
+			if ( ! isset( $cart->cart_contents[ $key ] ) ) {
+				continue;
+			}
+			$quantity     = max( 1, absint( $row['quantity'] ?? 1 ) );
+			$product_id   = absint( $row['product_id'] ?? 0 );
+			$keep         = min( $quantity, max( 0, absint( $remaining_limits[ $product_id ] ?? 0 ) ) );
+			$remaining_limits[ $product_id ] = max( 0, absint( $remaining_limits[ $product_id ] ?? 0 ) - $keep );
+			$overflow     = $quantity - $keep;
+			if ( $overflow < 1 ) {
+				continue;
+			}
+			$variation_id = absint( $row['variation_id'] ?? 0 );
+			$variation    = is_array( $row['variation'] ?? null ) ? $row['variation'] : array();
+			if ( $keep > 0 ) {
+				$cart->set_quantity( $key, $keep, false );
+			} else {
+				$cart->remove_cart_item( $key );
+			}
+			$cart->add_to_cart( $product_id, $overflow, $variation_id, $variation );
+		}
+		self::$syncing_cart = false;
+
+		return true;
 	}
 
 	/** Update the active quantity rule and attach at most one eligible gift for a bundle. */
@@ -1184,6 +1286,31 @@ final class HLPB_Cart_Section {
 		}
 		$settings = self::settings_for_landing( $landing_id );
 		$mode_config = $settings['modes'][ $mode ] ?? array();
+		if ( self::split_bundle_quantity_overflow( $cart, $mode, $mode_config, $core_rows, $core_count, $product_counts ) ) {
+			$core_rows = array();
+			$core_count = 0;
+			$product_counts = array();
+			foreach ( $cart->cart_contents as $key => $row ) {
+				if ( ( $row['_hlpb_bundle_key'] ?? '' ) !== (string) $bundle_key || ! empty( $row['_hlpb_is_gift'] ) ) {
+					continue;
+				}
+				$core_rows[ $key ] = $row;
+				$quantity = max( 1, absint( $row['quantity'] ?? 1 ) );
+				$core_count += $quantity;
+				$product_id = absint( $row['product_id'] ?? 0 );
+				$product_counts[ $product_id ] = ( $product_counts[ $product_id ] ?? 0 ) + $quantity;
+			}
+		}
+		if ( ! $core_rows ) {
+			self::$syncing_cart = true;
+			foreach ( $gift_rows as $key => $row ) {
+				if ( isset( $cart->cart_contents[ $key ] ) ) {
+					$cart->remove_cart_item( $key );
+				}
+			}
+			self::$syncing_cart = false;
+			return;
+		}
 		$quantity = $core_count;
 		$counts_valid = true;
 		if ( 'bundle' === $mode ) {
@@ -1206,7 +1333,11 @@ final class HLPB_Cart_Section {
 		}
 		$rules = $mode_config['rules'] ?? array();
 		$rule = $rules[ $quantity ] ?? $rules[ (string) $quantity ] ?? false;
-		$valid_rule = ! empty( $mode_config['enabled'] ) && $counts_valid && $quantity >= 1 && $quantity <= 4 && is_array( $rule );
+		$minimum_quantity = 'mix' === $mode ? 2 : 1;
+		if ( 'mix' === $mode && count( $product_counts ) < 2 ) {
+			$counts_valid = false;
+		}
+		$valid_rule = ! empty( $mode_config['enabled'] ) && $counts_valid && $quantity >= $minimum_quantity && $quantity <= 4 && is_array( $rule );
 		$target_gift = $gift_opt_in && $valid_rule && in_array( $rule['gift_mode'] ?? 'none', array( 'free', 'discounted' ), true ) ? absint( $rule['gift_product_id'] ?? 0 ) : 0;
 		self::$syncing_cart = true;
 		foreach ( $core_rows as $key => $row ) {
@@ -1216,14 +1347,16 @@ final class HLPB_Cart_Section {
 		}
 		$has_eligible_gift = false;
 		foreach ( $gift_rows as $key => $row ) {
-			$eligible = $target_gift && ! $has_eligible_gift && absint( $row['product_id'] ?? 0 ) === $target_gift;
+			$eligible = $target_gift && ! $has_eligible_gift && absint( $row['product_id'] ?? 0 ) === $target_gift && ! $gift_was_removed;
+			if ( ! $eligible ) {
+				$cart->remove_cart_item( $key );
+				continue;
+			}
 			$cart->cart_contents[ $key ]['_hlpb_bundle_quantity'] = $quantity;
 			$cart->cart_contents[ $key ]['_hlpb_rule'] = $valid_rule ? $rule : array();
-			$cart->cart_contents[ $key ]['_hlpb_gift_eligible'] = (bool) $eligible;
-			if ( $eligible ) {
-				$cart->cart_contents[ $key ]['quantity'] = 1;
-				$has_eligible_gift = true;
-			}
+			$cart->cart_contents[ $key ]['_hlpb_gift_eligible'] = true;
+			$cart->cart_contents[ $key ]['quantity'] = 1;
+			$has_eligible_gift = true;
 		}
 		if ( $target_gift && ! $has_eligible_gift && ! $gift_was_removed ) {
 			$gift = self::make_cart_gift( $target_gift );
