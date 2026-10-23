@@ -14,6 +14,7 @@ final class HLPB_Cart_Section {
 	const COUPON_IDS_META = '_hlpb_cart_coupon_ids';
 	const COUPON_LANDING_META = '_hlpb_landing_id';
 	const COUPON_FLAG_META = '_hlpb_landing_offer_coupon';
+	const STOCK_NOTIFY_META = '_hlpb_stock_notify_emails';
 	private static $syncing_cart = false;
 
 	/** Register the public checkout endpoint and WooCommerce coupon filters. */
@@ -26,6 +27,14 @@ final class HLPB_Cart_Section {
 		}
 		add_action( 'admin_post_hlpb_landing_add_to_cart', array( __CLASS__, 'handle_checkout_request' ) );
 		add_action( 'admin_post_nopriv_hlpb_landing_add_to_cart', array( __CLASS__, 'handle_checkout_request' ) );
+		add_action( 'admin_post_hlpb_landing_live_variations', array( __CLASS__, 'handle_live_variations_request' ) );
+		add_action( 'admin_post_nopriv_hlpb_landing_live_variations', array( __CLASS__, 'handle_live_variations_request' ) );
+		add_action( 'admin_post_hlpb_landing_stock_notification', array( __CLASS__, 'handle_stock_notification_request' ) );
+		add_action( 'admin_post_nopriv_hlpb_landing_stock_notification', array( __CLASS__, 'handle_stock_notification_request' ) );
+		add_action( 'admin_menu', array( __CLASS__, 'register_stock_notifications_menu' ) );
+		add_action( 'admin_post_hlpb_delete_stock_notification', array( __CLASS__, 'handle_delete_stock_notification' ) );
+		add_action( 'admin_post_hlpb_retry_stock_notification', array( __CLASS__, 'handle_retry_stock_notification' ) );
+		add_action( 'woocommerce_product_set_stock_status', array( __CLASS__, 'send_stock_notifications' ), 10, 3 );
 		add_filter( 'woocommerce_coupon_is_valid', array( __CLASS__, 'validate_coupon' ), 20, 3 );
 		add_filter( 'woocommerce_coupon_is_valid_for_product', array( __CLASS__, 'coupon_valid_for_product' ), 20, 4 );
 		add_filter( 'woocommerce_coupon_get_discount_amount', array( __CLASS__, 'coupon_discount' ), 20, 5 );
@@ -40,6 +49,133 @@ final class HLPB_Cart_Section {
 		add_action( 'trashed_post', array( __CLASS__, 'deactivate_for_landing' ) );
 		add_action( 'untrashed_post', array( __CLASS__, 'restore_for_landing' ) );
 		add_action( 'before_delete_post', array( __CLASS__, 'delete_coupon_for_landing' ) );
+	}
+
+	/** Add the restock subscriber list under the plugin's Landing Pages menu. */
+	public static function register_stock_notifications_menu() {
+		add_submenu_page(
+			'edit.php?post_type=' . HLPB_Landing_Builder::POST_TYPE,
+			__( 'Stock Notifications', 'html-landing-page-builder-for-woocommerce' ),
+			__( 'Stock Notifications', 'html-landing-page-builder-for-woocommerce' ),
+			'manage_woocommerce',
+			'hlpb-stock-notifications',
+			array( __CLASS__, 'render_stock_notifications_page' )
+		);
+	}
+
+	/** Convert stored subscription values to a consistent, backwards-compatible record format. */
+	private static function normalize_stock_notification_entries( $stored ) {
+		if ( ! is_array( $stored ) ) {
+			return array();
+		}
+		$entries = array();
+		foreach ( $stored as $entry ) {
+			if ( is_string( $entry ) ) {
+				$entry = array( 'email' => $entry );
+			}
+			if ( ! is_array( $entry ) ) {
+				continue;
+			}
+			$email = isset( $entry['email'] ) && is_scalar( $entry['email'] ) ? sanitize_email( (string) $entry['email'] ) : '';
+			if ( ! is_email( $email ) ) {
+				continue;
+			}
+			$entries[] = array(
+				'email'         => $email,
+				'subscribed_at' => isset( $entry['subscribed_at'] ) && is_scalar( $entry['subscribed_at'] ) ? sanitize_text_field( (string) $entry['subscribed_at'] ) : '',
+				'landing_id'    => isset( $entry['landing_id'] ) && is_scalar( $entry['landing_id'] ) ? absint( $entry['landing_id'] ) : 0,
+				'status'        => isset( $entry['status'] ) && in_array( $entry['status'], array( 'notified', 'mail_failed' ), true ) ? $entry['status'] : 'waiting',
+				'notified_at'   => isset( $entry['notified_at'] ) && is_scalar( $entry['notified_at'] ) ? sanitize_text_field( (string) $entry['notified_at'] ) : '',
+				'attempted_at'  => isset( $entry['attempted_at'] ) && is_scalar( $entry['attempted_at'] ) ? sanitize_text_field( (string) $entry['attempted_at'] ) : '',
+			);
+		}
+		return $entries;
+	}
+
+	/** Show subscribed emails and their product, landing page, and delivery status. */
+	public static function render_stock_notifications_page() {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			return;
+		}
+
+		$variation_ids = get_posts( array(
+			'post_type'      => 'product_variation',
+			'post_status'    => array( 'publish', 'private', 'draft', 'pending', 'future', 'trash' ),
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+			'orderby'        => 'ID',
+			'order'          => 'DESC',
+			'meta_query'     => array(
+				array(
+					'key'     => self::STOCK_NOTIFY_META,
+					'compare' => 'EXISTS',
+				),
+			),
+		) );
+		$rows = array();
+		foreach ( $variation_ids as $variation_id ) {
+			$variation = wc_get_product( $variation_id );
+			$entries = self::normalize_stock_notification_entries( get_post_meta( $variation_id, self::STOCK_NOTIFY_META, true ) );
+			foreach ( $entries as $entry ) {
+				$rows[] = array(
+					'variation_id' => absint( $variation_id ),
+					'product_name' => $variation ? wp_strip_all_tags( $variation->get_formatted_name() ) : sprintf( __( 'Deleted variation #%d', 'html-landing-page-builder-for-woocommerce' ), absint( $variation_id ) ),
+					'email'        => $entry['email'],
+					'subscribed'   => $entry['subscribed_at'],
+					'landing_id'   => absint( $entry['landing_id'] ),
+					'status'       => $entry['status'],
+					'notified'     => $entry['notified_at'],
+					'attempted'    => $entry['attempted_at'],
+				);
+			}
+		}
+		usort( $rows, static function ( $left, $right ) {
+			return strcmp( (string) $right['subscribed'], (string) $left['subscribed'] );
+		} );
+		$waiting_count = count( array_filter( $rows, static function ( $row ) { return 'waiting' === $row['status']; } ) );
+		$failed_count = count( array_filter( $rows, static function ( $row ) { return 'mail_failed' === $row['status']; } ) );
+		$notified_count = count( $rows ) - $waiting_count - $failed_count;
+
+		echo '<div class="wrap"><h1>' . esc_html__( 'Stock Notifications', 'html-landing-page-builder-for-woocommerce' ) . '</h1>';
+		echo '<p>' . esc_html__( 'Emails entered for out-of-stock product variations appear here. When a variation becomes purchasable again, WordPress sends a notification and keeps the result in this list. You can retry a failed email or delete a subscription.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		if ( isset( $_GET['deleted'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['deleted'] ) ) ) {
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'The notification subscription was deleted.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+		}
+		if ( isset( $_GET['retried'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['retried'] ) ) ) {
+			echo '<div class="notice notice-info is-dismissible"><p>' . esc_html__( 'The email retry was processed. Check the row status for the result.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+		}
+		echo '<p><strong>' . esc_html__( 'Waiting for stock:', 'html-landing-page-builder-for-woocommerce' ) . '</strong> ' . esc_html( number_format_i18n( $waiting_count ) ) . ' &nbsp; <strong>' . esc_html__( 'Email sent:', 'html-landing-page-builder-for-woocommerce' ) . '</strong> ' . esc_html( number_format_i18n( $notified_count ) ) . ' &nbsp; <strong>' . esc_html__( 'Delivery failed:', 'html-landing-page-builder-for-woocommerce' ) . '</strong> ' . esc_html( number_format_i18n( $failed_count ) ) . '</p>';
+		if ( empty( $rows ) ) {
+			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'There are no stock notification subscriptions yet.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div></div>';
+			return;
+		}
+
+		echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Email', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Subscribed', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Product and variation', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Landing page', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Status', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Last email attempt', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Actions', 'html-landing-page-builder-for-woocommerce' ) . '</th></tr></thead><tbody>';
+		foreach ( $rows as $row ) {
+			$landing_title = $row['landing_id'] ? get_the_title( $row['landing_id'] ) : '';
+			$landing_edit = $row['landing_id'] ? get_edit_post_link( $row['landing_id'] ) : false;
+			$landing_cell = $landing_title ? esc_html( $landing_title ) . ' (#' . esc_html( $row['landing_id'] ) . ')' : esc_html__( 'Landing page unavailable', 'html-landing-page-builder-for-woocommerce' );
+			if ( $landing_title && $landing_edit ) {
+				$landing_cell = '<a href="' . esc_url( $landing_edit ) . '">' . esc_html( $landing_title ) . '</a> <span class="description">(#' . esc_html( $row['landing_id'] ) . ')</span>';
+			}
+			$status = 'notified' === $row['status'] ? __( 'Email sent', 'html-landing-page-builder-for-woocommerce' ) : ( 'mail_failed' === $row['status'] ? __( 'Email delivery failed', 'html-landing-page-builder-for-woocommerce' ) : __( 'Waiting for stock', 'html-landing-page-builder-for-woocommerce' ) );
+			$date_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
+			$subscribed_timestamp = $row['subscribed'] ? strtotime( $row['subscribed'] . ' UTC' ) : false;
+			$attempted_timestamp = $row['attempted'] ? strtotime( $row['attempted'] . ' UTC' ) : false;
+			$subscribed = $subscribed_timestamp ? wp_date( $date_format, $subscribed_timestamp ) : '—';
+			$attempted = $attempted_timestamp ? wp_date( $date_format, $attempted_timestamp ) : '—';
+			$nonce_action = 'hlpb_delete_stock_notification_' . $row['variation_id'] . '_' . md5( strtolower( $row['email'] ) );
+			echo '<tr><td>' . esc_html( $row['email'] ) . '</td><td>' . esc_html( $subscribed ) . '</td><td>' . esc_html( $row['product_name'] ) . '</td><td>' . $landing_cell . '</td><td>' . esc_html( $status ) . '</td><td>' . esc_html( $attempted ) . '</td><td>';
+			if ( 'mail_failed' === $row['status'] ) {
+				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="hlpb_retry_stock_notification"><input type="hidden" name="variation_id" value="' . esc_attr( $row['variation_id'] ) . '">';
+				wp_nonce_field( 'hlpb_retry_stock_notification_' . $row['variation_id'] );
+				echo '<button type="submit" class="button button-small">' . esc_html__( 'Retry email', 'html-landing-page-builder-for-woocommerce' ) . '</button></form> ';
+			}
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="hlpb_delete_stock_notification"><input type="hidden" name="variation_id" value="' . esc_attr( $row['variation_id'] ) . '"><input type="hidden" name="email" value="' . esc_attr( $row['email'] ) . '">';
+			wp_nonce_field( $nonce_action );
+			echo '<button type="submit" class="button button-small" onclick="return confirm(\'' . esc_js( __( 'Delete this email subscription?', 'html-landing-page-builder-for-woocommerce' ) ) . '\');">' . esc_html__( 'Delete', 'html-landing-page-builder-for-woocommerce' ) . '</button></form></td></tr>';
+		}
+		echo '</tbody></table></div>';
 	}
 
 	/** Default editable copy and offer configuration. */
@@ -459,6 +595,7 @@ final class HLPB_Cart_Section {
 			'token'          => self::token( $post_id, $section ),
 			'endpoint'       => admin_url( 'admin-post.php' ),
 			'action'         => 'hlpb_landing_add_to_cart',
+			'liveAction'     => 'hlpb_landing_live_variations',
 			'checkout'       => function_exists( 'wc_get_checkout_url' ) ? wc_get_checkout_url() : home_url( '/checkout/' ),
 			'couponId'       => $first_coupon['id'],
 			'couponCode'     => $first_coupon['code'],
@@ -481,16 +618,17 @@ final class HLPB_Cart_Section {
 
 	private static function get_product_public_data( $product_id ) {
 		$product = wc_get_product( absint( $product_id ) );
-		if ( ! $product || ! $product->is_purchasable() || 'publish' !== get_post_status( $product->get_id() ) || ! $product->is_in_stock() ) {
+		if ( ! $product || 'publish' !== get_post_status( $product->get_id() ) ) {
 			return false;
 		}
 		$images = self::product_images( $product );
 		$placeholder_url = function_exists( 'wc_placeholder_img_src' ) ? wc_placeholder_img_src( 'woocommerce_single' ) : '';
 		$placeholder_image = $placeholder_url ? array( 'src' => $placeholder_url, 'thumb' => $placeholder_url, 'alt' => wp_strip_all_tags( $product->get_name() ) ) : '';
+		$availability = self::public_availability_data( $product );
 		$data = array(
 			'id' => $product->get_id(), 'name' => wp_strip_all_tags( $product->get_name() ), 'price' => (float) wc_get_price_to_display( $product ), 'type' => $product->is_type( 'variable' ) ? 'variable' : 'simple',
 			'image' => $images ? $images[0] : $placeholder_image, 'gallery' => $images ? $images : ( $placeholder_image ? array( $placeholder_image ) : array() ), 'attributes' => array(), 'variations' => array(), 'defaultAttributes' => array(),
-		);
+		) + $availability;
 		if ( $product->is_type( 'variable' ) ) {
 			$default_attributes = method_exists( $product, 'get_default_attributes' ) ? $product->get_default_attributes() : array();
 			foreach ( (array) $default_attributes as $key => $value ) {
@@ -508,10 +646,11 @@ final class HLPB_Cart_Section {
 			}
 			foreach ( $product->get_children() as $variation_id ) {
 				$variation = wc_get_product( $variation_id );
-				if ( ! $variation || ! $variation->variation_is_visible() || ! $variation->is_purchasable() || ! $variation->is_in_stock() ) {
+				if ( ! $variation || ! $variation->is_type( 'variation' ) || 'publish' !== get_post_status( $variation->get_id() ) ) {
 					continue;
 				}
 				$variation_images = self::product_images( $variation, $product );
+				$variation_availability = self::public_availability_data( $variation );
 				$variation_attributes = array();
 				foreach ( $variation->get_attributes() as $key => $value ) {
 					$key = preg_replace( '/^attribute_/', '', (string) $key );
@@ -520,10 +659,356 @@ final class HLPB_Cart_Section {
 				$data['variations'][] = array(
 					'id' => $variation->get_id(), 'price' => (float) wc_get_price_to_display( $variation ), 'attributes' => $variation_attributes,
 					'image' => $variation_images ? $variation_images[0] : $data['image'], 'gallery' => $variation_images ? $variation_images : $images,
-				);
+				) + $variation_availability;
 			}
 		}
 		return $data;
+	}
+
+	/** Public stock, backorder, and delivery details for a product or variation. */
+	private static function public_availability_data( $product ) {
+		$availability = method_exists( $product, 'get_availability' ) ? $product->get_availability() : array();
+		$description = method_exists( $product, 'is_type' ) && $product->is_type( 'variation' ) && method_exists( $product, 'get_description' ) ? $product->get_description() : '';
+		$stock_status = method_exists( $product, 'get_stock_status' ) ? sanitize_key( $product->get_stock_status() ) : 'instock';
+		$in_stock = method_exists( $product, 'is_in_stock' ) && $product->is_in_stock();
+		$backorders_allowed = method_exists( $product, 'backorders_allowed' ) && $product->backorders_allowed();
+		$purchasable = method_exists( $product, 'is_purchasable' ) && $product->is_purchasable();
+		return array(
+			'stockStatus'       => $stock_status,
+			'inStock'           => (bool) $in_stock,
+			'backordersAllowed' => (bool) $backorders_allowed,
+			'purchasable'       => (bool) $purchasable,
+			'canBuy'            => (bool) ( $purchasable && ( $in_stock || $backorders_allowed ) ),
+			'availabilityLabel' => ! empty( $availability['availability'] ) ? sanitize_text_field( wp_strip_all_tags( $availability['availability'] ) ) : '',
+			'shippingNote'      => sanitize_textarea_field( wp_strip_all_tags( $description ) ),
+		);
+	}
+
+	/** Return current price, stock, backorder note, and gallery for selected variations. */
+	public static function handle_live_variations_request() {
+		if ( ! self::is_same_site_request() ) {
+			wp_send_json_error( array( 'message' => __( 'This stock check must come from the landing page.', 'html-landing-page-builder-for-woocommerce' ) ), 403 );
+		}
+		$landing_id_value = isset( $_POST['landing_id'] ) ? wp_unslash( $_POST['landing_id'] ) : 0;
+		$landing_id = is_scalar( $landing_id_value ) ? absint( $landing_id_value ) : 0;
+		$sections = $landing_id ? HLPB_Landing_Builder::get_sections( $landing_id ) : array();
+		$section = self::find_section( $sections );
+		$token_value = isset( $_POST['token'] ) ? wp_unslash( $_POST['token'] ) : '';
+		$token = is_scalar( $token_value ) ? sanitize_text_field( (string) $token_value ) : '';
+		$token_is_current = '' !== $token && hash_equals( self::token( $landing_id, $section ), $token );
+		$token_is_legacy = 1 === preg_match( '/\A[a-f0-9]{64}\z/i', $token );
+		if ( ! $section || 'publish' !== get_post_status( $landing_id ) || ( ! $token_is_current && ! $token_is_legacy ) ) {
+			wp_send_json_error( array( 'message' => __( 'This landing offer has changed. Refresh the page and try again.', 'html-landing-page-builder-for-woocommerce' ) ), 403 );
+		}
+		$settings = array_merge( self::defaults(), self::sanitize( $section ) );
+		$mode = isset( $_POST['mode'] ) ? sanitize_key( wp_unslash( $_POST['mode'] ) ) : '';
+		$quantity = isset( $_POST['quantity'] ) ? absint( wp_unslash( $_POST['quantity'] ) ) : 0;
+		$minimum_quantity = 'mix' === $mode ? 2 : 1;
+		if ( ! in_array( $mode, array( 'buy', 'mix', 'bundle' ), true ) || empty( $settings['modes'][ $mode ]['enabled'] ) || $quantity < $minimum_quantity || $quantity > 4 ) {
+			wp_send_json_error( array( 'message' => __( 'The selected offer is invalid.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+		}
+		$rule = $settings['modes'][ $mode ]['rules'][ $quantity ] ?? $settings['modes'][ $mode ]['rules'][ (string) $quantity ] ?? false;
+		if ( ! is_array( $rule ) ) {
+			wp_send_json_error( array( 'message' => __( 'The selected offer is unavailable.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+		}
+		$selections_json = isset( $_POST['items'] ) ? wp_unslash( $_POST['items'] ) : '[]';
+		$selections = json_decode( $selections_json, true );
+		if ( ! is_array( $selections ) || count( $selections ) > 9 ) {
+			wp_send_json_error( array( 'message' => __( 'The selected products could not be read.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+		}
+		$allowed_ids = array_values( array_unique( array_filter( array_map( 'absint', $settings['modes'][ $mode ]['products'] ?? array() ) ) ) );
+		$expected_items = 'bundle' === $mode ? $quantity * 2 : $quantity;
+		$core_count = 0;
+		$results = array();
+		foreach ( $selections as $selection ) {
+			if ( ! is_array( $selection ) ) {
+				wp_send_json_error( array( 'message' => __( 'A selected product is invalid.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+			}
+			$slot = isset( $selection['slot'] ) && 'gift' === $selection['slot'] ? 'gift' : ( isset( $selection['slot'] ) && ctype_digit( (string) $selection['slot'] ) ? (string) $selection['slot'] : '' );
+			$product_id = absint( $selection['product_id'] ?? 0 );
+			if ( 'gift' === $slot ) {
+				$gift_mode = sanitize_key( $rule['gift_mode'] ?? 'none' );
+				$expected_gift_id = in_array( $gift_mode, array( 'free', 'discounted' ), true ) ? absint( $rule['gift_product_id'] ?? 0 ) : 0;
+				if ( ! $expected_gift_id || $product_id !== $expected_gift_id ) {
+					continue;
+				}
+			} else {
+				++$core_count;
+				if ( '' === $slot || ! in_array( $product_id, $allowed_ids, true ) ) {
+					wp_send_json_error( array( 'message' => __( 'A selected product is not part of this offer.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+				}
+			}
+			$live_data = self::get_live_selection_public_data( $product_id, $selection );
+			if ( is_wp_error( $live_data ) ) {
+				wp_send_json_error( array( 'message' => $live_data->get_error_message() ), 400 );
+			}
+			$live_data['slot'] = $slot;
+			$results[] = $live_data;
+		}
+		if ( $core_count !== $expected_items ) {
+			wp_send_json_error( array( 'message' => __( 'Choose a product for each item in the offer.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+		}
+		$mode_settings = $settings['modes'][ $mode ];
+		$refresh_product_ids = $allowed_ids;
+		foreach ( $mode_settings['rules'] ?? array() as $mode_rule ) {
+			if ( in_array( $mode_rule['gift_mode'] ?? 'none', array( 'free', 'discounted' ), true ) && ! empty( $mode_rule['gift_product_id'] ) ) {
+				$refresh_product_ids[] = absint( $mode_rule['gift_product_id'] );
+			}
+		}
+		$public_products = array();
+		foreach ( array_unique( array_filter( array_map( 'absint', $refresh_product_ids ) ) ) as $refresh_product_id ) {
+			$product_data = self::get_product_public_data( $refresh_product_id );
+			if ( $product_data ) {
+				$public_products[ (string) $refresh_product_id ] = $product_data;
+			}
+		}
+		wp_send_json_success( array(
+			'items'     => $results,
+			'token'     => self::token( $landing_id, $section ),
+			'mode'      => $mode_settings,
+			'products'  => $public_products,
+		) );
+	}
+
+	/** Save an email for a selected out-of-stock variation with a delivery description. */
+	public static function handle_stock_notification_request() {
+		if ( ! self::is_same_site_request() ) {
+			wp_send_json_error( array( 'message' => __( 'This request must come from the landing page.', 'html-landing-page-builder-for-woocommerce' ) ), 403 );
+		}
+		$landing_id_value = isset( $_POST['landing_id'] ) ? wp_unslash( $_POST['landing_id'] ) : 0;
+		$landing_id = is_scalar( $landing_id_value ) ? absint( $landing_id_value ) : 0;
+		$sections = $landing_id ? HLPB_Landing_Builder::get_sections( $landing_id ) : array();
+		$section = self::find_section( $sections );
+		$token_value = isset( $_POST['token'] ) ? wp_unslash( $_POST['token'] ) : '';
+		$token = is_scalar( $token_value ) ? sanitize_text_field( (string) $token_value ) : '';
+		$token_is_current = '' !== $token && hash_equals( self::token( $landing_id, $section ), $token );
+		$token_is_legacy = 1 === preg_match( '/\\A[a-f0-9]{64}\\z/i', $token );
+		if ( ! $section || 'publish' !== get_post_status( $landing_id ) || ( ! $token_is_current && ! $token_is_legacy ) ) {
+			wp_send_json_error( array( 'message' => __( 'This landing page is unavailable. Refresh it and try again.', 'html-landing-page-builder-for-woocommerce' ) ), 403 );
+		}
+
+		$product_id_value = isset( $_POST['product_id'] ) ? wp_unslash( $_POST['product_id'] ) : 0;
+		$variation_id_value = isset( $_POST['variation_id'] ) ? wp_unslash( $_POST['variation_id'] ) : 0;
+		$product_id = is_scalar( $product_id_value ) ? absint( $product_id_value ) : 0;
+		$variation_id = is_scalar( $variation_id_value ) ? absint( $variation_id_value ) : 0;
+		$email_value = isset( $_POST['email'] ) ? wp_unslash( $_POST['email'] ) : '';
+		$email = is_scalar( $email_value ) ? sanitize_email( (string) $email_value ) : '';
+		if ( ! is_email( $email ) ) {
+			wp_send_json_error( array( 'message' => __( 'Enter a valid email address.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+		}
+		$parent = wc_get_product( $product_id );
+		$variation = wc_get_product( $variation_id );
+		if ( ! $parent || ! $parent->is_type( 'variable' ) || ! $variation || ! $variation->is_type( 'variation' ) || absint( $variation->get_parent_id() ) !== $product_id || 'publish' !== get_post_status( $product_id ) || 'publish' !== get_post_status( $variation_id ) ) {
+			wp_send_json_error( array( 'message' => __( 'The selected product variation could not be found.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+		}
+
+		$settings = array_merge( self::defaults(), self::sanitize( $section ) );
+		$landing_product_ids = array();
+		foreach ( $settings['modes'] as $mode_settings ) {
+			$landing_product_ids = array_merge( $landing_product_ids, array_map( 'absint', $mode_settings['products'] ?? array() ) );
+		}
+		if ( ! in_array( $product_id, $landing_product_ids, true ) ) {
+			wp_send_json_error( array( 'message' => __( 'This product is not part of the landing page offer.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+		}
+
+		$availability = self::public_availability_data( $variation );
+		if ( $availability['canBuy'] ) {
+			wp_send_json_success( array( 'message' => __( 'Good news — this variation is available now. Refresh the page to choose it.', 'html-landing-page-builder-for-woocommerce' ) ) );
+		}
+		if ( '' === trim( $availability['shippingNote'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'Notifications are available only for an out-of-stock variation with a delivery note.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+		}
+
+		$entries = self::normalize_stock_notification_entries( get_post_meta( $variation_id, self::STOCK_NOTIFY_META, true ) );
+		$email_key = strtolower( $email );
+		$already_subscribed = false;
+		$active_count = 0;
+		foreach ( $entries as $entry ) {
+			if ( 'notified' !== $entry['status'] ) {
+				++$active_count;
+			}
+			if ( 'notified' !== $entry['status'] && strtolower( $entry['email'] ) === $email_key ) {
+				$already_subscribed = true;
+				break;
+			}
+		}
+		if ( ! $already_subscribed ) {
+			if ( $active_count >= 100 ) {
+				wp_send_json_error( array( 'message' => __( 'This notification list is currently full.', 'html-landing-page-builder-for-woocommerce' ) ), 429 );
+			}
+			$entries[] = array(
+				'email'         => $email,
+				'subscribed_at' => current_time( 'mysql', true ),
+				'landing_id'    => $landing_id,
+				'status'        => 'waiting',
+				'notified_at'   => '',
+				'attempted_at'  => '',
+			);
+			update_post_meta( $variation_id, self::STOCK_NOTIFY_META, array_values( $entries ) );
+		}
+		wp_send_json_success( array( 'message' => __( 'Thanks! We will email you when this variation is available.', 'html-landing-page-builder-for-woocommerce' ) ) );
+	}
+
+	/** Notify subscribers when a variation returns to stock. */
+	public static function send_stock_notifications( $product_id, $stock_status, $product = null ) {
+		$product_id = absint( $product_id );
+		if ( 'instock' !== $stock_status || ! $product_id ) {
+			return;
+		}
+		$entries = self::normalize_stock_notification_entries( get_post_meta( $product_id, self::STOCK_NOTIFY_META, true ) );
+		if ( empty( $entries ) ) {
+			return;
+		}
+		$product = $product instanceof WC_Product ? $product : wc_get_product( $product_id );
+		if ( ! $product || ! $product->is_purchasable() || ! $product->is_in_stock() ) {
+			return;
+		}
+		$name = wp_strip_all_tags( $product->get_formatted_name() );
+		$parent_id = $product->is_type( 'variation' ) ? absint( $product->get_parent_id() ) : $product_id;
+		$url = get_permalink( $parent_id );
+		$subject = sprintf( __( '%s is back in stock', 'html-landing-page-builder-for-woocommerce' ), $name );
+		$message = sprintf(
+			__( 'Good news — %1$s is available again. You can view it here: %2$s', 'html-landing-page-builder-for-woocommerce' ),
+			$name,
+			$url
+		);
+		$updated = false;
+		foreach ( $entries as &$entry ) {
+			if ( ! in_array( $entry['status'], array( 'waiting', 'mail_failed' ), true ) ) {
+				continue;
+			}
+			$attempted_at = current_time( 'mysql', true );
+			$entry['attempted_at'] = $attempted_at;
+			if ( wp_mail( $entry['email'], $subject, $message ) ) {
+				$entry['status'] = 'notified';
+				$entry['notified_at'] = $attempted_at;
+			} else {
+				$entry['status'] = 'mail_failed';
+			}
+			$updated = true;
+		}
+		unset( $entry );
+		if ( $updated ) {
+			update_post_meta( $product_id, self::STOCK_NOTIFY_META, array_values( $entries ) );
+		}
+	}
+
+	/** Delete one email subscription from the admin list. */
+	public static function handle_delete_stock_notification() {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'html-landing-page-builder-for-woocommerce' ) );
+		}
+		$variation_id_value = isset( $_POST['variation_id'] ) ? wp_unslash( $_POST['variation_id'] ) : 0;
+		$email_value = isset( $_POST['email'] ) ? wp_unslash( $_POST['email'] ) : '';
+		$variation_id = is_scalar( $variation_id_value ) ? absint( $variation_id_value ) : 0;
+		$email = is_scalar( $email_value ) ? sanitize_email( (string) $email_value ) : '';
+		if ( ! $variation_id || ! is_email( $email ) ) {
+			wp_die( esc_html__( 'The stock notification subscription could not be found.', 'html-landing-page-builder-for-woocommerce' ) );
+		}
+		check_admin_referer( 'hlpb_delete_stock_notification_' . $variation_id . '_' . md5( strtolower( $email ) ) );
+		$entries = self::normalize_stock_notification_entries( get_post_meta( $variation_id, self::STOCK_NOTIFY_META, true ) );
+		$entries = array_values( array_filter( $entries, static function ( $entry ) use ( $email ) {
+			return strtolower( $entry['email'] ) !== strtolower( $email );
+		} ) );
+		if ( empty( $entries ) ) {
+			delete_post_meta( $variation_id, self::STOCK_NOTIFY_META );
+		} else {
+			update_post_meta( $variation_id, self::STOCK_NOTIFY_META, $entries );
+		}
+		$menu_url = admin_url( 'edit.php?post_type=' . HLPB_Landing_Builder::POST_TYPE . '&page=hlpb-stock-notifications' );
+		wp_safe_redirect( add_query_arg( 'deleted', '1', $menu_url ) );
+		exit;
+	}
+
+	/** Retry a notification email from the admin list if the variation is purchasable. */
+	public static function handle_retry_stock_notification() {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'html-landing-page-builder-for-woocommerce' ) );
+		}
+		$variation_id_value = isset( $_POST['variation_id'] ) ? wp_unslash( $_POST['variation_id'] ) : 0;
+		$variation_id = is_scalar( $variation_id_value ) ? absint( $variation_id_value ) : 0;
+		if ( ! $variation_id ) {
+			wp_die( esc_html__( 'The product variation could not be found.', 'html-landing-page-builder-for-woocommerce' ) );
+		}
+		check_admin_referer( 'hlpb_retry_stock_notification_' . $variation_id );
+		$variation = wc_get_product( $variation_id );
+		if ( $variation && $variation->is_type( 'variation' ) ) {
+			self::send_stock_notifications( $variation_id, $variation->get_stock_status(), $variation );
+		}
+		$menu_url = admin_url( 'edit.php?post_type=' . HLPB_Landing_Builder::POST_TYPE . '&page=hlpb-stock-notifications' );
+		wp_safe_redirect( add_query_arg( 'retried', '1', $menu_url ) );
+		exit;
+	}
+
+	/** Resolve a public selection, allowing a partial choice to preview its variation images. */
+	private static function get_live_selection_public_data( $product_id, $selection ) {
+		$product = wc_get_product( absint( $product_id ) );
+		if ( ! $product || 'publish' !== get_post_status( $product->get_id() ) ) {
+			return new WP_Error( 'hlpb_live_product_missing', __( 'A selected product is no longer available.', 'html-landing-page-builder-for-woocommerce' ) );
+		}
+		$selected = $product;
+		$variation = false;
+		$selection_complete = ! $product->is_type( 'variable' );
+		if ( $product->is_type( 'variable' ) ) {
+			$attribute_options = $product->get_variation_attributes();
+			$selected_attributes = isset( $selection['attributes'] ) && is_array( $selection['attributes'] ) ? $selection['attributes'] : array();
+			$wanted = array();
+			$selection_complete = ! empty( $attribute_options );
+			foreach ( $attribute_options as $raw_key => $options ) {
+				$key = preg_replace( '/^attribute_/', '', (string) $raw_key );
+				$key = sanitize_key( $key );
+				$value = $selected_attributes[ $key ] ?? $selected_attributes[ 'attribute_' . $key ] ?? '';
+				$value = is_scalar( $value ) ? wc_clean( (string) $value ) : '';
+				if ( '' === $value ) {
+					$selection_complete = false;
+					continue;
+				}
+				if ( ! empty( $options ) && ! in_array( $value, array_map( 'strval', (array) $options ), true ) ) {
+					return new WP_Error( 'hlpb_live_attribute_invalid', __( 'One of the selected product options is invalid.', 'html-landing-page-builder-for-woocommerce' ) );
+				}
+				$wanted[ 'attribute_' . $key ] = $value;
+			}
+			foreach ( $product->get_children() as $variation_id ) {
+				$candidate = wc_get_product( $variation_id );
+				if ( ! $candidate || ! $candidate->is_type( 'variation' ) || 'publish' !== get_post_status( $candidate->get_id() ) ) {
+					continue;
+				}
+				$matches = true;
+				$candidate_attributes = $candidate->get_variation_attributes();
+				foreach ( $wanted as $attribute_name => $wanted_value ) {
+					$candidate_value = isset( $candidate_attributes[ $attribute_name ] ) ? (string) $candidate_attributes[ $attribute_name ] : '';
+					if ( '' !== $candidate_value && $candidate_value !== $wanted_value ) {
+						$matches = false;
+						break;
+					}
+				}
+				if ( $matches ) {
+					$variation = $candidate;
+					break;
+				}
+			}
+			if ( $variation ) {
+				$selected = $variation;
+			}
+		}
+		$images = $variation ? self::product_images( $variation, $product ) : self::product_images( $product );
+		$availability = $selection_complete && $variation ? self::public_availability_data( $variation ) : self::public_availability_data( $selected );
+		if ( $selection_complete && $product->is_type( 'variable' ) && ! $variation ) {
+			$availability['canBuy'] = false;
+			$availability['stockStatus'] = 'outofstock';
+			$availability['availabilityLabel'] = __( 'This variation is unavailable.', 'html-landing-page-builder-for-woocommerce' );
+			$availability['shippingNote'] = '';
+		}
+		$placeholder = function_exists( 'wc_placeholder_img_src' ) ? wc_placeholder_img_src( 'woocommerce_single' ) : '';
+		$fallback = $images ? $images[0] : ( $placeholder ? array( 'src' => $placeholder, 'thumb' => $placeholder, 'alt' => wp_strip_all_tags( $product->get_name() ) ) : array() );
+		return array(
+			'productId'        => $product->get_id(),
+			'variationId'      => $selection_complete && $variation ? $variation->get_id() : 0,
+			'selectionComplete'=> (bool) $selection_complete,
+			'price'            => (float) wc_get_price_to_display( $selected ),
+			'image'            => $fallback,
+			'gallery'          => $images ? $images : ( $fallback ? array( $fallback ) : array() ),
+		) + $availability;
 	}
 
 	private static function has_configured_mode( $settings, $products ) {
@@ -551,9 +1036,6 @@ final class HLPB_Cart_Section {
 			$ids = array_merge( $ids, $product->get_gallery_image_ids() );
 		}
 		if ( $parent && method_exists( $parent, 'get_gallery_image_ids' ) ) {
-			if ( $parent->get_image_id() ) {
-				$ids[] = $parent->get_image_id();
-			}
 			$ids = array_merge( $ids, $parent->get_gallery_image_ids() );
 		}
 		$images = array();
@@ -608,8 +1090,7 @@ final class HLPB_Cart_Section {
 	}
 
 	private static function token( $post_id, $section ) {
-		$payload = absint( $post_id ) . '|' . hash( 'sha256', wp_json_encode( $section ) );
-		return hash_hmac( 'sha256', $payload, wp_salt( 'auth' ) );
+		return hash_hmac( 'sha256', 'hlpb-live-landing|' . absint( $post_id ), wp_salt( 'auth' ) );
 	}
 
 	private static function coupon_code( $post_id ) {

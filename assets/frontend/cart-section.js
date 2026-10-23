@@ -12,6 +12,13 @@
 	var addButton = document.getElementById('addToCart');
 	var mobileAdd = document.getElementById('mobileAdd');
 	if (!section || !options || !offerGrid || !hero || !addButton) return;
+	var availabilitySummary = section.querySelector('.hlpb-availability-summary');
+	if (!availabilitySummary) {
+		availabilitySummary = document.createElement('div');
+		availabilitySummary.className = 'hlpb-availability-summary';
+		availabilitySummary.hidden = true;
+		options.insertAdjacentElement('afterend', availabilitySummary);
+	}
 
 	var settings = config.settings || {};
 	var modes = config.modes || {};
@@ -24,7 +31,7 @@
 	section.classList.add('hlpb-cart-live');
 	section.style.setProperty('--hlpb-cart-accent', settings.accentColor || '#ef555c');
 	section.style.backgroundColor = settings.background || '#fff';
-	var state = { mode: enabledModes[0], quantity: { buy: 1, mix: 2, bundle: 1 }, items: { buy: [], mix: [], bundle: [] }, gifts: {}, giftOptIn: {}, gift: null, gallery: [], timer: 8 * 60 + 42 };
+	var state = { mode: enabledModes[0], quantity: { buy: 1, mix: 2, bundle: 1 }, items: { buy: [], mix: [], bundle: [] }, gifts: {}, giftOptIn: {}, gift: null, gallery: [], timer: 8 * 60 + 42, livePending: false, liveCheckFailed: false, liveError: '', liveRequestId: 0 };
 	var toast = document.getElementById('toast');
 	var currencyFormat = config.currencyFormat || {};
 	var currency = config.currency || 'USD';
@@ -50,6 +57,35 @@
 	}
 	function round(value) { return Math.round((Number(value) + Number.EPSILON) * 100) / 100; }
 	function attrKey(key) { return String(key).replace(/^attribute_/, ''); }
+	function attributeSignature(item) {
+		return JSON.stringify(Object.keys(item.attributes || {}).sort().map(function (key) { return [key, String(item.attributes[key] || '')]; }));
+	}
+	function attributeOptionLabel(values, current) {
+		var option = values.find(function (candidate) { return String(candidate.value) === String(current); });
+		return option ? String(option.label || option.value) : (current ? String(current).replace(/[-_]/g, ' ') : '');
+	}
+	function updateVariationLabel(field, value) {
+		var wrapper = field.closest('.hlpb-variation-field');
+		var label = wrapper && wrapper.querySelector('.hlpb-variation-current');
+		if (label) label.textContent = value ? String(value) : '';
+	}
+	function variationCanBuy(variation) {
+		return !!variation && variation.canBuy !== false && variation.purchasable !== false && (variation.inStock !== false || variation.backordersAllowed === true);
+	}
+	function isOptionUnavailable(item, product, attributeKey, value) {
+		var variations = (product && product.variations) || [];
+		var attributes = product && product.attributes || [];
+		var matching = variations.filter(function (variation) {
+			return attributes.every(function (attr) {
+				var key = attrKey(attr.key);
+				var wanted = key === attributeKey ? String(value) : String(item.attributes[key] || '');
+				if (!wanted) return true;
+				var actual = variation.attributes && (variation.attributes['attribute_' + key] !== undefined ? variation.attributes['attribute_' + key] : variation.attributes[key]);
+				return '' === String(actual || '') || String(actual) === wanted;
+			});
+		});
+		return !matching.length || matching.every(function (variation) { return !variationCanBuy(variation); });
+	}
 	function defaultAttributes(product) {
 		if (!product || !product.variations || !product.variations.length) return {};
 		var first = product.variations[0].attributes || {};
@@ -67,13 +103,16 @@
 		resolveVariation(item);
 		return item;
 	}
-	function productVariation(item) {
+	function productVariation(item, allowPartial) {
 		var product = products[item.product_id];
 		if (!product) return null;
-		if ('variable' !== product.type) return { id: 0, price: Number(product.price), image: product.image, gallery: product.gallery || [] };
-		if (!(product.attributes || []).every(function (attr) { return String(item.attributes[attrKey(attr.key)] || '') !== ''; })) return null;
+		var signature = attributeSignature(item);
+		if (item.liveData && item.liveSignature === signature && (allowPartial || item.liveData.selectionComplete)) return item.liveData;
+		if ('variable' !== product.type) return Object.assign({}, product, { id: 0, price: Number(product.price), image: product.image, gallery: product.gallery || [] });
+		var selectedAttributes = (product.attributes || []).filter(function (attr) { return String(item.attributes[attrKey(attr.key)] || '') !== ''; });
+		if (!allowPartial && selectedAttributes.length !== (product.attributes || []).length) return null;
 		return (product.variations || []).find(function (variation) {
-			return (product.attributes || []).every(function (attr) {
+			return selectedAttributes.every(function (attr) {
 				var key = attrKey(attr.key);
 				var wanted = String(item.attributes[key] || '');
 				var available = variation.attributes && (variation.attributes['attribute_' + key] !== undefined ? variation.attributes['attribute_' + key] : variation.attributes[key]);
@@ -81,6 +120,7 @@
 			});
 		}) || null;
 	}
+	function previewVariation(item) { return productVariation(item, true); }
 	function resolveVariation(item) {
 		var product = products[item.product_id];
 		var variation = productVariation(item);
@@ -89,7 +129,7 @@
 			item.variation_id = 0;
 			return null;
 		}
-		item.variation_id = variation ? Number(variation.id || 0) : 0;
+		item.variation_id = variation ? Number(variation.variationId || variation.id || 0) : 0;
 		item.price = Number(variation ? variation.price : product.price);
 		return variation;
 	}
@@ -206,7 +246,8 @@
 		if (!state.gifts[giftKey] || Number(state.gifts[giftKey].product_id) !== Number(product.id)) state.gifts[giftKey] = makeItem(product.id);
 		state.gift = state.gifts[giftKey];
 		var variation = resolveVariation(state.gift);
-		var image = variation && variation.image ? variation.image : product.image;
+		var preview = previewVariation(state.gift);
+		var image = preview && preview.image ? preview.image : product.image;
 		var free = 'free' === rule.gift_mode;
 		var original = Number(variation ? variation.price : product.price);
 		var giftPrice = free ? 0 : ('fixed_price' === rule.gift_discount_type ? Math.min(original, Number(rule.gift_discount_value || 0)) : original * (1 - Math.min(100, Number(rule.gift_discount_value || 0)) / 100));
@@ -219,8 +260,8 @@
 		var giftFields = giftControls || !variation ? '<div class="hlpb-gift-fields"' + (showGiftOptions ? '' : ' hidden') + '><strong class="hlpb-gift-options-title">Gift options · ' + escapeHtml(product.name) + '</strong>' + giftControls + (!variation ? '<div class="hlpb-item-unavailable">Choose all available gift options</div>' : '') + '</div>' : '';
 		var box = document.createElement('div');
 		box.className = 'hlpb-gift-box';
-		box.innerHTML = '<div class="sock-gift"><svg class="icon gift-icon" aria-hidden="true"><use href="#i-gift"></use></svg><div class="hlpb-gift-copy"><strong>' + escapeHtml(giftTitle) + '</strong><span>' + giftDescription + '</span></div><label class="hlpb-gift-toggle"><input type="checkbox" data-gift-opt-in="' + escapeHtml(giftKey) + '" ' + (showGiftOptions ? 'checked' : '') + '><span>Add gift</span></label>' + (image && (image.thumb || image.src) ? '<img class="hlpb-gift-photo" src="' + escapeHtml(image.thumb || image.src) + '" alt="' + escapeHtml(image.alt || product.name) + '" loading="lazy">' : '') + '</div>' + giftFields;
-		options.after(box);
+	box.innerHTML = '<div class="sock-gift"><svg class="icon gift-icon" aria-hidden="true"><use href="#i-gift"></use></svg><div class="hlpb-gift-copy"><strong>' + escapeHtml(giftTitle) + '</strong><span>' + giftDescription + '</span></div><label class="hlpb-gift-toggle"><input type="checkbox" data-gift-opt-in="' + escapeHtml(giftKey) + '" ' + (showGiftOptions ? 'checked' : '') + '><span>Add gift</span></label>' + (image && (image.thumb || image.src) ? '<img class="hlpb-gift-photo" src="' + escapeHtml(image.thumb || image.src) + '" alt="' + escapeHtml(image.alt || product.name) + '" loading="lazy">' : '') + '</div>' + availabilityMarkup(state.gift, product) + giftFields;
+		availabilitySummary.insertAdjacentElement('afterend', box);
 	}
 	function productSelect(item, allowed, index, mode) {
 		if ('bundle' === mode || allowed.length < 2) return '';
@@ -229,29 +270,92 @@
 	function renderVariantControls(item, product, slot) {
 		if (!product || !product.attributes || !product.attributes.length) return '';
 		return '<div class="hlpb-variation-controls">' + product.attributes.map(function (attr, index) {
-			var key = attrKey(attr.key); var current = String(item.attributes[key] || '');
+			var key = attrKey(attr.key); var current = String(item.attributes[key] || ''); var label = attr.label || ('Option ' + (index + 1));
 			var values = (attr.options || []).map(function (option) { return option && typeof option === 'object' ? option : { value: String(option), label: String(option) }; });
+			var heading = '<span class="hlpb-variation-name">' + escapeHtml(label) + '</span><span class="hlpb-variation-current">' + escapeHtml(attributeOptionLabel(values, current)) + '</span>';
 			if ('color-image-picker' === attr.type) {
-				return '<fieldset class="hlpb-variation-field"><legend>' + escapeHtml(attr.label || ('Option ' + (index + 1))) + '</legend><div class="hlpb-swatch-options" role="group" aria-label="' + escapeHtml(attr.label || 'Choose option') + '">' + values.map(function (option) {
+				return '<fieldset class="hlpb-variation-field"><legend class="hlpb-variation-label">' + heading + '</legend><div class="hlpb-swatch-options" role="group" aria-label="' + escapeHtml(label || 'Choose option') + '">' + values.map(function (option) {
 					var style = option.image ? '--hlpb-swatch-image:url(&quot;' + escapeHtml(option.image) + '&quot;)' : '--hlpb-swatch-color:' + (option.color || '#e8e8e8');
-					return '<button type="button" class="hlpb-swatch-choice" data-variation-slot="' + escapeHtml(slot) + '" data-attribute-key="' + escapeHtml(key) + '" data-variation-value="' + escapeHtml(option.value) + '" aria-label="' + escapeHtml(option.label) + '" aria-pressed="' + (String(option.value) === current) + '" style="' + style + '"><span>' + escapeHtml(option.label) + '</span></button>';
+					var unavailable = isOptionUnavailable(item, product, key, option.value);
+					return '<button type="button" class="hlpb-swatch-choice' + (unavailable ? ' is-unavailable' : '') + '" data-variation-slot="' + escapeHtml(slot) + '" data-attribute-key="' + escapeHtml(key) + '" data-variation-value="' + escapeHtml(option.value) + '" aria-label="' + escapeHtml(option.label + (unavailable ? ' — out of stock' : '')) + '" aria-pressed="' + (String(option.value) === current) + '" style="' + style + '"><span>' + escapeHtml(option.label) + '</span></button>';
 				}).join('') + '</div></fieldset>';
 			}
 			if ('button' === attr.type) {
-				return '<fieldset class="hlpb-variation-field"><legend>' + escapeHtml(attr.label || ('Option ' + (index + 1))) + '</legend><div class="hlpb-attribute-buttons" role="group" aria-label="' + escapeHtml(attr.label || 'Choose option') + '">' + values.map(function (option) {
-					return '<button type="button" class="hlpb-attribute-choice" data-variation-slot="' + escapeHtml(slot) + '" data-attribute-key="' + escapeHtml(key) + '" data-variation-value="' + escapeHtml(option.value) + '" aria-pressed="' + (String(option.value) === current) + '">' + escapeHtml(option.label) + '</button>';
+				return '<fieldset class="hlpb-variation-field"><legend class="hlpb-variation-label">' + heading + '</legend><div class="hlpb-attribute-buttons" role="group" aria-label="' + escapeHtml(label || 'Choose option') + '">' + values.map(function (option) {
+					var unavailable = isOptionUnavailable(item, product, key, option.value);
+					return '<button type="button" class="hlpb-attribute-choice' + (unavailable ? ' is-unavailable' : '') + '" data-variation-slot="' + escapeHtml(slot) + '" data-attribute-key="' + escapeHtml(key) + '" data-variation-value="' + escapeHtml(option.value) + '" aria-label="' + escapeHtml(option.label + (unavailable ? ' — out of stock' : '')) + '" aria-pressed="' + (String(option.value) === current) + '">' + escapeHtml(option.label) + '</button>';
 				}).join('') + '</div></fieldset>';
 			}
-			return '<label class="hlpb-variation-field"><span>' + escapeHtml(attr.label || ('Option ' + (index + 1))) + '</span><select class="hlpb-variation-select" data-variation-slot="' + escapeHtml(slot) + '" data-attribute-key="' + escapeHtml(key) + '"><option value="">Choose ' + escapeHtml(attr.label || 'option') + '</option>' + values.map(function (option) { return '<option value="' + escapeHtml(option.value) + '" ' + (String(option.value) === current ? 'selected' : '') + '>' + escapeHtml(option.label || String(option.value).replace(/-/g, ' ')) + '</option>'; }).join('') + '</select></label>';
+			return '<label class="hlpb-variation-field"><span class="hlpb-variation-label">' + heading + '</span><select class="hlpb-variation-select" data-variation-slot="' + escapeHtml(slot) + '" data-attribute-key="' + escapeHtml(key) + '"><option value="">Choose ' + escapeHtml(label || 'option') + '</option>' + values.map(function (option) { var unavailable = isOptionUnavailable(item, product, key, option.value); return '<option value="' + escapeHtml(option.value) + '" ' + (String(option.value) === current ? 'selected' : '') + '>' + escapeHtml(option.label || String(option.value).replace(/-/g, ' ')) + (unavailable ? ' (out of stock)' : '') + '</option>'; }).join('') + '</select></label>';
 		}).join('') + '</div>';
+	}
+	function hasCompleteSelection(item, product) {
+		return !product || 'variable' !== product.type || (product.attributes || []).every(function (attr) { return String(item.attributes[attrKey(attr.key)] || '') !== ''; });
+	}
+	function availabilityMarkup(item, product) {
+		if (!item || !product) return '';
+		var icon = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7zM7 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM18 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/></svg>';
+		if (!hasCompleteSelection(item, product)) return '';
+		var variation = resolveVariation(item);
+		var data = variation || product;
+		var backorder = 'onbackorder' === data.stockStatus || (!data.inStock && data.backordersAllowed);
+		var canBuy = false === data.canBuy ? false : (data.purchasable !== false && (data.inStock !== false || data.backordersAllowed === true));
+		var note = String(data.shippingNote || '').trim();
+		var message = '';
+		if ('variable' === product.type && !variation) {
+			message = data.availabilityLabel || 'This variation is unavailable.';
+			canBuy = false;
+		} else if (!canBuy) {
+			message = data.availabilityLabel || ('outofstock' === data.stockStatus ? 'Currently out of stock.' : 'This option is unavailable.');
+			if (note && note !== message) message += ' · ' + note;
+		} else if (backorder) {
+			message = data.availabilityLabel || 'Available on backorder.';
+			if (note && note !== message) message += ' · ' + note;
+		} else {
+			message = note;
+		}
+		if (!message) return '';
+		var stateClass = canBuy ? (backorder ? ' is-backorder' : '') : ' is-unavailable';
+		return '<div class="hlpb-availability-note' + stateClass + '" role="status">' + icon + '<span>' + escapeHtml(message) + '</span></div>';
+	}
+	function stockNotificationMarkup(item, product, itemIndex) {
+		if (!item || !product || 'variable' !== product.type || !hasCompleteSelection(item, product)) return '';
+		var variation = resolveVariation(item);
+		if (!variation || variationCanBuy(variation) || !String(variation.shippingNote || '').trim()) return '';
+		var variationId = Number(variation.variationId || variation.id || item.variation_id || 0);
+		if (!variationId) return '';
+		var inputId = 'hlpb-stock-email-' + Number(product.id) + '-' + variationId + '-' + Number(itemIndex || 0);
+		return '<div class="hlpb-stock-notify" data-stock-notify data-product-id="' + Number(product.id) + '" data-variation-id="' + variationId + '"><p>Want to be first to know when it is back? Subscribe.</p><div class="hlpb-stock-notify-controls"><input id="' + inputId + '" type="email" inputmode="email" autocomplete="email" aria-label="Email address" placeholder="Your email address" required data-stock-email><button type="button" data-stock-notify-submit>Send</button></div><span class="hlpb-stock-notify-status" role="status" aria-live="polite"></span></div>';
+	}
+	function renderAvailabilitySummary(mode) {
+		if (state.liveCheckFailed) {
+			var icon = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7zM7 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM18 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/></svg>';
+			availabilitySummary.innerHTML = '<div class="hlpb-availability-note is-unavailable" role="status">' + icon + '<span>' + escapeHtml(state.liveError || 'Could not refresh price and stock.') + '</span><button type="button" class="hlpb-stock-retry">Try again</button></div>';
+			availabilitySummary.hidden = false;
+			return;
+		}
+		var counts = {};
+		var entries = getItems(mode).map(function (item, itemIndex) {
+			var product = products[item.product_id];
+			if (!product) return '';
+			counts[item.product_id] = (counts[item.product_id] || 0) + 1;
+			var note = availabilityMarkup(item, product);
+			if (!note) return '';
+			var label = product.name + ' ' + counts[item.product_id];
+			return '<div class="hlpb-availability-entry"><strong>' + escapeHtml(label) + '</strong>' + note + stockNotificationMarkup(item, product, itemIndex) + '</div>';
+		}).filter(Boolean);
+		availabilitySummary.innerHTML = entries.join('');
+		availabilitySummary.hidden = !entries.length;
 	}
 	function renderCard(item, index, mode, allowed, title) {
 		var product = products[item.product_id];
 		var variation = resolveVariation(item);
-		var image = variation && variation.image ? variation.image : product.image;
+		var preview = previewVariation(item);
+		var image = preview && preview.image ? preview.image : product.image;
 		var alt = (image && image.alt) || product.name;
 		var selector = productSelect(item, allowed, index, mode);
-		return '<article class="product-option" data-item-index="' + index + '"><img class="product-photo" src="' + escapeHtml(image && image.thumb || image && image.src || '') + '" alt="' + escapeHtml(alt) + '" loading="lazy"><div class="product-info"><div class="product-head"><b class="item-title">' + escapeHtml(title || product.name) + '</b>' + selector + '</div>' + renderVariantControls(item, product, index) + (!variation ? '<div class="hlpb-item-unavailable">Choose all available options</div>' : '') + '</div></article>';
+		var needsOptions = 'variable' === product.type && !hasCompleteSelection(item, product);
+		return '<article class="product-option" data-item-index="' + index + '"><img class="product-photo" src="' + escapeHtml(image && image.thumb || image && image.src || '') + '" alt="' + escapeHtml(alt) + '" loading="lazy"><div class="product-info"><div class="product-head"><b class="item-title">' + escapeHtml(title || product.name) + '</b>' + selector + '</div>' + renderVariantControls(item, product, index) + (needsOptions ? '<div class="hlpb-item-unavailable">Choose all available options</div>' : '') + '</div></article>';
 	}
 	function renderItems() {
 		var mode = state.mode; var allowed = allowedProducts(mode); var items = ensureItems(mode);
@@ -264,6 +368,61 @@
 		}).join('');
 		options.innerHTML = html;
 		options.dataset.mode = mode; options.dataset.count = items.length;
+		renderAvailabilitySummary(mode);
+	}
+	function liveSelections(mode) {
+		var selected = getItems(mode).map(function (item, index) {
+			return { slot: String(index), product_id: item.product_id, variation_id: item.variation_id, attributes: item.attributes };
+		});
+		if (state.gift) selected.push({ slot: 'gift', product_id: state.gift.product_id, variation_id: state.gift.variation_id, attributes: state.gift.attributes });
+		return selected;
+	}
+	function refreshLiveSelections(preferredItem) {
+		if (!config.liveAction || !config.endpoint) {
+			state.livePending = false; state.liveCheckFailed = true;
+			renderItems(); ensureGiftWrap(); updatePreview();
+			section.classList.remove('hlpb-is-loading');
+			return Promise.resolve();
+		}
+		var requestId = ++state.liveRequestId;
+		var mode = state.mode;
+		var selections = liveSelections(mode);
+		var data = new FormData();
+		data.append('action', config.liveAction); data.append('ajax', '1'); data.append('landing_id', config.landingId); data.append('token', config.token); data.append('mode', mode); data.append('quantity', state.quantity[mode]); data.append('items', JSON.stringify(selections));
+		state.livePending = true; state.liveCheckFailed = false; updateSummary(); section.classList.add('hlpb-is-loading');
+		return fetch(config.endpoint, { method: 'POST', body: data, credentials: 'same-origin' }).then(function (response) {
+			return response.json().then(function (result) { return { ok: response.ok, result: result }; });
+		}).then(function (response) {
+			if (requestId !== state.liveRequestId) return;
+			var result = response.result;
+			if (!response.ok || !result || !result.success || !result.data || !Array.isArray(result.data.items)) {
+				throw new Error(result && result.data && result.data.message ? result.data.message : 'Could not refresh current product data.');
+			}
+			if (result.data.token) config.token = String(result.data.token);
+			if (result.data.mode && modes[mode]) modes[mode] = result.data.mode;
+			if (result.data.products && typeof result.data.products === 'object') {
+				Object.keys(result.data.products).forEach(function (productId) { products[Number(productId)] = result.data.products[productId]; });
+			}
+			result.data.items.forEach(function (live) {
+				var item = 'gift' === live.slot ? state.gift : getItems(mode)[Number(live.slot)];
+				if (!item || Number(item.product_id) !== Number(live.productId)) return;
+				item.liveData = live; item.liveSignature = attributeSignature(item); item.variation_id = Number(live.variationId || 0); item.price = Number(live.price || 0);
+			});
+			state.livePending = false; state.liveCheckFailed = false; state.liveError = '';
+			renderItems(); ensureGiftWrap(); updatePreview();
+			var currentPreferred = preferredItem && getItems(state.mode).indexOf(preferredItem) !== -1 ? preferredItem : getItems(state.mode)[0];
+			if (currentPreferred) updateGallery(currentPreferred);
+		}).catch(function (error) {
+			if (requestId !== state.liveRequestId) return;
+			state.livePending = false; state.liveCheckFailed = true; state.liveError = error && error.message ? error.message : 'Could not refresh price and stock. Please try again.';
+			renderItems(); ensureGiftWrap(); updatePreview();
+			var currentPreferred = preferredItem && getItems(state.mode).indexOf(preferredItem) !== -1 ? preferredItem : getItems(state.mode)[0];
+			if (currentPreferred) updateGallery(currentPreferred);
+		}).finally(function () {
+			if (requestId === state.liveRequestId) window.setTimeout(function () {
+				if (requestId === state.liveRequestId) section.classList.remove('hlpb-is-loading');
+			}, 180);
+		});
 	}
 	function renderWhyOffers() {
 		if (!whyOfferGrids.length) return;
@@ -314,9 +473,9 @@
 			return '<button class="offer-card ' + (quantity === 4 && badgeEnabled ? 'best' : '') + '" type="button" data-qty="' + quantity + '" aria-pressed="' + active + '">' + badgeMarkup + '<b>' + label + '</b><strong>' + money(total) + '</strong><small>' + totalLabel + '</small>' + (saving > 0 ? '<em>Save ' + money(saving) + '</em>' : '') + '</button>';
 		}).join('');
 		renderWhyOffers();
-		offerGrid.onclick = function (event) {
+			offerGrid.onclick = function (event) {
 			var button = event.target.closest('[data-qty]'); if (!button) return;
-			state.quantity[mode] = Number(button.dataset.qty); showLoading(function () { renderItems(); renderOffers(); ensureGiftWrap(); updatePreview(); });
+			state.quantity[mode] = Number(button.dataset.qty); showLoading(function () { renderItems(); renderOffers(); ensureGiftWrap(); updatePreview(); return refreshLiveSelections(getItems(mode)[0]); });
 		};
 	}
 	if (whyOfferGrids.length) {
@@ -332,6 +491,7 @@
 				showLoading(function () {
 					renderItems(); renderOffers(); ensureGiftWrap(); updatePreview(); updateGallery(getItems(mode)[0]);
 					section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+					return refreshLiveSelections(getItems(mode)[0]);
 				});
 			};
 		});
@@ -339,23 +499,27 @@
 	function onProductChange(event) {
 		var target = event.target.closest('[data-product-slot]'); if (!target) return;
 		var mode = state.mode; var index = Number(target.dataset.productSlot); var id = Number(target.value); var item = getItems(mode)[index];
-		if (item && products[id] && allowedProducts(mode).indexOf(id) !== -1 && canSelectMixProduct(index, id)) { getItems(mode)[index] = makeItem(id); showLoading(function () { renderItems(); updatePreview(); updateGallery(getItems(mode)[index]); }); }
+		if (item && products[id] && allowedProducts(mode).indexOf(id) !== -1 && canSelectMixProduct(index, id)) { getItems(mode)[index] = makeItem(id); showLoading(function () { renderItems(); updatePreview(); updateGallery(getItems(mode)[index]); return refreshLiveSelections(getItems(mode)[index]); }); }
 	}
 	function onVariationChange(event, targetMode) {
 		var field = event.target.closest('[data-variation-slot]'); if (!field) return;
 		var isGift = 'gift' === targetMode || 'gift' === field.dataset.variationSlot; var mode = state.mode; var items = isGift ? [state.gift] : getItems(mode); var index = isGift ? 0 : Number(field.dataset.variationSlot); var item = items[index];
 		if (!item) return;
 		item.attributes[field.dataset.attributeKey] = field.value;
+		item.liveData = null; item.liveSignature = '';
+		var selectedOption = field.options[field.selectedIndex];
+		updateVariationLabel(field, '' === field.value ? '' : (selectedOption ? selectedOption.textContent : field.value));
 		resolveVariation(item);
 		showLoading(function () {
 			if (isGift) {
 				ensureGiftWrap();
 			} else {
-				var card = options.querySelector('[data-item-index="' + index + '"]'); var product = products[item.product_id]; var variant = productVariation(item); var image = variant && variant.image ? variant.image : product.image;
+				var card = options.querySelector('[data-item-index="' + index + '"]'); var product = products[item.product_id]; var variant = previewVariation(item); var image = variant && variant.image ? variant.image : product.image;
 				if (card && image) { var photo = card.querySelector('.product-photo'); if (photo) { photo.src = image.thumb || image.src; photo.alt = image.alt || product.name; } }
 			}
 			updatePreview();
 			if (!isGift) updateGallery(item);
+			return refreshLiveSelections(isGift ? null : item);
 		});
 	}
 	function onVariationSwatchClick(event, targetMode) {
@@ -363,6 +527,8 @@
 		var isGift = 'gift' === targetMode || 'gift' === field.dataset.variationSlot; var mode = state.mode; var items = isGift ? [state.gift] : getItems(mode); var index = isGift ? 0 : Number(field.dataset.variationSlot); var item = items[index];
 		if (!item) return;
 		item.attributes[field.dataset.attributeKey] = field.dataset.variationValue;
+		item.liveData = null; item.liveSignature = '';
+		updateVariationLabel(field, field.getAttribute('aria-label') || field.textContent.trim() || field.dataset.variationValue);
 		var group = field.parentNode;
 		if (group) group.querySelectorAll('[data-variation-value]').forEach(function (button) { button.setAttribute('aria-pressed', String(button === field)); });
 		resolveVariation(item);
@@ -370,11 +536,12 @@
 			if (isGift) {
 				ensureGiftWrap();
 			} else {
-				var card = options.querySelector('[data-item-index="' + index + '"]'); var product = products[item.product_id]; var variant = productVariation(item); var image = variant && variant.image ? variant.image : product.image;
+				var card = options.querySelector('[data-item-index="' + index + '"]'); var product = products[item.product_id]; var variant = previewVariation(item); var image = variant && variant.image ? variant.image : product.image;
 				if (card && image) { var photo = card.querySelector('.product-photo'); if (photo) { photo.src = image.thumb || image.src; photo.alt = image.alt || product.name; } }
 			}
 			updatePreview();
 			if (!isGift) updateGallery(item);
+			return refreshLiveSelections(isGift ? null : item);
 		});
 	}
 	function lineItems(mode) { return ensureItems(mode); }
@@ -390,7 +557,12 @@
 		}
 		var giftExpected = giftOptedIn && Number(rule.gift_product_id || 0) > 0 && ['free', 'discounted'].includes(rule.gift_mode);
 		var mixValid = 'mix' !== state.mode || hasDistinctMixProducts();
-		return { base: round(base), total: round(total), saving: round(Math.max(0, base - total)), valid: mixValid && items.every(function (item) { return resolveVariation(item) !== null; }) && (!giftExpected || (!!giftProduct && !!giftVariation)) };
+		var itemsAvailable = items.every(function (item) {
+			var variation = resolveVariation(item);
+			return !!variation && variation.canBuy !== false && variation.purchasable !== false && (variation.inStock !== false || variation.backordersAllowed === true);
+		});
+		var giftAvailable = !giftExpected || (!!giftProduct && !!giftVariation && giftVariation.canBuy !== false && giftVariation.purchasable !== false && (giftVariation.inStock !== false || giftVariation.backordersAllowed === true));
+		return { base: round(base), total: round(total), saving: round(Math.max(0, base - total)), valid: !state.livePending && !state.liveCheckFailed && mixValid && itemsAvailable && giftAvailable };
 	}
 	function updateSummary() {
 		var totals = currentTotals();
@@ -410,7 +582,7 @@
 	}
 	function updatePreview() { renderOffers(); updateSummary(); }
 	function updateGallery(item) {
-		var product = products[item.product_id]; var variation = resolveVariation(item); var images = variation && variation.gallery && variation.gallery.length ? variation.gallery.slice() : (product.gallery || []).slice();
+		var product = products[item.product_id]; var variation = previewVariation(item); var images = variation && variation.gallery && variation.gallery.length ? variation.gallery.slice() : (product.gallery || []).slice();
 		if (variation && variation.image && (!images.length || images[0].src !== variation.image.src)) images.unshift(variation.image);
 		if (!images.length && variation && variation.image) images = [variation.image];
 		state.gallery = images;
@@ -431,7 +603,11 @@
 	}
 	function showLoading(callback) {
 		section.classList.add('hlpb-is-loading');
-		window.setTimeout(function () { callback(); window.setTimeout(function () { section.classList.remove('hlpb-is-loading'); }, 240); }, 160);
+		window.setTimeout(function () {
+			var result = callback();
+			if (result && typeof result.then === 'function') return;
+			window.setTimeout(function () { section.classList.remove('hlpb-is-loading'); }, 240);
+		}, 160);
 	}
 	function showError(message) {
 		var error = section.querySelector('.hlpb-cart-error'); if (error) { error.textContent = message || 'Could not add this offer to your cart.'; error.hidden = false; }
@@ -462,11 +638,44 @@
 			throw new Error(result && result.data && result.data.message ? result.data.message : 'WooCommerce could not add this offer to your cart.');
 		}).catch(function (error) { section.classList.remove('hlpb-is-loading'); showError(error.message); });
 	}
+	function submitStockNotification(button) {
+		var form = button.closest('[data-stock-notify]');
+		var email = form && form.querySelector('[data-stock-email]');
+		var status = form && form.querySelector('.hlpb-stock-notify-status');
+		if (!form || !email || !status) return;
+		if (!email.reportValidity()) return;
+		var originalText = button.textContent;
+		var data = new FormData();
+		data.append('action', 'hlpb_landing_stock_notification');
+		data.append('landing_id', config.landingId);
+		data.append('token', config.token);
+		data.append('product_id', form.dataset.productId);
+		data.append('variation_id', form.dataset.variationId);
+		data.append('email', email.value.trim());
+		button.disabled = true;
+		button.textContent = 'Sending…';
+		status.classList.remove('is-error');
+		status.textContent = '';
+		fetch(config.endpoint, { method: 'POST', body: data, credentials: 'same-origin' }).then(function (response) {
+			return response.json().then(function (result) { return { ok: response.ok, result: result }; });
+		}).then(function (response) {
+			var result = response.result;
+			if (!response.ok || !result || !result.success || !result.data) throw new Error(result && result.data && result.data.message ? result.data.message : 'Could not save your email. Please try again.');
+			status.textContent = result.data.message || 'Thanks! We will email you when this variation is available.';
+			email.value = '';
+		}).catch(function (error) {
+			status.classList.add('is-error');
+			status.textContent = error && error.message ? error.message : 'Could not save your email. Please try again.';
+		}).finally(function () {
+			button.disabled = false;
+			button.textContent = originalText;
+		});
+	}
 	function initTabs() {
 		section.querySelectorAll('.mode-tab').forEach(function (button) {
 			button.addEventListener('click', function () {
 				if (enabledModes.indexOf(button.dataset.mode) < 0 || state.mode === button.dataset.mode) return;
-				state.mode = button.dataset.mode; showLoading(function () { renderItems(); renderOffers(); ensureGiftWrap(); updateSummary(); updateGallery(getItems(state.mode)[0]); });
+				state.mode = button.dataset.mode; showLoading(function () { renderItems(); renderOffers(); ensureGiftWrap(); updateSummary(); updateGallery(getItems(state.mode)[0]); return refreshLiveSelections(getItems(state.mode)[0]); });
 			});
 		});
 	}
@@ -481,11 +690,18 @@
 	initTabs();
 	options.addEventListener('change', onProductChange);
 	section.addEventListener('change', function (event) { onGiftOptInChange(event); onVariationChange(event); });
-	section.addEventListener('click', function (event) { onVariationSwatchClick(event); });
+	section.addEventListener('click', function (event) {
+		var retry = event.target.closest('.hlpb-stock-retry');
+		if (retry) { event.preventDefault(); refreshLiveSelections(getItems(state.mode)[0]); return; }
+		var notify = event.target.closest('[data-stock-notify-submit]');
+		if (notify) { event.preventDefault(); submitStockNotification(notify); return; }
+		onVariationSwatchClick(event);
+	});
 	if (addButton) addButton.addEventListener('click', addToCheckout);
 	if (mobileAdd) mobileAdd.addEventListener('click', addToCheckout);
 	var prev = section.querySelector('.arrow-prev'); var next = section.querySelector('.arrow-next');
 	if (prev) prev.addEventListener('click', function () { var current = Math.max(0, state.gallery.findIndex(function (image) { return image.src === hero.src; })); showSlide(current - 1); });
 	if (next) next.addEventListener('click', function () { var current = Math.max(0, state.gallery.findIndex(function (image) { return image.src === hero.src; })); showSlide(current + 1); });
 	renderItems(); renderOffers(); updateSummary(); updateGallery(getItems(state.mode)[0]); initCountdown();
+	refreshLiveSelections(getItems(state.mode)[0]);
 })();
