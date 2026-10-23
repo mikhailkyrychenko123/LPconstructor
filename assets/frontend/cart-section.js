@@ -287,7 +287,7 @@
 	function onProductChange(event) {
 		var target = event.target.closest('[data-product-slot]'); if (!target) return;
 		var mode = state.mode; var index = Number(target.dataset.productSlot); var id = Number(target.value); var item = getItems(mode)[index];
-		if (item && products[id] && allowedProducts(mode).indexOf(id) !== -1 && canSelectMixProduct(index, id)) { getItems(mode)[index] = makeItem(id); showLoading(function () { renderItems(); updatePreview(); }); }
+		if (item && products[id] && allowedProducts(mode).indexOf(id) !== -1 && canSelectMixProduct(index, id)) { getItems(mode)[index] = makeItem(id); showLoading(function () { renderItems(); updatePreview(); updateGallery(getItems(mode)[index]); }); }
 	}
 	function onVariationChange(event, targetMode) {
 		var field = event.target.closest('[data-variation-slot]'); if (!field) return;
@@ -303,7 +303,7 @@
 				if (card && image) { var photo = card.querySelector('.product-photo'); if (photo) { photo.src = image.thumb || image.src; photo.alt = image.alt || product.name; } }
 			}
 			updatePreview();
-			if (!isGift && 0 === index) updateGallery(item);
+			if (!isGift) updateGallery(item);
 		});
 	}
 	function onVariationSwatchClick(event, targetMode) {
@@ -322,7 +322,7 @@
 				if (card && image) { var photo = card.querySelector('.product-photo'); if (photo) { photo.src = image.thumb || image.src; photo.alt = image.alt || product.name; } }
 			}
 			updatePreview();
-			if (!isGift && 0 === index) updateGallery(item);
+			if (!isGift) updateGallery(item);
 		});
 	}
 	function lineItems(mode) { return ensureItems(mode); }
@@ -358,7 +358,7 @@
 	}
 	function updatePreview() { renderOffers(); updateSummary(); }
 	function updateGallery(item) {
-		var product = products[item.product_id]; var variation = resolveVariation(item); var images = variation && variation.gallery && variation.gallery.length ? variation.gallery : (product.gallery || []);
+		var product = products[item.product_id]; var variation = resolveVariation(item); var images = variation && variation.gallery && variation.gallery.length ? variation.gallery.slice() : (product.gallery || []).slice();
 		if (variation && variation.image && (!images.length || images[0].src !== variation.image.src)) images.unshift(variation.image);
 		if (!images.length && variation && variation.image) images = [variation.image];
 		state.gallery = images;
