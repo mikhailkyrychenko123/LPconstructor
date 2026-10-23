@@ -15,6 +15,7 @@ final class HLPB_Cart_Section {
 	const COUPON_LANDING_META = '_hlpb_landing_id';
 	const COUPON_FLAG_META = '_hlpb_landing_offer_coupon';
 	const STOCK_NOTIFY_META = '_hlpb_stock_notify_emails';
+	const STOCK_NOTIFY_EMAIL_TEMPLATE_OPTION = 'hlpb_stock_notify_email_template';
 	private static $syncing_cart = false;
 
 	/** Register the public checkout endpoint and WooCommerce coupon filters. */
@@ -34,11 +35,17 @@ final class HLPB_Cart_Section {
 		add_action( 'admin_menu', array( __CLASS__, 'register_stock_notifications_menu' ) );
 		add_action( 'admin_post_hlpb_delete_stock_notification', array( __CLASS__, 'handle_delete_stock_notification' ) );
 		add_action( 'admin_post_hlpb_retry_stock_notification', array( __CLASS__, 'handle_retry_stock_notification' ) );
+		add_action( 'admin_post_hlpb_send_stock_notification', array( __CLASS__, 'handle_send_stock_notification' ) );
+		add_action( 'admin_post_hlpb_send_all_stock_notifications', array( __CLASS__, 'handle_send_all_stock_notifications' ) );
+		add_action( 'admin_post_hlpb_save_stock_notification_email_template', array( __CLASS__, 'handle_save_stock_notification_email_template' ) );
 		add_action( 'woocommerce_product_set_stock_status', array( __CLASS__, 'send_stock_notifications' ), 10, 3 );
 		add_filter( 'woocommerce_coupon_is_valid', array( __CLASS__, 'validate_coupon' ), 20, 3 );
 		add_filter( 'woocommerce_coupon_is_valid_for_product', array( __CLASS__, 'coupon_valid_for_product' ), 20, 4 );
 		add_filter( 'woocommerce_coupon_get_discount_amount', array( __CLASS__, 'coupon_discount' ), 20, 5 );
+		add_filter( 'do_shortcode_tag', array( __CLASS__, 'suppress_catapult_game_on_cart_checkout' ), 10, 4 );
 		add_filter( 'woocommerce_get_item_data', array( __CLASS__, 'display_cart_offer_data' ), 20, 2 );
+		add_filter( 'woocommerce_get_item_data', array( __CLASS__, 'move_variation_data_before_offer' ), 9999, 2 );
+		add_filter( 'woocommerce_get_item_data', array( __CLASS__, 'remove_catapult_game_cart_data' ), 10000, 2 );
 		add_filter( 'woocommerce_cart_item_price', array( __CLASS__, 'display_cart_offer_price' ), 20, 3 );
 		add_filter( 'woocommerce_cart_item_subtotal', array( __CLASS__, 'display_cart_offer_subtotal' ), 20, 3 );
 		add_action( 'woocommerce_remove_cart_item', array( __CLASS__, 'remember_removed_bundle_gift' ), 10, 2 );
@@ -92,6 +99,94 @@ final class HLPB_Cart_Section {
 		return $entries;
 	}
 
+	/** Return the saved notification email copy, falling back to a ready-to-use message. */
+	private static function get_stock_notification_email_template() {
+		$defaults = array(
+			'subject' => __( 'Good news! {product_name} is back in stock', 'html-landing-page-builder-for-woocommerce' ),
+			'message' => __( "Hello!\n\nGood news: {product_name} is back in stock.\n\nView the product and place your order here:\n{product_url}\n\nWe look forward to your order!", 'html-landing-page-builder-for-woocommerce' ),
+		);
+		$saved = get_option( self::STOCK_NOTIFY_EMAIL_TEMPLATE_OPTION, array() );
+		if ( ! is_array( $saved ) ) {
+			$saved = array();
+		}
+		$subject = isset( $saved['subject'] ) && is_scalar( $saved['subject'] ) ? sanitize_text_field( (string) $saved['subject'] ) : $defaults['subject'];
+		$message = isset( $saved['message'] ) && is_scalar( $saved['message'] ) ? sanitize_textarea_field( (string) $saved['message'] ) : $defaults['message'];
+		return array(
+			'subject' => '' !== trim( $subject ) ? $subject : $defaults['subject'],
+			'message' => '' !== trim( $message ) ? $message : $defaults['message'],
+		);
+	}
+
+	/** Build a plain-text email with the product-specific placeholders filled in. */
+	private static function deliver_stock_notification_email( $product, $email ) {
+		if ( ! ( $product instanceof WC_Product ) || ! is_email( $email ) ) {
+			return 'not_found';
+		}
+		if ( ! $product->is_purchasable() || ! $product->is_in_stock() ) {
+			return 'unavailable';
+		}
+
+		$name = wp_strip_all_tags( $product->get_formatted_name() );
+		$parent_id = $product->is_type( 'variation' ) ? absint( $product->get_parent_id() ) : absint( $product->get_id() );
+		$url = get_permalink( $parent_id );
+		if ( ! $url ) {
+			return 'not_found';
+		}
+		$template = self::get_stock_notification_email_template();
+		$replacements = array(
+			'{product_name}' => $name,
+			'{product_url}'  => esc_url_raw( $url ),
+		);
+		$subject = strtr( $template['subject'], $replacements );
+		$message = strtr( $template['message'], $replacements );
+		return wp_mail( $email, $subject, $message ) ? 'sent' : 'mail_failed';
+	}
+
+	/** Send one stored subscription and update its delivery status. */
+	private static function send_stock_notification_entry( $variation_id, $email ) {
+		$variation_id = absint( $variation_id );
+		$email = sanitize_email( $email );
+		if ( ! $variation_id || ! is_email( $email ) ) {
+			return 'not_found';
+		}
+		$variation = wc_get_product( $variation_id );
+		if ( ! $variation || ! $variation->is_type( 'variation' ) ) {
+			return 'not_found';
+		}
+		$parent_id = absint( $variation->get_parent_id() );
+		if ( 'publish' !== get_post_status( $variation_id ) || 'publish' !== get_post_status( $parent_id ) ) {
+			return 'not_found';
+		}
+		if ( ! $variation->is_purchasable() || ! $variation->is_in_stock() ) {
+			return 'unavailable';
+		}
+
+		$entries = self::normalize_stock_notification_entries( get_post_meta( $variation_id, self::STOCK_NOTIFY_META, true ) );
+		$matched = false;
+		$result = 'not_found';
+		foreach ( $entries as &$entry ) {
+			if ( strtolower( $entry['email'] ) !== strtolower( $email ) ) {
+				continue;
+			}
+			$matched = true;
+			$attempted_at = current_time( 'mysql', true );
+			$entry['attempted_at'] = $attempted_at;
+			$result = self::deliver_stock_notification_email( $variation, $email );
+			if ( 'sent' === $result ) {
+				$entry['status'] = 'notified';
+				$entry['notified_at'] = $attempted_at;
+			} elseif ( 'mail_failed' === $result ) {
+				$entry['status'] = 'mail_failed';
+			}
+			break;
+		}
+		unset( $entry );
+		if ( $matched ) {
+			update_post_meta( $variation_id, self::STOCK_NOTIFY_META, array_values( $entries ) );
+		}
+		return $result;
+	}
+
 	/** Show subscribed emails and their product, landing page, and delivery status. */
 	public static function render_stock_notifications_page() {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
@@ -137,20 +232,46 @@ final class HLPB_Cart_Section {
 		$notified_count = count( $rows ) - $waiting_count - $failed_count;
 
 		echo '<div class="wrap"><h1>' . esc_html__( 'Stock Notifications', 'html-landing-page-builder-for-woocommerce' ) . '</h1>';
-		echo '<p>' . esc_html__( 'Emails entered for out-of-stock product variations appear here. When a variation becomes purchasable again, WordPress sends a notification and keeps the result in this list. You can retry a failed email or delete a subscription.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		echo '<p>' . esc_html__( 'Emails entered for out-of-stock product variations appear here. When a variation becomes purchasable again, WordPress sends a notification. You can also send the saved email manually to one subscriber or to all subscribers whose product is currently available.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
 		if ( isset( $_GET['deleted'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['deleted'] ) ) ) {
 			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'The notification subscription was deleted.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
 		}
 		if ( isset( $_GET['retried'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['retried'] ) ) ) {
 			echo '<div class="notice notice-info is-dismissible"><p>' . esc_html__( 'The email retry was processed. Check the row status for the result.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
 		}
+		if ( isset( $_GET['sent'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['sent'] ) ) ) {
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'The email was sent successfully.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+		}
+		if ( isset( $_GET['send_error'] ) ) {
+			$send_error = sanitize_key( wp_unslash( $_GET['send_error'] ) );
+			$send_error_text = 'unavailable' === $send_error ? __( 'This product is not currently available, so no email was sent.', 'html-landing-page-builder-for-woocommerce' ) : ( 'mail_failed' === $send_error ? __( 'WordPress could not send the email. Check your mail configuration and try again.', 'html-landing-page-builder-for-woocommerce' ) : __( 'The subscription or product could not be found.', 'html-landing-page-builder-for-woocommerce' ) );
+			echo '<div class="notice notice-error is-dismissible"><p>' . esc_html( $send_error_text ) . '</p></div>';
+		}
+		if ( isset( $_GET['bulk_sent'] ) || isset( $_GET['bulk_failed'] ) || isset( $_GET['bulk_skipped'] ) ) {
+			$bulk_sent = isset( $_GET['bulk_sent'] ) ? absint( $_GET['bulk_sent'] ) : 0;
+			$bulk_failed = isset( $_GET['bulk_failed'] ) ? absint( $_GET['bulk_failed'] ) : 0;
+			$bulk_skipped = isset( $_GET['bulk_skipped'] ) ? absint( $_GET['bulk_skipped'] ) : 0;
+			$bulk_message = sprintf(
+				/* translators: 1: number of sent emails, 2: number of failed emails, 3: number of skipped subscribers. */
+				__( 'Bulk send finished: %1$d sent, %2$d failed, %3$d skipped because the product is unavailable.', 'html-landing-page-builder-for-woocommerce' ),
+				$bulk_sent,
+				$bulk_failed,
+				$bulk_skipped
+			);
+			echo '<div class="notice ' . ( $bulk_failed ? 'notice-warning' : 'notice-success' ) . ' is-dismissible"><p>' . esc_html( $bulk_message ) . '</p></div>';
+		}
+		if ( isset( $_GET['template_saved'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['template_saved'] ) ) ) {
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'The email template was saved.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+		}
 		echo '<p><strong>' . esc_html__( 'Waiting for stock:', 'html-landing-page-builder-for-woocommerce' ) . '</strong> ' . esc_html( number_format_i18n( $waiting_count ) ) . ' &nbsp; <strong>' . esc_html__( 'Email sent:', 'html-landing-page-builder-for-woocommerce' ) . '</strong> ' . esc_html( number_format_i18n( $notified_count ) ) . ' &nbsp; <strong>' . esc_html__( 'Delivery failed:', 'html-landing-page-builder-for-woocommerce' ) . '</strong> ' . esc_html( number_format_i18n( $failed_count ) ) . '</p>';
 		if ( empty( $rows ) ) {
-			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'There are no stock notification subscriptions yet.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div></div>';
-			return;
+			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'There are no stock notification subscriptions yet.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+		} else {
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="margin:12px 0"><input type="hidden" name="action" value="hlpb_send_all_stock_notifications">';
+			wp_nonce_field( 'hlpb_send_all_stock_notifications' );
+			echo '<button type="submit" class="button button-primary" onclick="return confirm(\'' . esc_js( __( 'Send the email to all listed subscribers whose product is currently available?', 'html-landing-page-builder-for-woocommerce' ) ) . '\');">' . esc_html__( 'Send to everyone', 'html-landing-page-builder-for-woocommerce' ) . '</button></form>';
+			echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Email', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Subscribed', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Product and variation', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Landing page', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Status', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Last email attempt', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Actions', 'html-landing-page-builder-for-woocommerce' ) . '</th></tr></thead><tbody>';
 		}
-
-		echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Email', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Subscribed', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Product and variation', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Landing page', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Status', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Last email attempt', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Actions', 'html-landing-page-builder-for-woocommerce' ) . '</th></tr></thead><tbody>';
 		foreach ( $rows as $row ) {
 			$landing_title = $row['landing_id'] ? get_the_title( $row['landing_id'] ) : '';
 			$landing_edit = $row['landing_id'] ? get_edit_post_link( $row['landing_id'] ) : false;
@@ -165,17 +286,24 @@ final class HLPB_Cart_Section {
 			$subscribed = $subscribed_timestamp ? wp_date( $date_format, $subscribed_timestamp ) : '—';
 			$attempted = $attempted_timestamp ? wp_date( $date_format, $attempted_timestamp ) : '—';
 			$nonce_action = 'hlpb_delete_stock_notification_' . $row['variation_id'] . '_' . md5( strtolower( $row['email'] ) );
+			$send_nonce_action = 'hlpb_send_stock_notification_' . $row['variation_id'] . '_' . md5( strtolower( $row['email'] ) );
 			echo '<tr><td>' . esc_html( $row['email'] ) . '</td><td>' . esc_html( $subscribed ) . '</td><td>' . esc_html( $row['product_name'] ) . '</td><td>' . $landing_cell . '</td><td>' . esc_html( $status ) . '</td><td>' . esc_html( $attempted ) . '</td><td>';
-			if ( 'mail_failed' === $row['status'] ) {
-				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="hlpb_retry_stock_notification"><input type="hidden" name="variation_id" value="' . esc_attr( $row['variation_id'] ) . '">';
-				wp_nonce_field( 'hlpb_retry_stock_notification_' . $row['variation_id'] );
-				echo '<button type="submit" class="button button-small">' . esc_html__( 'Retry email', 'html-landing-page-builder-for-woocommerce' ) . '</button></form> ';
-			}
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline-block;margin:0 5px 5px 0"><input type="hidden" name="action" value="hlpb_send_stock_notification"><input type="hidden" name="variation_id" value="' . esc_attr( $row['variation_id'] ) . '"><input type="hidden" name="email" value="' . esc_attr( $row['email'] ) . '">';
+			wp_nonce_field( $send_nonce_action );
+			echo '<button type="submit" class="button button-small">' . esc_html__( 'Send', 'html-landing-page-builder-for-woocommerce' ) . '</button></form>';
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="hlpb_delete_stock_notification"><input type="hidden" name="variation_id" value="' . esc_attr( $row['variation_id'] ) . '"><input type="hidden" name="email" value="' . esc_attr( $row['email'] ) . '">';
 			wp_nonce_field( $nonce_action );
 			echo '<button type="submit" class="button button-small" onclick="return confirm(\'' . esc_js( __( 'Delete this email subscription?', 'html-landing-page-builder-for-woocommerce' ) ) . '\');">' . esc_html__( 'Delete', 'html-landing-page-builder-for-woocommerce' ) . '</button></form></td></tr>';
 		}
-		echo '</tbody></table></div>';
+		if ( ! empty( $rows ) ) {
+			echo '</tbody></table>';
+		}
+		$template = self::get_stock_notification_email_template();
+		echo '<hr><h2>' . esc_html__( 'Email template', 'html-landing-page-builder-for-woocommerce' ) . '</h2><p>' . esc_html__( 'This message is used for automatic stock alerts and when you send an email manually. Use {product_name} and {product_url}; they are replaced for each subscriber.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="hlpb_save_stock_notification_email_template">';
+		wp_nonce_field( 'hlpb_save_stock_notification_email_template' );
+		echo '<table class="form-table" role="presentation"><tbody><tr><th scope="row"><label for="hlpb-stock-email-subject">' . esc_html__( 'Subject', 'html-landing-page-builder-for-woocommerce' ) . '</label></th><td><input id="hlpb-stock-email-subject" class="regular-text" type="text" name="subject" value="' . esc_attr( $template['subject'] ) . '" required></td></tr><tr><th scope="row"><label for="hlpb-stock-email-message">' . esc_html__( 'Message', 'html-landing-page-builder-for-woocommerce' ) . '</label></th><td><textarea id="hlpb-stock-email-message" class="large-text" rows="8" name="message" required>' . esc_textarea( $template['message'] ) . '</textarea><p class="description">' . esc_html__( 'Plain text email. Product name and link are inserted using the placeholders above.', 'html-landing-page-builder-for-woocommerce' ) . '</p></td></tr></tbody></table>';
+		echo '<p><button type="submit" class="button button-primary">' . esc_html__( 'Save email template', 'html-landing-page-builder-for-woocommerce' ) . '</button></p></form></div>';
 	}
 
 	/** Default editable copy and offer configuration. */
@@ -863,15 +991,6 @@ final class HLPB_Cart_Section {
 		if ( ! $product || ! $product->is_purchasable() || ! $product->is_in_stock() ) {
 			return;
 		}
-		$name = wp_strip_all_tags( $product->get_formatted_name() );
-		$parent_id = $product->is_type( 'variation' ) ? absint( $product->get_parent_id() ) : $product_id;
-		$url = get_permalink( $parent_id );
-		$subject = sprintf( __( '%s is back in stock', 'html-landing-page-builder-for-woocommerce' ), $name );
-		$message = sprintf(
-			__( 'Good news — %1$s is available again. You can view it here: %2$s', 'html-landing-page-builder-for-woocommerce' ),
-			$name,
-			$url
-		);
 		$updated = false;
 		foreach ( $entries as &$entry ) {
 			if ( ! in_array( $entry['status'], array( 'waiting', 'mail_failed' ), true ) ) {
@@ -879,7 +998,7 @@ final class HLPB_Cart_Section {
 			}
 			$attempted_at = current_time( 'mysql', true );
 			$entry['attempted_at'] = $attempted_at;
-			if ( wp_mail( $entry['email'], $subject, $message ) ) {
+			if ( 'sent' === self::deliver_stock_notification_email( $product, $entry['email'] ) ) {
 				$entry['status'] = 'notified';
 				$entry['notified_at'] = $attempted_at;
 			} else {
@@ -891,6 +1010,84 @@ final class HLPB_Cart_Section {
 		if ( $updated ) {
 			update_post_meta( $product_id, self::STOCK_NOTIFY_META, array_values( $entries ) );
 		}
+	}
+
+	/** Send one notification from the saved address list. */
+	public static function handle_send_stock_notification() {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'html-landing-page-builder-for-woocommerce' ) );
+		}
+		$variation_id_value = isset( $_POST['variation_id'] ) ? wp_unslash( $_POST['variation_id'] ) : 0;
+		$email_value = isset( $_POST['email'] ) ? wp_unslash( $_POST['email'] ) : '';
+		$variation_id = is_scalar( $variation_id_value ) ? absint( $variation_id_value ) : 0;
+		$email = is_scalar( $email_value ) ? sanitize_email( (string) $email_value ) : '';
+		if ( ! $variation_id || ! is_email( $email ) ) {
+			wp_die( esc_html__( 'The stock notification subscription could not be found.', 'html-landing-page-builder-for-woocommerce' ) );
+		}
+		check_admin_referer( 'hlpb_send_stock_notification_' . $variation_id . '_' . md5( strtolower( $email ) ) );
+		$result = self::send_stock_notification_entry( $variation_id, $email );
+		$menu_url = admin_url( 'edit.php?post_type=' . HLPB_Landing_Builder::POST_TYPE . '&page=hlpb-stock-notifications' );
+		$query_args = 'sent' === $result ? array( 'sent' => '1' ) : array( 'send_error' => $result );
+		wp_safe_redirect( add_query_arg( $query_args, $menu_url ) );
+		exit;
+	}
+
+	/** Send the saved email to all listed subscribers and summarize the outcome. */
+	public static function handle_send_all_stock_notifications() {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'html-landing-page-builder-for-woocommerce' ) );
+		}
+		check_admin_referer( 'hlpb_send_all_stock_notifications' );
+		$variation_ids = get_posts( array(
+			'post_type'      => 'product_variation',
+			'post_status'    => array( 'publish', 'private', 'draft', 'pending', 'future', 'trash' ),
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+			'meta_query'     => array(
+				array(
+					'key'     => self::STOCK_NOTIFY_META,
+					'compare' => 'EXISTS',
+				),
+			),
+		) );
+		$sent = 0;
+		$failed = 0;
+		$skipped = 0;
+		foreach ( $variation_ids as $variation_id ) {
+			$entries = self::normalize_stock_notification_entries( get_post_meta( $variation_id, self::STOCK_NOTIFY_META, true ) );
+			foreach ( $entries as $entry ) {
+				$result = self::send_stock_notification_entry( $variation_id, $entry['email'] );
+				if ( 'sent' === $result ) {
+					++$sent;
+				} elseif ( 'mail_failed' === $result ) {
+					++$failed;
+				} else {
+					++$skipped;
+				}
+			}
+		}
+		$menu_url = admin_url( 'edit.php?post_type=' . HLPB_Landing_Builder::POST_TYPE . '&page=hlpb-stock-notifications' );
+		wp_safe_redirect( add_query_arg( array( 'bulk_sent' => $sent, 'bulk_failed' => $failed, 'bulk_skipped' => $skipped ), $menu_url ) );
+		exit;
+	}
+
+	/** Save the administrator's subject and message for both automatic and manual alerts. */
+	public static function handle_save_stock_notification_email_template() {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'html-landing-page-builder-for-woocommerce' ) );
+		}
+		check_admin_referer( 'hlpb_save_stock_notification_email_template' );
+		$subject_value = isset( $_POST['subject'] ) ? wp_unslash( $_POST['subject'] ) : '';
+		$message_value = isset( $_POST['message'] ) ? wp_unslash( $_POST['message'] ) : '';
+		$subject = is_scalar( $subject_value ) ? sanitize_text_field( (string) $subject_value ) : '';
+		$message = is_scalar( $message_value ) ? sanitize_textarea_field( (string) $message_value ) : '';
+		if ( '' === trim( $subject ) || '' === trim( $message ) ) {
+			wp_die( esc_html__( 'Enter both an email subject and message.', 'html-landing-page-builder-for-woocommerce' ) );
+		}
+		update_option( self::STOCK_NOTIFY_EMAIL_TEMPLATE_OPTION, array( 'subject' => $subject, 'message' => $message ) );
+		$menu_url = admin_url( 'edit.php?post_type=' . HLPB_Landing_Builder::POST_TYPE . '&page=hlpb-stock-notifications' );
+		wp_safe_redirect( add_query_arg( 'template_saved', '1', $menu_url ) );
+		exit;
 	}
 
 	/** Delete one email subscription from the admin list. */
@@ -1616,9 +1813,109 @@ final class HLPB_Cart_Section {
 		if ( ! empty( $cart_item['_hlpb_is_gift'] ) ) {
 			$rule = $presentation['bundle']['rule'] ?? array();
 			$status = empty( $cart_item['_hlpb_gift_eligible'] ) ? __( 'Regular price — gift not included in this quantity', 'html-landing-page-builder-for-woocommerce' ) : ( 'free' === ( $rule['gift_mode'] ?? '' ) ? __( 'Free gift', 'html-landing-page-builder-for-woocommerce' ) : __( 'Discounted gift', 'html-landing-page-builder-for-woocommerce' ) );
-			$item_data[] = array( 'key' => __( 'Gift status', 'html-landing-page-builder-for-woocommerce' ), 'value' => esc_html( $status ) );
+			$item_data[] = array( 'key' => __( 'Gift status', 'html-landing-page-builder-for-woocommerce' ), 'value' => '<span class="hlpb-gift-status">' . esc_html( $status ) . '</span>' );
 		}
 		return $item_data;
+	}
+
+	/** Keep selected variation details directly above the offer badge in cart and checkout. */
+	public static function move_variation_data_before_offer( $item_data, $cart_item ) {
+		if ( ! is_array( $item_data ) || empty( $cart_item['variation'] ) || ! is_array( $cart_item['variation'] ) ) {
+			return $item_data;
+		}
+
+		$product          = $cart_item['data'] ?? false;
+		$variation_labels = array();
+		foreach ( $cart_item['variation'] as $attribute_name => $value ) {
+			if ( ! is_scalar( $value ) || '' === (string) $value ) {
+				continue;
+			}
+
+			$attribute_name = rawurldecode( (string) $attribute_name );
+			$taxonomy       = wc_attribute_taxonomy_name( str_replace( 'attribute_pa_', '', $attribute_name ) );
+			$label          = taxonomy_exists( $taxonomy )
+				? wc_attribute_label( $taxonomy )
+				: wc_attribute_label( str_replace( 'attribute_', '', $attribute_name ), $product );
+			$normalized     = strtolower( trim( wp_strip_all_tags( (string) $label ), " \t\n\r\0\x0B:" ) );
+			if ( '' !== $normalized ) {
+				$variation_labels[ $normalized ] = true;
+			}
+		}
+
+		if ( empty( $variation_labels ) ) {
+			return $item_data;
+		}
+
+		$variation_data = array();
+		$other_data     = array();
+		foreach ( $item_data as $data ) {
+			if ( ! is_array( $data ) ) {
+				$other_data[] = $data;
+				continue;
+			}
+
+			$key        = $data['key'] ?? ( $data['name'] ?? '' );
+			$normalized = strtolower( trim( wp_strip_all_tags( (string) $key ), " \t\n\r\0\x0B:" ) );
+			if ( isset( $variation_labels[ $normalized ] ) ) {
+				$variation_data[] = $data;
+			} else {
+				$other_data[] = $data;
+			}
+		}
+
+		return array_merge( $variation_data, $other_data );
+	}
+
+	/** Remove Catapult game controls accidentally rendered as cart item details. */
+	public static function remove_catapult_game_cart_data( $item_data, $cart_item ) {
+		if ( ! is_array( $item_data ) ) {
+			return $item_data;
+		}
+
+		$all_text = '';
+		foreach ( $item_data as $data ) {
+			if ( ! is_array( $data ) ) {
+				continue;
+			}
+			foreach ( array( 'key', 'name', 'value', 'display' ) as $field ) {
+				if ( isset( $data[ $field ] ) && is_scalar( $data[ $field ] ) ) {
+					$all_text .= ' ' . strtolower( wp_strip_all_tags( (string) $data[ $field ] ) );
+				}
+			}
+		}
+
+		if ( false === strpos( $all_text, 'play for fun' ) || false === strpos( $all_text, 'battle for a discount' ) ) {
+			return $item_data;
+		}
+
+		$filtered = array();
+		foreach ( $item_data as $data ) {
+			if ( ! is_array( $data ) ) {
+				$filtered[] = $data;
+				continue;
+			}
+
+			$text = '';
+			foreach ( array( 'key', 'name', 'value', 'display' ) as $field ) {
+				if ( isset( $data[ $field ] ) && is_scalar( $data[ $field ] ) ) {
+					$text .= ' ' . strtolower( wp_strip_all_tags( (string) $data[ $field ] ) );
+				}
+			}
+			if ( false === strpos( $text, 'play for fun' ) && false === strpos( $text, 'battle for a discount' ) && '×' !== trim( $text ) ) {
+				$filtered[] = $data;
+			}
+		}
+
+		return array_values( $filtered );
+	}
+
+	/** Prevent the Catapult game shortcode from appearing in cart and checkout summaries. */
+	public static function suppress_catapult_game_on_cart_checkout( $output, $tag, $attributes, $match ) {
+		if ( 'wp_catapult_discount_game' !== $tag ) {
+			return $output;
+		}
+		$is_cart_context = ( function_exists( 'is_cart' ) && is_cart() ) || ( function_exists( 'is_checkout' ) && is_checkout() );
+		return $is_cart_context ? '' : $output;
 	}
 
 	/** Display the undiscounted and offer prices in cart and checkout rows. */
@@ -1750,25 +2047,16 @@ final class HLPB_Cart_Section {
 			return false;
 		}
 		$group_number = self::bundle_display_number( $bundle_key );
-		$mode = sanitize_key( $cart_item['_hlpb_mode'] ?? '' );
-		$mode_names = array(
-			'buy'    => __( 'Buy More', 'html-landing-page-builder-for-woocommerce' ),
-			'mix'    => __( 'Mix & Match', 'html-landing-page-builder-for-woocommerce' ),
-			'bundle' => __( 'Cozy Bundle', 'html-landing-page-builder-for-woocommerce' ),
-		);
-		$parts = array_filter(
-			array(
-				sanitize_text_field( $cart_item['_hlpb_campaign_name'] ?? '' ),
-				$mode_names[ $mode ] ?? '',
-				sprintf( __( 'Group %d', 'html-landing-page-builder-for-woocommerce' ), $group_number ),
-			)
-		);
+		$label = sanitize_text_field( $cart_item['_hlpb_campaign_name'] ?? '' );
+		if ( '' === $label ) {
+			$label = $coupon->get_code();
+		}
 		return array(
 			'bundle'       => $bundle,
 			'group_number' => $group_number,
 			'group_class'  => 'hlpb-offer-group-' . $group_number,
 			'hue'          => self::bundle_hue( $group_number ),
-			'label'        => implode( ' · ', $parts ),
+			'label'        => $label,
 		);
 	}
 

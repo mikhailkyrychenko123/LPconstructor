@@ -11,4 +11,12 @@
 .wc-block-cart-item__total .hlpb-block-offer-prices,.wc-block-components-order-summary-item__total-price .hlpb-block-offer-prices{align-items:flex-end;text-align:right}
 .wc-block-components-product-details__offer{display:flex;align-items:flex-start;gap:6px}
 .wc-block-components-product-details__offer .wc-block-components-product-details__name{font-weight:600}
+/* Keep the campaign badge while hiding WooCommerce's redundant "Offer:" key. */
+.woocommerce-cart dl.variation dt.variation-Offer,.woocommerce-checkout dl.variation dt.variation-Offer,.woocommerce-cart .wc-block-components-product-details__offer .wc-block-components-product-details__name,.woocommerce-checkout .wc-block-components-product-details__offer .wc-block-components-product-details__name{display:none!important}
+.woocommerce-cart dl.variation dd.variation-Offer,.woocommerce-checkout dl.variation dd.variation-Offer{margin-left:0}
+/* WooCommerce Blocks inserts a slash between consecutive product details. */
+.wc-block-components-product-details__offer .wc-block-components-product-details__name{display:none!important}
+.wc-block-components-product-details__offer+span[aria-hidden="true"]{display:none!important}
+/* The game is for the product page and should not appear in cart or checkout summaries. */
+.wpcdg-root{display:none!important}
 @media(max-width:600px){.hlpb-offer-badge{font-size:10px;padding:3px 7px}.hlpb-offer-prices{white-space:normal;text-align:right}}

@@ -50,13 +50,49 @@
 		target.dataset.hlpbOfferSignature = signature;
 	}
 
-	function renderOfferPrices() {
-		offersByItemClass.forEach( function ( offer, itemClass ) {
-			if ( ! offer.active || ! offer.has_discount ) {
+	function isSeparator( element ) {
+		return element.tagName === 'SPAN' && element.getAttribute( 'aria-hidden' ) === 'true' && element.textContent.trim() === '/';
+	}
+
+	function moveVariationsBeforeOffer( row ) {
+		row.querySelectorAll( '.wc-block-components-product-details' ).forEach( function ( details ) {
+			const children = Array.from( details.children );
+			const separators = children.filter( isSeparator );
+			const detailItems = children.filter( function ( child ) { return ! isSeparator( child ); } );
+			const offerItems = detailItems.filter( function ( child ) { return child.classList.contains( 'wc-block-components-product-details__offer' ); } );
+			if ( ! offerItems.length ) {
 				return;
 			}
 
+			const giftItems = detailItems.filter( function ( child ) { return child.classList.contains( 'wc-block-components-product-details__gift-status' ); } );
+			const otherItems = detailItems.filter( function ( child ) {
+				return ! child.classList.contains( 'wc-block-components-product-details__offer' ) && ! child.classList.contains( 'wc-block-components-product-details__gift-status' );
+			} );
+			const orderedItems = otherItems.concat( offerItems, giftItems );
+			const orderChanged = ! orderedItems.every( function ( child, index ) { return child === detailItems[ index ]; } );
+
+			const reorderedChildren = [];
+			orderedItems.forEach( function ( child, index ) {
+				reorderedChildren.push( child );
+				if ( index < orderedItems.length - 1 && separators[ index ] ) {
+					separators[ index ].style.display = child.classList.contains( 'wc-block-components-product-details__offer' ) ? 'none' : '';
+					reorderedChildren.push( separators[ index ] );
+				}
+			} );
+			if ( orderChanged ) {
+				details.replaceChildren( ...reorderedChildren );
+			}
+		} );
+	}
+
+	function renderOfferPrices() {
+		offersByItemClass.forEach( function ( offer, itemClass ) {
 			document.querySelectorAll( '.' + itemClass ).forEach( function ( row ) {
+				moveVariationsBeforeOffer( row );
+				if ( ! offer.active || ! offer.has_discount ) {
+					return;
+				}
+
 				const isCheckoutSummary = row.classList.contains( 'wc-block-components-order-summary-item' );
 				const unitTarget = isCheckoutSummary
 					? row.querySelector( '.wc-block-components-order-summary-item__individual-prices' )
