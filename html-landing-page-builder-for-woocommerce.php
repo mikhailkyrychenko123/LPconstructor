@@ -2,7 +2,7 @@
 /**
  * Plugin Name: HTML Landing Page Builder for WooCommerce
  * Description: Build HTML landing pages in WooCommerce and configure visual product attributes.
- * Version: 0.5.9
+ * Version: 0.6.5
  * Requires at least: 6.2
  * Requires PHP: 7.4
  * Text Domain: html-landing-page-builder-for-woocommerce
@@ -15,15 +15,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'HLPB_VERSION', '0.5.9' );
-define( 'HLPB_FILE', __FILE__ );
-define( 'HLPB_PATH', plugin_dir_path( __FILE__ ) );
-define( 'HLPB_URL', plugin_dir_url( __FILE__ ) );
+define( 'HLPB_LANDING_PAGE_BUILDER_VERSION', '0.6.5' );
+define( 'HLPB_LANDING_PAGE_BUILDER_FILE', __FILE__ );
+define( 'HLPB_LANDING_PAGE_BUILDER_PATH', plugin_dir_path( __FILE__ ) );
+define( 'HLPB_LANDING_PAGE_BUILDER_URL', plugin_dir_url( __FILE__ ) );
 
-require_once HLPB_PATH . 'includes/class-hlpb-landing-builder.php';
-require_once HLPB_PATH . 'includes/class-hlpb-cart-section.php';
-require_once HLPB_PATH . 'includes/class-hlpb-attribute-admin.php';
-require_once HLPB_PATH . 'includes/class-hlpb-demo-importer.php';
+require_once HLPB_LANDING_PAGE_BUILDER_PATH . 'includes/class-hlpb-landing-builder.php';
+require_once HLPB_LANDING_PAGE_BUILDER_PATH . 'includes/class-hlpb-cart-section.php';
+require_once HLPB_LANDING_PAGE_BUILDER_PATH . 'includes/class-hlpb-offer-analytics.php';
+require_once HLPB_LANDING_PAGE_BUILDER_PATH . 'includes/class-hlpb-attribute-admin.php';
+require_once HLPB_LANDING_PAGE_BUILDER_PATH . 'includes/class-hlpb-demo-importer.php';
 
 add_action(
 	'before_woocommerce_init',
@@ -36,6 +37,7 @@ add_action(
 
 add_action( 'plugins_loaded', array( 'HLPB_Landing_Builder', 'init' ) );
 add_action( 'plugins_loaded', array( 'HLPB_Cart_Section', 'init' ) );
+add_action( 'plugins_loaded', array( 'HLPB_Offer_Analytics', 'init' ) );
 add_action( 'plugins_loaded', array( 'HLPB_Attribute_Admin', 'init' ) );
 add_action( 'plugins_loaded', array( 'HLPB_Demo_Importer', 'init' ) );
 

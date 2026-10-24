@@ -220,7 +220,7 @@ final class HLPB_Landing_Builder {
 	 */
 	public static function get_templates() {
 		$templates = array();
-		$files     = glob( HLPB_PATH . 'templates/*/template.json' );
+		$files     = glob( HLPB_LANDING_PAGE_BUILDER_PATH . 'templates/*/template.json' );
 		if ( ! is_array( $files ) ) {
 			return $templates;
 		}
@@ -273,7 +273,7 @@ final class HLPB_Landing_Builder {
 		if ( ! $template || empty( $template['assets'] ) ) {
 			return '';
 		}
-		return HLPB_URL . 'templates/' . sanitize_key( $slug ) . '/' . trailingslashit( ltrim( $template['assets'], '/' ) );
+		return HLPB_LANDING_PAGE_BUILDER_URL . 'templates/' . sanitize_key( $slug ) . '/' . trailingslashit( ltrim( $template['assets'], '/' ) );
 	}
 
 	/**
@@ -303,7 +303,7 @@ final class HLPB_Landing_Builder {
 		if ( '' === $relative || false !== strpos( $relative, '../' ) || false !== strpos( $relative, '..\\' ) ) {
 			return false;
 		}
-		$base = wp_normalize_path( HLPB_PATH . 'templates/' . sanitize_key( $slug ) . '/' );
+		$base = wp_normalize_path( HLPB_LANDING_PAGE_BUILDER_PATH . 'templates/' . sanitize_key( $slug ) . '/' );
 		$path = wp_normalize_path( $base . $relative );
 		return 0 === strpos( $path, $base ) ? $path : false;
 	}
@@ -1240,9 +1240,9 @@ final class HLPB_Landing_Builder {
 
 		wp_enqueue_media();
 		wp_enqueue_script( 'jquery-ui-sortable' );
-		wp_enqueue_style( 'hlpb-builder-admin', HLPB_URL . 'assets/admin/builder.css', array(), HLPB_VERSION );
-		wp_enqueue_style( 'hlpb-cart-section-admin', HLPB_URL . 'assets/frontend/cart-section.css', array( 'hlpb-builder-admin' ), HLPB_VERSION );
-		wp_enqueue_script( 'hlpb-builder-admin', HLPB_URL . 'assets/admin/builder.js', array( 'jquery', 'jquery-ui-sortable' ), HLPB_VERSION, true );
+		wp_enqueue_style( 'hlpb-builder-admin', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/builder.css', array(), HLPB_LANDING_PAGE_BUILDER_VERSION );
+		wp_enqueue_style( 'hlpb-cart-section-admin', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/frontend/cart-section.css', array( 'hlpb-builder-admin' ), HLPB_LANDING_PAGE_BUILDER_VERSION );
+		wp_enqueue_script( 'hlpb-builder-admin', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/builder.js', array( 'jquery', 'jquery-ui-sortable' ), HLPB_LANDING_PAGE_BUILDER_VERSION, true );
 		$template_slug = self::get_template_slug( get_the_ID() );
 		$template      = self::get_template_info( $template_slug );
 		wp_localize_script(
@@ -1256,7 +1256,7 @@ final class HLPB_Landing_Builder {
 				'previews'    => self::get_section_previews(),
 				'singleInstanceTypes' => self::get_singleton_section_types(),
 				'error'       => __( 'The section could not be added. Please try again.', 'html-landing-page-builder-for-woocommerce' ),
-				'pluginUrl'   => HLPB_URL,
+				'pluginUrl'   => HLPB_LANDING_PAGE_BUILDER_URL,
 				'imageBase'   => self::get_template_asset_url( $template_slug ) . 'images/',
 				'defaultImage'=> $template && ! empty( $template['default_image'] ) ? sanitize_file_name( $template['default_image'] ) : 'texture-closeup-480.webp',
 				'orderLabel'  => __( 'Order', 'html-landing-page-builder-for-woocommerce' ),
@@ -1412,6 +1412,22 @@ final class HLPB_Landing_Builder {
 		}
 	}
 
+	/** Publish a static copy when another plugin workflow creates or updates a landing page. */
+	public static function publish_static_export( $post_id ) {
+		$post_id = absint( $post_id );
+		if ( self::POST_TYPE !== get_post_type( $post_id ) || 'publish' !== get_post_status( $post_id ) ) {
+			return new WP_Error( 'hlpb_export_post_not_published', __( 'Publish the landing page before generating its static copy.', 'html-landing-page-builder-for-woocommerce' ) );
+		}
+
+		$promo_folder = self::get_export_promo_folder( $post_id );
+		if ( ! self::has_export_rewrite_rule( $promo_folder ) ) {
+			self::register_export_route();
+			flush_rewrite_rules( false );
+		}
+
+		return self::generate_static_export( $post_id );
+	}
+
 	/**
 	 * Show the result of the last static export to the current administrator.
 	 *
@@ -1542,6 +1558,9 @@ final class HLPB_Landing_Builder {
 		if ( ! $styles_path ) {
 			return new WP_Error( 'hlpb_export_styles', __( 'The selected template stylesheet must be inside its assets folder.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
+		$cart_config      = $has_cart ? HLPB_Cart_Section::build_public_config( $post_id, $sections ) : array();
+		$cart_config_json = $cart_config ? wp_json_encode( $cart_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ) : '';
+		$hero_image       = $has_cart ? self::get_initial_cart_hero_image( $cart_config ) : array();
 
 		$title     = get_the_title( $post_id );
 		$title_html = esc_html( $title );
@@ -1550,21 +1569,33 @@ final class HLPB_Landing_Builder {
 			array( 'assetsUrl' => $asset_url ),
 			JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
 		);
-		$html = "<!doctype html>\n<html lang=\"{$language}\">\n<head>\n<meta charset=\"" . esc_attr( get_bloginfo( 'charset' ) ) . "\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,viewport-fit=cover\">\n<meta name=\"theme-color\" content=\"#fffdf9\">\n<title>{$title_html}</title>\n<link rel=\"stylesheet\" href=\"" . esc_url( $asset_url . $styles_path ) . "\">\n";
+		$html = "<!doctype html>\n<html lang=\"{$language}\">\n<head>\n<meta charset=\"" . esc_attr( get_bloginfo( 'charset' ) ) . "\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,viewport-fit=cover\">\n<meta name=\"theme-color\" content=\"#fffdf9\">\n<title>{$title_html}</title>\n";
+		if ( ! empty( $hero_image['src'] ) ) {
+			$html .= '<link rel="preload" as="image" href="' . esc_url( $hero_image['src'] ) . '"';
+			if ( ! empty( $hero_image['srcset'] ) ) {
+				$html .= ' imagesrcset="' . esc_attr( $hero_image['srcset'] ) . '" imagesizes="' . esc_attr( $hero_image['sizes'] ?? '(max-width: 700px) calc(100vw - 28px), 50vw' ) . '"';
+			}
+			$html .= ' fetchpriority="high">' . "\n";
+		}
+		$html .= '<link rel="stylesheet" href="' . esc_url( $asset_url . $styles_path ) . '">' . "\n";
 		if ( $script_config ) {
 			$html .= '<script>window.HLPBDemo=' . $script_config . ";</script>\n";
 		}
 		if ( $script_path && is_file( self::resolve_template_file( $template_slug, $template['script'] ) ) ) {
 			$html .= '<script defer src="' . esc_url( $asset_url . $script_path ) . '"></script>' . "\n";
 		}
-		$cart_config = $has_cart ? HLPB_Cart_Section::build_public_config( $post_id, $sections ) : array();
-		$cart_config_json = $cart_config ? wp_json_encode( $cart_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ) : '';
 		if ( $has_cart ) {
-			$html .= '<link rel="stylesheet" href="' . esc_url( $asset_url . 'hlpb-cart.css' ) . '?v=' . esc_attr( HLPB_VERSION ) . '">' . "\n";
+			$cart_css_path = HLPB_LANDING_PAGE_BUILDER_PATH . 'assets/frontend/cart-section.css';
+			$cart_css      = is_readable( $cart_css_path ) ? file_get_contents( $cart_css_path ) : false;
+			if ( false !== $cart_css ) {
+				$html .= '<style id="hlpb-cart-inline-css">' . $cart_css . '</style>' . "\n";
+			} else {
+				$html .= '<link rel="stylesheet" href="' . esc_url( $asset_url . 'hlpb-cart.css' ) . '?v=' . esc_attr( HLPB_LANDING_PAGE_BUILDER_VERSION ) . '">' . "\n";
+			}
 			if ( $cart_config_json ) {
 				$html .= '<script>window.HLPBCartData=' . $cart_config_json . ';</script>' . "\n";
 			}
-			$html .= '<script defer src="' . esc_url( $asset_url . 'hlpb-cart.js' ) . '?v=' . esc_attr( HLPB_VERSION ) . '"></script>' . "\n";
+			$html .= '<script defer src="' . esc_url( $asset_url . 'hlpb-cart.js' ) . '?v=' . esc_attr( HLPB_LANDING_PAGE_BUILDER_VERSION ) . '"></script>' . "\n";
 		}
 		$html .= "</head>\n<body class=\"hlpb-landing-page\">\n<div class=\"hlpb-page\">\n";
 		$html .= self::get_demo_fragment( 'sprite', $template_slug, $asset_url ) . "\n<main id=\"top\">\n";
@@ -1573,7 +1604,11 @@ final class HLPB_Landing_Builder {
 			if ( isset( $section['type'] ) && 'cart_section' === $section['type'] ) {
 				$has_cart = true;
 			}
-			$html .= self::render_frontend_section( $section, $template_slug, $asset_url, $images ) . "\n";
+			$section_html = self::render_frontend_section( $section, $template_slug, $asset_url, $images );
+			if ( $has_cart && isset( $section['type'] ) && 'cart_section' === $section['type'] ) {
+				$section_html = self::apply_initial_cart_hero_image( $section_html, $hero_image );
+			}
+			$html .= $section_html . "\n";
 		}
 		$html .= "</main>\n";
 		if ( $has_cart ) {
@@ -2347,9 +2382,9 @@ final class HLPB_Landing_Builder {
 			return;
 		}
 		$asset_url = self::get_template_asset_url( $template_slug );
-		wp_enqueue_style( 'hlpb-landing-design', HLPB_URL . 'templates/' . $template_slug . '/' . ltrim( $template['styles'], '/' ), array(), HLPB_VERSION );
+		wp_enqueue_style( 'hlpb-landing-design', HLPB_LANDING_PAGE_BUILDER_URL . 'templates/' . $template_slug . '/' . ltrim( $template['styles'], '/' ), array(), HLPB_LANDING_PAGE_BUILDER_VERSION );
 		if ( ! empty( $template['script'] ) && is_file( self::resolve_template_file( $template_slug, $template['script'] ) ) ) {
-			wp_enqueue_script( 'hlpb-landing-design', HLPB_URL . 'templates/' . $template_slug . '/' . ltrim( $template['script'], '/' ), array(), HLPB_VERSION, true );
+			wp_enqueue_script( 'hlpb-landing-design', HLPB_LANDING_PAGE_BUILDER_URL . 'templates/' . $template_slug . '/' . ltrim( $template['script'], '/' ), array(), HLPB_LANDING_PAGE_BUILDER_VERSION, true );
 			wp_localize_script(
 				'hlpb-landing-design',
 				'HLPBDemo',
@@ -2367,7 +2402,7 @@ final class HLPB_Landing_Builder {
 	 */
 	public static function select_template( $template ) {
 		if ( is_singular( self::POST_TYPE ) ) {
-			return HLPB_PATH . 'templates/landing-page.php';
+			return HLPB_LANDING_PAGE_BUILDER_PATH . 'templates/landing-page.php';
 		}
 		return $template;
 	}
@@ -2747,6 +2782,80 @@ final class HLPB_Landing_Builder {
 		return strtr( $markup, $replacements );
 	}
 
+	/** Pick the first product shown by the active offer tab for the initial gallery image. */
+	private static function get_initial_cart_hero_image( $cart_config ) {
+		if ( empty( $cart_config['products'] ) || ! is_array( $cart_config['products'] ) ) {
+			return array();
+		}
+		$products = $cart_config['products'];
+		$modes    = isset( $cart_config['modes'] ) && is_array( $cart_config['modes'] ) ? $cart_config['modes'] : array();
+		foreach ( array( 'buy', 'mix', 'bundle' ) as $mode ) {
+			if ( empty( $modes[ $mode ]['enabled'] ) ) {
+				continue;
+			}
+			$ids = array();
+			foreach ( (array) ( $modes[ $mode ]['products'] ?? array() ) as $product_id ) {
+				$product_id = absint( $product_id );
+				if ( $product_id && isset( $products[ $product_id ] ) && ! in_array( $product_id, $ids, true ) ) {
+					$ids[] = $product_id;
+				}
+			}
+			$minimum = 'buy' === $mode ? 1 : 2;
+			if ( count( $ids ) >= $minimum && ! empty( $products[ $ids[0] ]['image']['src'] ) ) {
+				return $products[ $ids[0] ]['image'];
+			}
+		}
+		foreach ( $products as $product ) {
+			if ( ! empty( $product['image']['src'] ) ) {
+				return $product['image'];
+			}
+		}
+		return array();
+	}
+
+	/** Use the selected WooCommerce product as the exported page's initial hero image. */
+	private static function apply_initial_cart_hero_image( $markup, $image ) {
+		if ( ! is_string( $markup ) || empty( $image['src'] ) ) {
+			return $markup;
+		}
+		$attributes = array(
+			'src'    => $image['src'],
+			'srcset' => $image['srcset'] ?? '',
+			'sizes'  => ! empty( $image['srcset'] ) ? ( $image['sizes'] ?? '(max-width: 700px) calc(100vw - 28px), 50vw' ) : '',
+			'alt'    => $image['alt'] ?? '',
+		);
+		if ( ! empty( $image['width'] ) ) {
+			$attributes['width'] = absint( $image['width'] );
+		}
+		if ( ! empty( $image['height'] ) ) {
+			$attributes['height'] = absint( $image['height'] );
+		}
+		$updated = preg_replace_callback(
+			'~<img\b(?=[^>]*\bid=["\']heroImage["\'])[^>]*>~i',
+			static function ( $matches ) use ( $attributes ) {
+				$tag = $matches[0];
+				foreach ( $attributes as $name => $value ) {
+					$pattern = '~\s+' . preg_quote( $name, '~' ) . '\s*=\s*(["\']).*?\1~i';
+					if ( '' === (string) $value ) {
+						$tag = preg_replace( $pattern, '', $tag, 1 );
+					} else {
+						$escaped_value = 'src' === $name ? esc_url( $value ) : esc_attr( (string) $value );
+						$replacement   = ' ' . $name . '="' . $escaped_value . '"';
+						if ( preg_match( $pattern, $tag ) ) {
+							$tag = preg_replace_callback( $pattern, static function () use ( $replacement ) { return $replacement; }, $tag, 1 );
+						} else {
+							$tag = substr_replace( $tag, $replacement, -1, 0 );
+						}
+					}
+				}
+				return $tag;
+			},
+			$markup,
+			1
+		);
+		return is_string( $updated ) ? $updated : $markup;
+	}
+
 	/**
 	 * Return a section fragment from the supplied static design.
 	 *
@@ -2801,7 +2910,7 @@ final class HLPB_Landing_Builder {
 		if ( $fallback && $path && file_exists( $path ) ) {
 			return $fallback;
 		}
-		$files = glob( HLPB_PATH . 'templates/' . sanitize_key( $template_slug ) . '/' . $images . '*.{jpg,jpeg,png,webp}', GLOB_BRACE );
+		$files = glob( HLPB_LANDING_PAGE_BUILDER_PATH . 'templates/' . sanitize_key( $template_slug ) . '/' . $images . '*.{jpg,jpeg,png,webp}', GLOB_BRACE );
 		return $files ? basename( $files[0] ) : '';
 	}
 }

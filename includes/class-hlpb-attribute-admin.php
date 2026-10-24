@@ -141,8 +141,8 @@ final class HLPB_Attribute_Admin {
 			return;
 		}
 
-		wp_enqueue_style( 'hlpb-variation-swatches', HLPB_URL . 'assets/frontend/variation-swatches.css', array(), HLPB_VERSION );
-		wp_enqueue_script( 'hlpb-variation-swatches', HLPB_URL . 'assets/frontend/variation-swatches.js', array( 'jquery' ), HLPB_VERSION, true );
+		wp_enqueue_style( 'hlpb-variation-swatches', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/frontend/variation-swatches.css', array(), HLPB_LANDING_PAGE_BUILDER_VERSION );
+		wp_enqueue_script( 'hlpb-variation-swatches', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/frontend/variation-swatches.js', array( 'jquery' ), HLPB_LANDING_PAGE_BUILDER_VERSION, true );
 	}
 
 	/**
@@ -287,13 +287,13 @@ final class HLPB_Attribute_Admin {
 			return;
 		}
 
-		wp_enqueue_style( 'hlpb-attribute-admin', HLPB_URL . 'assets/admin/attributes.css', array(), HLPB_VERSION );
+		wp_enqueue_style( 'hlpb-attribute-admin', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/attributes.css', array(), HLPB_LANDING_PAGE_BUILDER_VERSION );
 		if ( $attribute_ui ) {
-			wp_enqueue_script( 'hlpb-attribute-preview', HLPB_URL . 'assets/admin/attribute-preview.js', array(), HLPB_VERSION, true );
+			wp_enqueue_script( 'hlpb-attribute-preview', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/attribute-preview.js', array(), HLPB_LANDING_PAGE_BUILDER_VERSION, true );
 		}
 		if ( $taxonomy_ui ) {
 			wp_enqueue_media();
-			wp_enqueue_script( 'hlpb-term-admin', HLPB_URL . 'assets/admin/term-fields.js', array( 'jquery' ), HLPB_VERSION, true );
+			wp_enqueue_script( 'hlpb-term-admin', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/term-fields.js', array( 'jquery' ), HLPB_LANDING_PAGE_BUILDER_VERSION, true );
 		}
 	}
 }

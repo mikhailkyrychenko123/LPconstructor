@@ -18,6 +18,7 @@ final class HLPB_Demo_Importer {
 	const ATTRIBUTES_OPTION = 'hlpb_demo_imported_attributes';
 	const RESULT_OPTION  = 'hlpb_demo_import_last_result';
 	const LOCK_OPTION    = 'hlpb_demo_import_lock';
+	const LANDING_META    = '_hlpb_demo_landing';
 	const MEDIA_PREFIX   = 'hlpb-demo-products-v1:';
 	const NAME_SUFFIX    = 'Landing-demo';
 
@@ -30,8 +31,11 @@ final class HLPB_Demo_Importer {
 	/** Register the activation prompt and import actions. */
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
+		add_action( 'admin_menu', array( __CLASS__, 'remove_duplicate_create_landing_submenu' ), 999 );
 		add_action( 'admin_notices', array( __CLASS__, 'render_admin_notices' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_onboarding_assets' ) );
 		add_action( 'admin_post_hlpb_import_demo_products', array( __CLASS__, 'handle_import' ) );
+		add_action( 'wp_ajax_hlpb_activation_import', array( __CLASS__, 'handle_activation_import' ) );
 		add_action( 'admin_post_hlpb_delete_demo_products', array( __CLASS__, 'handle_delete' ) );
 		add_action( 'admin_post_hlpb_dismiss_demo_import', array( __CLASS__, 'handle_dismiss' ) );
 	}
@@ -48,12 +52,45 @@ final class HLPB_Demo_Importer {
 		);
 	}
 
+	/** Keep the create button on the landing list page without a duplicate sidebar entry. */
+	public static function remove_duplicate_create_landing_submenu() {
+		remove_submenu_page(
+			'edit.php?post_type=' . HLPB_Landing_Builder::POST_TYPE,
+			'post-new.php?post_type=' . HLPB_Landing_Builder::POST_TYPE
+		);
+	}
+
 	/** Queue the optional import prompt after plugin activation. */
 	public static function queue_activation_prompt() {
 		update_option( self::PROMPT_OPTION, '1', false );
 	}
 
-	/** Show the optional import prompt after activation. */
+	/** Load the activation welcome dialog only while it is pending. */
+	public static function enqueue_onboarding_assets() {
+		if ( '1' !== get_option( self::PROMPT_OPTION ) || ( ! current_user_can( 'manage_woocommerce' ) && ! current_user_can( 'manage_options' ) ) ) {
+			return;
+		}
+
+		wp_enqueue_style( 'hlpb-onboarding', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/onboarding.css', array(), HLPB_LANDING_PAGE_BUILDER_VERSION );
+		wp_enqueue_script( 'hlpb-onboarding', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/onboarding.js', array(), HLPB_LANDING_PAGE_BUILDER_VERSION, true );
+		wp_localize_script(
+			'hlpb-onboarding',
+			'HLPBOnboarding',
+			array(
+				'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
+				'nonce'         => wp_create_nonce( 'hlpb_activation_import' ),
+				'busy'          => __( 'Preparing your demo store…', 'html-landing-page-builder-for-woocommerce' ),
+				'error'         => __( 'The import could not be completed. You can safely retry from this window or open the Import page.', 'html-landing-page-builder-for-woocommerce' ),
+				'importing'     => __( 'Importing product images and variations…', 'html-landing-page-builder-for-woocommerce' ),
+				'finishing'     => __( 'WooCommerce is still preparing product images and galleries…', 'html-landing-page-builder-for-woocommerce' ),
+				'longWait'      => __( 'This is taking longer than usual. Keep this window open and wait for the result before starting another import.', 'html-landing-page-builder-for-woocommerce' ),
+				'invalidResponse' => __( 'The server returned an unexpected response (%d). Check the PHP error log for details.', 'html-landing-page-builder-for-woocommerce' ),
+				'openLanding'   => __( 'Open demo landing page', 'html-landing-page-builder-for-woocommerce' ),
+			)
+		);
+	}
+
+	/** Show the optional import welcome dialog after activation. */
 	public static function render_admin_notices() {
 		if ( ! current_user_can( 'manage_woocommerce' ) && ! current_user_can( 'manage_options' ) ) {
 			return;
@@ -64,20 +101,25 @@ final class HLPB_Demo_Importer {
 		}
 
 		$woocommerce_ready = function_exists( 'wc_create_attribute' ) && class_exists( 'WC_Product' );
-		$import_url        = admin_url( 'edit.php?post_type=' . HLPB_Landing_Builder::POST_TYPE . '&page=hlpb-demo-import' );
-		echo '<div class="notice notice-info"><p><strong>' . esc_html__( 'Status: demo data has not been imported yet.', 'html-landing-page-builder-for-woocommerce' ) . '</strong></p>';
-		echo '<p>' . esc_html__( 'Import creates three separate demo products and isolated Color and Size attributes. Names include “Landing-demo”; store products and attributes that are not marked as imported by this plugin are left untouched.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
-		echo '<p>' . esc_html__( 'After importing, the full status and short report remain available on Landing Pages → Import.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		$logo_url          = HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/buyget-icon.png';
+		$promo_image_url   = HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/onboarding-promo.png';
+		echo '<div class="hlpb-onboarding-overlay" role="presentation"><section class="hlpb-onboarding-modal" role="dialog" aria-modal="true" aria-labelledby="hlpb-onboarding-title" aria-describedby="hlpb-onboarding-copy">';
+		echo '<div class="hlpb-onboarding-brand"><img class="hlpb-onboarding-brand-desktop" src="' . esc_url( $promo_image_url ) . '" width="876" height="1080" alt="' . esc_attr__( 'BuyGet landing page builder sales toolkit', 'html-landing-page-builder-for-woocommerce' ) . '"><div class="hlpb-onboarding-brand-mobile"><img src="' . esc_url( $logo_url ) . '" width="72" height="72" alt="' . esc_attr__( 'BuyGet logo', 'html-landing-page-builder-for-woocommerce' ) . '"><span>' . esc_html__( 'HTML Landing Page Builder for WooCommerce', 'html-landing-page-builder-for-woocommerce' ) . '</span></div></div>';
+		echo '<div class="hlpb-onboarding-content"><p class="hlpb-onboarding-eyebrow">' . esc_html__( 'WELCOME TO BUYGET', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		echo '<h1 id="hlpb-onboarding-title">' . esc_html__( 'Turn your WooCommerce products into a landing page that sells.', 'html-landing-page-builder-for-woocommerce' ) . '</h1>';
+		echo '<p id="hlpb-onboarding-copy" class="hlpb-onboarding-intro">' . esc_html__( 'Start with a ready-made shop: sample products, colour and size options, bundle offers, and a published demo landing page.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		echo '<ul class="hlpb-onboarding-points"><li>' . esc_html__( 'Three isolated demo products with variations and galleries', 'html-landing-page-builder-for-woocommerce' ) . '</li><li>' . esc_html__( 'Buy More, Mix & Match, and Cozy Bundle examples', 'html-landing-page-builder-for-woocommerce' ) . '</li><li>' . esc_html__( 'A published landing page at /promo/lp-demo/', 'html-landing-page-builder-for-woocommerce' ) . '</li><li>' . esc_html__( 'Static landing pages built to target a 100/100 Google PageSpeed score*', 'html-landing-page-builder-for-woocommerce' ) . '</li><li>' . esc_html__( 'Recommended with Caddy and CheckoutWC — fully compatible with both', 'html-landing-page-builder-for-woocommerce' ) . '</li></ul>';
+		echo '<p class="hlpb-onboarding-footnote">' . esc_html__( '*Actual PageSpeed results depend on your hosting, theme, media, and other plugins.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
 		if ( $woocommerce_ready ) {
-			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline-block;margin-right:10px"><input type="hidden" name="action" value="hlpb_import_demo_products">';
-			wp_nonce_field( 'hlpb_import_demo_products' );
-			echo '<button type="submit" class="button button-primary">' . esc_html__( 'Import demo data', 'html-landing-page-builder-for-woocommerce' ) . '</button></form>';
+			echo '<button type="button" class="button button-primary hlpb-onboarding-import" data-hlpb-import>' . esc_html__( 'Import demo data', 'html-landing-page-builder-for-woocommerce' ) . '<span aria-hidden="true">→</span></button>';
 		} else {
-			echo '<p>' . esc_html__( 'Activate WooCommerce to import the demo data.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+			echo '<p class="hlpb-onboarding-warning">' . esc_html__( 'Activate WooCommerce to import the demo data.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
 		}
-		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline-block"><input type="hidden" name="action" value="hlpb_dismiss_demo_import">';
+		echo '<div class="hlpb-onboarding-progress" data-hlpb-progress hidden><span class="hlpb-onboarding-progress-label" data-hlpb-status role="status" aria-live="polite"></span><span class="hlpb-onboarding-track" role="progressbar" aria-label="' . esc_attr__( 'Import progress', 'html-landing-page-builder-for-woocommerce' ) . '"><span></span></span></div>';
+		echo '<div class="hlpb-onboarding-result" data-hlpb-result hidden><span class="hlpb-onboarding-result-mark" aria-hidden="true">✓</span><div><h2 data-hlpb-result-title></h2><ul data-hlpb-report></ul><a class="hlpb-onboarding-landing" data-hlpb-landing href="#" target="_blank" rel="noopener noreferrer"></a></div></div>';
+		echo '<div class="hlpb-onboarding-footer"><span>' . esc_html__( 'HTML Landing Page Builder for WooCommerce', 'html-landing-page-builder-for-woocommerce' ) . '</span><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="hlpb_dismiss_demo_import">';
 		wp_nonce_field( 'hlpb_dismiss_demo_import' );
-		echo '<button type="submit" class="button">' . esc_html__( 'Not now', 'html-landing-page-builder-for-woocommerce' ) . '</button></form> <a class="button" href="' . esc_url( $import_url ) . '">' . esc_html__( 'Open Import page', 'html-landing-page-builder-for-woocommerce' ) . '</a></div>';
+		echo '<button type="submit" class="button-link">' . esc_html__( 'Not now', 'html-landing-page-builder-for-woocommerce' ) . '</button></form></div></div></section></div>';
 	}
 
 	/** Render the persistent status, report, import, and delete controls. */
@@ -93,7 +135,7 @@ final class HLPB_Demo_Importer {
 		$has_owned_data     = ! empty( $owned_products ) || ! empty( $owned_attributes ) || ! empty( self::get_owned_ids( 'product_variation', self::VARIATION_META ) ) || ! empty( self::get_owned_ids( 'attachment', self::MEDIA_META ) );
 
 		echo '<div class="wrap"><h1>' . esc_html__( 'Demo Import', 'html-landing-page-builder-for-woocommerce' ) . '</h1>';
-		echo '<p>' . esc_html__( 'Import or remove the bundled WooCommerce demo catalog. Imported products and attributes are isolated with the Landing-demo suffix; this does not change landing page templates or reference content in the constructor.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		echo '<p>' . esc_html__( 'Import or remove the bundled WooCommerce demo catalog. Imported products and attributes are isolated with the Landing-demo suffix. Import also creates or refreshes /promo/lp-demo/ with Hoodies in Buy More and Hoodies plus Blankets in Mix & Match and Cozy Bundle. Reimporting refreshes the landing page from its saved settings without replacing your edits.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
 		self::render_result( $result );
 
 		if ( ! empty( $result['time'] ) ) {
@@ -105,7 +147,7 @@ final class HLPB_Demo_Importer {
 		}
 
 		echo '<h2>' . esc_html__( 'Import demo data', 'html-landing-page-builder-for-woocommerce' ) . '</h2>';
-		echo '<p>' . esc_html__( 'Creates or updates Blankets, Hoodies, and Test Simple (Discount product1) demo products, their variations and galleries, and separate Color and Size attributes. Repeating the import updates these marked demo records only.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		echo '<p>' . esc_html__( 'Creates or updates Blankets, Hoodies, and Test Simple (Discount product1), their variations and galleries, and separate Color and Size attributes. It also publishes /promo/lp-demo/ with a Buy More offer for Hoodies and Mix & Match and Cozy Bundle offers for Hoodies plus Blankets. Repeating the import updates the marked demo records and refreshes the landing page without replacing its saved sections.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="hlpb_import_demo_products">';
 		wp_nonce_field( 'hlpb_import_demo_products' );
 		echo '<button type="submit" class="button button-primary" ' . disabled( ! $woocommerce_ready, true, false ) . '>' . esc_html__( 'Import demo data', 'html-landing-page-builder-for-woocommerce' ) . '</button></form>';
@@ -145,6 +187,7 @@ final class HLPB_Demo_Importer {
 			wp_die( esc_html__( 'You are not allowed to import WooCommerce demo data.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
 		check_admin_referer( 'hlpb_import_demo_products' );
+		self::prepare_import_runtime();
 
 		if ( ! self::acquire_lock() ) {
 			self::store_result( 'import', 'failed', __( 'Another demo data operation is already running. Wait a moment and retry.', 'html-landing-page-builder-for-woocommerce' ), array() );
@@ -153,7 +196,7 @@ final class HLPB_Demo_Importer {
 
 		self::$run_counts = self::empty_counts();
 		self::$run_media  = array();
-		$result           = self::import_package();
+		$result           = self::run_import_package();
 		self::release_lock();
 		delete_option( self::PROMPT_OPTION );
 
@@ -162,9 +205,86 @@ final class HLPB_Demo_Importer {
 			$report[] = __( 'The import stopped at an error. Run it again to safely resume; already marked demo records will be updated.', 'html-landing-page-builder-for-woocommerce' );
 			self::store_result( 'import', 'partial', $result->get_error_message(), $report );
 		} else {
-			self::store_result( 'import', 'success', __( 'Demo data import completed.', 'html-landing-page-builder-for-woocommerce' ), $result['report'] );
+			$status  = ! empty( $result['landing_error'] ) ? 'partial' : 'success';
+			$message = ! empty( $result['landing_error'] )
+				? __( 'Demo products and attributes were imported, but the default landing page could not be published.', 'html-landing-page-builder-for-woocommerce' )
+				: __( 'Demo data import completed.', 'html-landing-page-builder-for-woocommerce' );
+			self::store_result( 'import', $status, $message, $result['report'] );
 		}
 		self::redirect_to_import_page();
+	}
+
+	/** Run the activation import in place and return its progress result to the dialog. */
+	public static function handle_activation_import() {
+		if ( ! current_user_can( 'manage_woocommerce' ) && ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'You are not allowed to import WooCommerce demo data.', 'html-landing-page-builder-for-woocommerce' ) ), 403 );
+		}
+		check_ajax_referer( 'hlpb_activation_import', 'nonce' );
+		self::prepare_import_runtime();
+
+		if ( ! self::acquire_lock() ) {
+			wp_send_json_error( array( 'message' => __( 'Another demo data operation is running. Wait a moment and try again.', 'html-landing-page-builder-for-woocommerce' ) ), 409 );
+		}
+
+		self::$run_counts = self::empty_counts();
+		self::$run_media  = array();
+		try {
+			$result = self::run_import_package();
+		} finally {
+			self::release_lock();
+		}
+
+		if ( is_wp_error( $result ) ) {
+			$report   = self::format_import_report( self::$run_counts );
+			$report[] = __( 'The import stopped at an error. You can safely retry; already marked demo records will be updated.', 'html-landing-page-builder-for-woocommerce' );
+			self::store_result( 'import', 'partial', $result->get_error_message(), $report );
+			delete_option( self::PROMPT_OPTION );
+			wp_send_json_error(
+				array(
+					'message' => $result->get_error_message(),
+					'report'  => $report,
+				),
+				500
+			);
+		}
+
+		$status  = ! empty( $result['landing_error'] ) ? 'partial' : 'success';
+		$message = ! empty( $result['landing_error'] )
+			? __( 'Demo products and attributes were imported, but the default landing page could not be published.', 'html-landing-page-builder-for-woocommerce' )
+			: __( 'Demo data import completed.', 'html-landing-page-builder-for-woocommerce' );
+		self::store_result( 'import', $status, $message, $result['report'] );
+		delete_option( self::PROMPT_OPTION );
+		wp_send_json_success(
+			array(
+				'status'      => $status,
+				'message'     => $message,
+				'report'      => $result['report'],
+				'landing_url' => ! empty( $result['landing_url'] ) ? esc_url_raw( $result['landing_url'] ) : '',
+			)
+		);
+	}
+
+	/** Give large image imports enough PHP resources and convert thrown errors to a response. */
+	private static function prepare_import_runtime() {
+		if ( function_exists( 'wp_raise_memory_limit' ) ) {
+			wp_raise_memory_limit( 'admin' );
+		}
+		if ( function_exists( 'set_time_limit' ) ) {
+			@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		}
+	}
+
+	/** Run the importer and return an actionable error instead of leaving AJAX without JSON. */
+	private static function run_import_package() {
+		try {
+			return self::import_package();
+		} catch ( Throwable $error ) {
+			error_log( 'HLPB demo import failed: ' . $error->getMessage() );
+			return new WP_Error(
+				'hlpb_demo_import_exception',
+				__( 'The demo import stopped unexpectedly. Check the PHP error log before retrying.', 'html-landing-page-builder-for-woocommerce' )
+			);
+		}
 	}
 
 	/** Delete only plugin-marked demo records after a nonce and capability check. */
@@ -542,7 +662,7 @@ final class HLPB_Demo_Importer {
 			return new WP_Error( 'hlpb_woocommerce_required', __( 'WooCommerce must be active to import the demo products.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
 
-		$package_file = HLPB_PATH . 'demo-data/demo-products.json';
+		$package_file = HLPB_LANDING_PAGE_BUILDER_PATH . 'demo-data/demo-products.json';
 		$json         = is_readable( $package_file ) ? file_get_contents( $package_file ) : false;
 		$package      = $json ? json_decode( $json, true ) : null;
 		if ( ! is_array( $package ) || 1 !== absint( isset( $package['schema_version'] ) ? $package['schema_version'] : 0 ) || empty( $package['media'] ) || ! is_array( $package['media'] ) || empty( $package['attributes'] ) || ! is_array( $package['attributes'] ) || empty( $package['products'] ) || ! is_array( $package['products'] ) ) {
@@ -650,7 +770,8 @@ final class HLPB_Demo_Importer {
 			}
 		}
 
-		$counts = array( 'created' => 0, 'updated' => 0 );
+		$counts       = array( 'created' => 0, 'updated' => 0 );
+		$product_ids  = array();
 		foreach ( $package['products'] as $product_data ) {
 			if ( ! is_array( $product_data ) || empty( $product_data['source_slug'] ) || empty( $product_data['type'] ) ) {
 				continue;
@@ -660,11 +781,106 @@ final class HLPB_Demo_Importer {
 				return $product;
 			}
 			$counts[ ! empty( $product['created'] ) ? 'created' : 'updated' ]++;
+			$product_ids[ sanitize_title( $product_data['source_slug'] ) ] = absint( $product['id'] );
 		}
 
 		self::$run_counts['products_created'] = $counts['created'];
 		self::$run_counts['products_updated'] = $counts['updated'];
-		return array( 'report' => self::format_import_report( self::$run_counts ) );
+		$report         = self::format_import_report( self::$run_counts );
+		$landing_result = self::create_default_landing( $product_ids );
+		if ( is_wp_error( $landing_result ) ) {
+			$report[] = sprintf(
+				/* translators: %s is the reason the default demo landing page could not be published. */
+				__( 'Default landing page /promo/lp-demo/ was not published: %s', 'html-landing-page-builder-for-woocommerce' ),
+				$landing_result->get_error_message()
+			);
+			return array( 'report' => $report, 'landing_error' => true );
+		}
+
+		$report[] = sprintf(
+			/* translators: %s is the URL of the default demo landing page. */
+			__( 'Default demo landing page is available at %s', 'html-landing-page-builder-for-woocommerce' ),
+			$landing_result
+		);
+		return array(
+			'report'      => $report,
+			'landing_url' => $landing_result,
+		);
+	}
+
+	/** Create or refresh the plugin-owned default landing page after demo import. */
+	private static function create_default_landing( $product_ids ) {
+		$hoodie_id = absint( $product_ids['hoodies'] ?? 0 );
+		$blanket_id = absint( $product_ids['blankets'] ?? 0 );
+		if ( ! $hoodie_id || ! $blanket_id || ! wc_get_product( $hoodie_id ) || ! wc_get_product( $blanket_id ) ) {
+			return new WP_Error( 'hlpb_demo_landing_products_missing', __( 'The imported Hoodies and Blankets products could not be loaded.', 'html-landing-page-builder-for-woocommerce' ) );
+		}
+
+		$landing_ids = self::get_owned_ids( HLPB_Landing_Builder::POST_TYPE, self::LANDING_META );
+		$landing_id  = ! empty( $landing_ids ) ? absint( $landing_ids[0] ) : 0;
+		if ( $landing_id && 'trash' === get_post_status( $landing_id ) ) {
+			return new WP_Error( 'hlpb_demo_landing_trashed', __( 'The generated demo landing page is in the Trash. Restore it before importing again.', 'html-landing-page-builder-for-woocommerce' ) );
+		}
+
+		if ( ! $landing_id ) {
+			$slug_conflicts = get_posts(
+				array(
+					'post_type'      => HLPB_Landing_Builder::POST_TYPE,
+					'post_status'    => array( 'publish', 'draft', 'pending', 'private', 'future', 'trash' ),
+					'name'           => 'lp-demo',
+					'posts_per_page' => 1,
+					'fields'         => 'ids',
+					'no_found_rows'  => true,
+				)
+			);
+			if ( ! empty( $slug_conflicts ) ) {
+				return new WP_Error( 'hlpb_demo_landing_slug_conflict', __( 'A different landing page already uses the lp-demo folder.', 'html-landing-page-builder-for-woocommerce' ) );
+			}
+
+			$sections = HLPB_Landing_Builder::get_default_sections( 'cozy-mix' );
+			$cart_data = HLPB_Cart_Section::defaults();
+			$cart_data['modes']['buy']['products']    = array( $hoodie_id );
+			$cart_data['modes']['mix']['products']    = array( $hoodie_id, $blanket_id );
+			$cart_data['modes']['bundle']['products'] = array( $hoodie_id, $blanket_id );
+			$cart_data = HLPB_Cart_Section::sanitize( $cart_data );
+			foreach ( $sections as &$section ) {
+				if ( isset( $section['type'] ) && 'cart_section' === $section['type'] ) {
+					$section = array_merge( $section, $cart_data );
+					break;
+				}
+			}
+			unset( $section );
+
+			$landing_id = wp_insert_post(
+				array(
+					'post_type'   => HLPB_Landing_Builder::POST_TYPE,
+					'post_status' => 'publish',
+					'post_title'  => __( 'LP Demo', 'html-landing-page-builder-for-woocommerce' ),
+					'post_name'   => 'lp-demo',
+				),
+				true
+			);
+			if ( is_wp_error( $landing_id ) ) {
+				return $landing_id;
+			}
+
+			$landing_id = absint( $landing_id );
+			update_post_meta( $landing_id, self::LANDING_META, '1' );
+			update_post_meta( $landing_id, HLPB_Landing_Builder::TEMPLATE_KEY, 'cozy-mix' );
+			update_post_meta( $landing_id, HLPB_Landing_Builder::META_KEY, $sections );
+			update_post_meta( $landing_id, HLPB_Landing_Builder::EXPORT_PROMO_KEY, 'promo' );
+			update_post_meta( $landing_id, HLPB_Landing_Builder::EXPORT_SLUG_KEY, 'lp-demo' );
+		}
+
+		$sections = HLPB_Landing_Builder::get_sections( $landing_id );
+		foreach ( $sections as $section ) {
+			if ( isset( $section['type'] ) && 'cart_section' === $section['type'] ) {
+				HLPB_Cart_Section::ensure_coupons( $landing_id, $section );
+				break;
+			}
+		}
+
+		return HLPB_Landing_Builder::publish_static_export( $landing_id );
 	}
 
 	/** Create or update an isolated plugin-owned WooCommerce attribute. */
@@ -790,9 +1006,15 @@ final class HLPB_Demo_Importer {
 		if ( ! preg_match( '~^media/[A-Za-z0-9_.-]+$~', $relative ) ) {
 			return new WP_Error( 'hlpb_demo_media_missing', __( 'A demo product image is missing from the plugin package.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
-		$media_root = realpath( HLPB_PATH . 'demo-data/media' );
-		$file       = realpath( HLPB_PATH . 'demo-data/' . $relative );
-		if ( ! $media_root || ! $file || 0 !== strpos( $file, trailingslashit( $media_root ) ) || ! is_readable( $file ) ) {
+		$media_root = realpath( HLPB_LANDING_PAGE_BUILDER_PATH . 'demo-data/media' );
+		$file       = realpath( HLPB_LANDING_PAGE_BUILDER_PATH . 'demo-data/' . $relative );
+		$normalized_media_root = $media_root ? trailingslashit( wp_normalize_path( $media_root ) ) : '';
+		$normalized_file       = $file ? wp_normalize_path( $file ) : '';
+		$path_is_inside_media  = $normalized_media_root && $normalized_file && ( '\\' === DIRECTORY_SEPARATOR
+			? 0 === stripos( $normalized_file, $normalized_media_root )
+			: 0 === strpos( $normalized_file, $normalized_media_root )
+		);
+		if ( ! $media_root || ! $file || ! $path_is_inside_media || ! is_readable( $file ) ) {
 			return new WP_Error( 'hlpb_demo_media_unreadable', __( 'A bundled demo product image cannot be read.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
 

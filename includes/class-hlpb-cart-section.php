@@ -17,6 +17,7 @@ final class HLPB_Cart_Section {
 	const STOCK_NOTIFY_META = '_hlpb_stock_notify_emails';
 	const STOCK_NOTIFY_EMAIL_TEMPLATE_OPTION = 'hlpb_stock_notify_email_template';
 	private static $syncing_cart = false;
+	private static $checkoutwc_offer_data_expansion = false;
 
 	/** Register the public checkout endpoint and WooCommerce coupon filters. */
 	public static function init() {
@@ -43,7 +44,9 @@ final class HLPB_Cart_Section {
 		add_filter( 'woocommerce_coupon_is_valid_for_product', array( __CLASS__, 'coupon_valid_for_product' ), 20, 4 );
 		add_filter( 'woocommerce_coupon_get_discount_amount', array( __CLASS__, 'coupon_discount' ), 20, 5 );
 		add_filter( 'do_shortcode_tag', array( __CLASS__, 'suppress_catapult_game_on_cart_checkout' ), 10, 4 );
+		add_action( 'wp', array( __CLASS__, 'suppress_catapult_footer_on_cart_checkout' ), 20 );
 		add_filter( 'woocommerce_get_item_data', array( __CLASS__, 'display_cart_offer_data' ), 20, 2 );
+		add_filter( 'cfw_cart_item_data_expanded', array( __CLASS__, 'expand_checkoutwc_offer_data' ), 20, 1 );
 		add_filter( 'woocommerce_get_item_data', array( __CLASS__, 'move_variation_data_before_offer' ), 9999, 2 );
 		add_filter( 'woocommerce_get_item_data', array( __CLASS__, 'remove_catapult_game_cart_data' ), 10000, 2 );
 		add_filter( 'woocommerce_cart_item_price', array( __CLASS__, 'display_cart_offer_price' ), 20, 3 );
@@ -627,7 +630,7 @@ final class HLPB_Cart_Section {
 			self::clear_legacy_buyget_coupon_metadata( $coupon );
 			$coupon_id = $coupon->save();
 			if ( $coupon_id ) {
-				wp_update_post( array( 'ID' => $coupon_id, 'post_title' => $name, 'post_status' => $is_active ? 'publish' : 'draft' ) );
+				// WooCommerce stores the coupon code in post_title; keep the campaign label in meta only.
 				$ids[ $mode ] = absint( $coupon_id );
 			}
 		}
@@ -1253,9 +1256,20 @@ final class HLPB_Cart_Section {
 		}
 		$images = array();
 		foreach ( array_unique( array_filter( array_map( 'absint', $ids ) ) ) as $image_id ) {
-			$url = wp_get_attachment_image_url( $image_id, 'large' );
-			if ( $url ) {
-				$images[] = array( 'src' => $url, 'thumb' => wp_get_attachment_image_url( $image_id, 'woocommerce_thumbnail' ) ?: $url, 'alt' => get_post_meta( $image_id, '_wp_attachment_image_alt', true ) ?: get_the_title( $image_id ) );
+			$image = wp_get_attachment_image_src( $image_id, 'large' );
+			if ( $image ) {
+				$thumb = wp_get_attachment_image_src( $image_id, 'thumbnail' );
+				$images[] = array(
+					'src'        => $image[0],
+					'srcset'     => function_exists( 'wp_get_attachment_image_srcset' ) ? ( wp_get_attachment_image_srcset( $image_id, 'large' ) ?: '' ) : '',
+					'sizes'      => '(max-width: 700px) calc(100vw - 28px), 50vw',
+					'width'      => absint( $image[1] ),
+					'height'     => absint( $image[2] ),
+					'thumb'      => $thumb ? $thumb[0] : ( wp_get_attachment_image_url( $image_id, 'woocommerce_thumbnail' ) ?: $image[0] ),
+					'thumbWidth' => $thumb ? absint( $thumb[1] ) : 150,
+					'thumbHeight'=> $thumb ? absint( $thumb[2] ) : 150,
+					'alt'        => get_post_meta( $image_id, '_wp_attachment_image_alt', true ) ?: get_the_title( $image_id ),
+				);
 			}
 		}
 		return $images;
@@ -1322,9 +1336,9 @@ final class HLPB_Cart_Section {
 			return;
 		}
 		$style_dependencies = wp_style_is( 'hlpb-landing-design', 'registered' ) ? array( 'hlpb-landing-design' ) : array();
-		wp_enqueue_style( 'hlpb-cart-section', HLPB_URL . 'assets/frontend/cart-section.css', $style_dependencies, HLPB_VERSION );
+		wp_enqueue_style( 'hlpb-cart-section', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/frontend/cart-section.css', $style_dependencies, HLPB_LANDING_PAGE_BUILDER_VERSION );
 		$script_dependencies = wp_script_is( 'hlpb-landing-design', 'enqueued' ) ? array( 'hlpb-landing-design' ) : array();
-		wp_enqueue_script( 'hlpb-cart-section', HLPB_URL . 'assets/frontend/cart-section.js', $script_dependencies, HLPB_VERSION, true );
+		wp_enqueue_script( 'hlpb-cart-section', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/frontend/cart-section.js', $script_dependencies, HLPB_LANDING_PAGE_BUILDER_VERSION, true );
 		$config_json = wp_json_encode( $config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT );
 		$config_script = 'window.HLPBCartData=' . $config_json . ';';
 		if ( $script_dependencies ) {
@@ -1338,7 +1352,7 @@ final class HLPB_Cart_Section {
 	public static function copy_export_assets( $asset_dir ) {
 		$files = array( 'assets/frontend/cart-section.js' => 'hlpb-cart.js', 'assets/frontend/cart-section.css' => 'hlpb-cart.css' );
 		foreach ( $files as $source => $name ) {
-			$path = HLPB_PATH . $source;
+			$path = HLPB_LANDING_PAGE_BUILDER_PATH . $source;
 			if ( ! is_file( $path ) || ! copy( $path, trailingslashit( $asset_dir ) . $name ) ) {
 				return false;
 			}
@@ -1624,12 +1638,14 @@ final class HLPB_Cart_Section {
 		$product_id = absint( $product_id );
 		$variation_id = absint( $variation_id );
 		$variation = is_array( $variation ) ? $variation : array();
+		$caddy_callbacks = self::suspend_legacy_caddy_cart_fragments();
 		$was_syncing_cart = self::$syncing_cart;
 		self::$syncing_cart = true;
 		try {
 			$key = $cart->add_to_cart( $product_id, 1, $variation_id, $variation, $cart_data );
 		} finally {
 			self::$syncing_cart = $was_syncing_cart;
+			self::restore_legacy_caddy_cart_fragments( $caddy_callbacks );
 		}
 		if ( ! $key || array_key_exists( $key, $cart->cart_contents ) ) {
 			return $key;
@@ -1655,6 +1671,79 @@ final class HLPB_Cart_Section {
 		$cart->cart_contents = apply_filters( 'woocommerce_cart_contents_changed', $cart->cart_contents );
 
 		return array_key_exists( $key, $cart->cart_contents ) ? $key : false;
+	}
+
+	/**
+	 * Prevent Caddy 2.x from ending this admin-post response with cart-fragment JSON.
+	 * Its legacy after_add_to_cart callback is intended for WooCommerce AJAX requests,
+	 * while landing offers use a separate admin-post request and return their own JSON.
+	 */
+	private static function suspend_legacy_caddy_cart_fragments() {
+		global $wp_filter;
+
+		$hook = $wp_filter['woocommerce_add_to_cart'] ?? null;
+		if ( ! is_object( $hook ) || empty( $hook->callbacks ) || ! is_array( $hook->callbacks ) ) {
+			return array();
+		}
+
+		$candidates = array();
+		foreach ( $hook->callbacks as $priority => $callbacks ) {
+			foreach ( $callbacks as $callback_data ) {
+				$callback = $callback_data['function'] ?? null;
+				if ( ! self::is_legacy_caddy_fragment_callback( $callback ) ) {
+					continue;
+				}
+				$candidates[] = array(
+					'callback'      => $callback,
+					'priority'      => (int) $priority,
+					'accepted_args' => absint( $callback_data['accepted_args'] ?? 1 ),
+				);
+			}
+		}
+
+		$suspended = array();
+		foreach ( $candidates as $candidate ) {
+			if ( remove_action( 'woocommerce_add_to_cart', $candidate['callback'], $candidate['priority'] ) ) {
+				$suspended[] = $candidate;
+			}
+		}
+
+		return $suspended;
+	}
+
+	/** Match Caddy 2.x's legacy after_add_to_cart fragment callback only. */
+	private static function is_legacy_caddy_fragment_callback( $callback ) {
+		if ( ! is_array( $callback ) || ! isset( $callback[0], $callback[1] ) || ! is_string( $callback[1] ) || 'after_add_to_cart' !== strtolower( $callback[1] ) ) {
+			return false;
+		}
+
+		$target = $callback[0];
+		$class_name = is_object( $target ) ? get_class( $target ) : ( is_string( $target ) ? $target : '' );
+		if ( false !== stripos( $class_name, 'caddy' ) ) {
+			return true;
+		}
+
+		try {
+			$method = new ReflectionMethod( $target, $callback[1] );
+			$file = $method->getFileName();
+			return is_string( $file ) && false !== strpos( wp_normalize_path( $file ), '/caddy/' );
+		} catch ( ReflectionException $exception ) {
+			return false;
+		}
+	}
+
+	/** Restore Caddy's callback immediately after the landing item has been added. */
+	private static function restore_legacy_caddy_cart_fragments( $callbacks ) {
+		foreach ( $callbacks as $callback_data ) {
+			if ( false === has_action( 'woocommerce_add_to_cart', $callback_data['callback'] ) ) {
+				add_action(
+					'woocommerce_add_to_cart',
+					$callback_data['callback'],
+					$callback_data['priority'],
+					$callback_data['accepted_args']
+				);
+			}
+		}
 	}
 
 	/** Restrict campaign coupons to cart rows created by this exact landing offer. */
@@ -1883,6 +1972,7 @@ final class HLPB_Cart_Section {
 	/** Mark campaign lines in cart and checkout while keeping unrelated duplicates separate. */
 	public static function display_cart_offer_data( $item_data, $cart_item ) {
 		$presentation = self::offer_presentation( $cart_item );
+		self::$checkoutwc_offer_data_expansion = (bool) $presentation;
 		if ( ! $presentation ) {
 			return $item_data;
 		}
@@ -1897,6 +1987,16 @@ final class HLPB_Cart_Section {
 			$item_data[] = array( 'key' => __( 'Gift status', 'html-landing-page-builder-for-woocommerce' ), 'value' => '<span class="hlpb-gift-status">' . esc_html( $status ) . '</span>' );
 		}
 		return $item_data;
+	}
+
+	/** Preserve the HTML offer badge when CheckoutWC uses its compact, tag-stripping item-data view. */
+	public static function expand_checkoutwc_offer_data( $expanded ) {
+		if ( ! self::$checkoutwc_offer_data_expansion ) {
+			return $expanded;
+		}
+
+		self::$checkoutwc_offer_data_expansion = false;
+		return true;
 	}
 
 	/** Keep selected variation details directly above the offer badge in cart and checkout. */
@@ -1947,25 +2047,28 @@ final class HLPB_Cart_Section {
 		return array_merge( $variation_data, $other_data );
 	}
 
-	/** Remove Catapult game controls accidentally rendered as cart item details. */
+	/** Remove Catapult game labels accidentally added to a landing-page gift row. */
 	public static function remove_catapult_game_cart_data( $item_data, $cart_item ) {
-		if ( ! is_array( $item_data ) ) {
+		if ( ! is_array( $item_data ) || empty( $cart_item['_hlpb_is_gift'] ) ) {
 			return $item_data;
 		}
 
-		$all_text = '';
+		$has_catapult_copy = false;
 		foreach ( $item_data as $data ) {
+			$text = '';
 			if ( ! is_array( $data ) ) {
 				continue;
 			}
 			foreach ( array( 'key', 'name', 'value', 'display' ) as $field ) {
 				if ( isset( $data[ $field ] ) && is_scalar( $data[ $field ] ) ) {
-					$all_text .= ' ' . strtolower( wp_strip_all_tags( (string) $data[ $field ] ) );
+					$text .= ' ' . strtolower( wp_strip_all_tags( (string) $data[ $field ] ) );
 				}
 			}
+			if ( false !== strpos( $text, 'play for fun' ) || false !== strpos( $text, 'battle for a discount' ) ) {
+				$has_catapult_copy = true;
+			}
 		}
-
-		if ( false === strpos( $all_text, 'play for fun' ) || false === strpos( $all_text, 'battle for a discount' ) ) {
+		if ( ! $has_catapult_copy ) {
 			return $item_data;
 		}
 
@@ -1975,14 +2078,20 @@ final class HLPB_Cart_Section {
 				$filtered[] = $data;
 				continue;
 			}
-
 			$text = '';
+			$is_close_marker = false;
 			foreach ( array( 'key', 'name', 'value', 'display' ) as $field ) {
-				if ( isset( $data[ $field ] ) && is_scalar( $data[ $field ] ) ) {
-					$text .= ' ' . strtolower( wp_strip_all_tags( (string) $data[ $field ] ) );
+				if ( ! isset( $data[ $field ] ) || ! is_scalar( $data[ $field ] ) ) {
+					continue;
+				}
+				$value = trim( wp_strip_all_tags( (string) $data[ $field ] ) );
+				$text .= ' ' . strtolower( $value );
+				if ( '×' === $value ) {
+					$is_close_marker = true;
 				}
 			}
-			if ( false === strpos( $text, 'play for fun' ) && false === strpos( $text, 'battle for a discount' ) && '×' !== trim( $text ) ) {
+			$is_catapult_copy = false !== strpos( $text, 'play for fun' ) || false !== strpos( $text, 'battle for a discount' );
+			if ( ! $is_catapult_copy && ! $is_close_marker ) {
 				$filtered[] = $data;
 			}
 		}
@@ -1997,6 +2106,19 @@ final class HLPB_Cart_Section {
 		}
 		$is_cart_context = ( function_exists( 'is_cart' ) && is_cart() ) || ( function_exists( 'is_checkout' ) && is_checkout() );
 		return $is_cart_context ? '' : $output;
+	}
+
+	/** Keep the Catapult site's footer launcher off cart and checkout summaries. */
+	public static function suppress_catapult_footer_on_cart_checkout() {
+		$is_cart_context = ( function_exists( 'is_cart' ) && is_cart() ) || ( function_exists( 'is_checkout' ) && is_checkout() );
+		if ( ! $is_cart_context || ! class_exists( 'WPCDG_Plugin' ) || ! is_callable( array( 'WPCDG_Plugin', 'instance' ) ) ) {
+			return;
+		}
+
+		$catapult = WPCDG_Plugin::instance();
+		if ( is_object( $catapult ) && is_callable( array( $catapult, 'render_shortcode_fallback' ) ) ) {
+			remove_action( 'wp_footer', array( $catapult, 'render_shortcode_fallback' ), 1 );
+		}
 	}
 
 	/** Display the undiscounted and offer prices in cart and checkout rows. */
@@ -2016,9 +2138,9 @@ final class HLPB_Cart_Section {
 		if ( ! $is_cart_page && ! $is_checkout_page ) {
 			return;
 		}
-		wp_enqueue_style( 'hlpb-cart-offer-display', HLPB_URL . 'assets/frontend/cart-offer-display.css', array(), HLPB_VERSION );
+		wp_enqueue_style( 'hlpb-cart-offer-display', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/frontend/cart-offer-display.css', array(), HLPB_LANDING_PAGE_BUILDER_VERSION );
 		if ( wp_script_is( 'wc-blocks-checkout', 'registered' ) ) {
-			wp_enqueue_script( 'hlpb-cart-offer-blocks', HLPB_URL . 'assets/frontend/cart-offer-blocks.js', array( 'wc-blocks-checkout' ), HLPB_VERSION, true );
+			wp_enqueue_script( 'hlpb-cart-offer-blocks', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/frontend/cart-offer-blocks.js', array( 'wc-blocks-checkout' ), HLPB_LANDING_PAGE_BUILDER_VERSION, true );
 		}
 		$group_numbers = self::bundle_display_numbers();
 		$group_styles = '';
@@ -2512,5 +2634,13 @@ final class HLPB_Cart_Section {
 		}
 		$item->add_meta_data( '_hlpb_landing_id', $landing_id, true );
 		$item->add_meta_data( '_hlpb_bundle_key', sanitize_text_field( $values['_hlpb_bundle_key'] ), true );
+		$item->add_meta_data( '_hlpb_offer_mode', sanitize_key( $values['_hlpb_mode'] ?? '' ), true );
+		$coupon_id = absint( $values['_hlpb_coupon_id'] ?? 0 );
+		$item->add_meta_data( '_hlpb_coupon_id', $coupon_id, true );
+		$coupon = $coupon_id && class_exists( 'WC_Coupon' ) ? new WC_Coupon( $coupon_id ) : false;
+		$item->add_meta_data( '_hlpb_coupon_code', $coupon && $coupon->get_id() ? $coupon->get_code() : '', true );
+		$item->add_meta_data( '_hlpb_campaign_name', sanitize_text_field( $values['_hlpb_campaign_name'] ?? '' ), true );
+		$item->add_meta_data( '_hlpb_is_gift', ! empty( $values['_hlpb_is_gift'] ) ? 1 : 0, true );
+		$item->add_meta_data( '_hlpb_is_addon', ! empty( $values['_hlpb_is_addon'] ) ? 1 : 0, true );
 	}
 }

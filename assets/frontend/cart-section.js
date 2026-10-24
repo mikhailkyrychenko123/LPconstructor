@@ -589,7 +589,7 @@
 		if (!images.length) return;
 		if (thumbs) {
 			thumbs.innerHTML = images.map(function (image, index) {
-				return '<button class="thumb ' + (0 === index ? 'active' : '') + '" type="button" aria-label="Show ' + escapeHtml(image.alt || product.name) + '" aria-pressed="' + (0 === index) + '" data-gallery-index="' + index + '"><img src="' + escapeHtml(image.thumb || image.src) + '" alt="" loading="lazy"></button>';
+				return '<button class="thumb ' + (0 === index ? 'active' : '') + '" type="button" aria-label="Show ' + escapeHtml(image.alt || product.name) + '" aria-pressed="' + (0 === index) + '" data-gallery-index="' + index + '"><img src="' + escapeHtml(image.thumb || image.src) + '" alt="" width="' + Number(image.thumbWidth || 150) + '" height="' + Number(image.thumbHeight || 150) + '" loading="lazy" decoding="async"></button>';
 			}).join('');
 			thumbs.onclick = function (event) { var button = event.target.closest('[data-gallery-index]'); if (button) showSlide(Number(button.dataset.galleryIndex)); };
 		}
@@ -598,7 +598,7 @@
 	function showSlide(index) {
 		if (!state.gallery.length) return;
 		index = (index + state.gallery.length) % state.gallery.length; var image = state.gallery[index];
-		hero.src = image.src; hero.srcset = ''; hero.alt = image.alt || '';
+		hero.srcset = image.srcset || ''; hero.sizes = image.sizes || '(max-width: 700px) calc(100vw - 28px), 50vw'; hero.alt = image.alt || ''; hero.src = image.src;
 		if (thumbs) thumbs.querySelectorAll('.thumb').forEach(function (button) { var active = Number(button.dataset.galleryIndex) === index; button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active)); });
 	}
 	function showLoading(callback) {
