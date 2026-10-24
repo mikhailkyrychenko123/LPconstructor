@@ -11,6 +11,7 @@
 	var resultTitle = overlay.querySelector('[data-hlpb-result-title]');
 	var reportList = overlay.querySelector('[data-hlpb-report]');
 	var landingLink = overlay.querySelector('[data-hlpb-landing]');
+	var fieldNotesLandingLink = overlay.querySelector('[data-hlpb-field-notes-landing]');
 	var progressTimers = [];
 
 	function clearProgressTimers() {
@@ -52,6 +53,13 @@
 			landingLink.hidden = false;
 		} else {
 			landingLink.hidden = true;
+		}
+		if (fieldNotesLandingLink && payload.field_notes_url) {
+			fieldNotesLandingLink.href = payload.field_notes_url;
+			fieldNotesLandingLink.textContent = window.HLPBOnboarding.openFieldNotes || 'Open Field Notes apparel demo';
+			fieldNotesLandingLink.hidden = false;
+		} else if (fieldNotesLandingLink) {
+			fieldNotesLandingLink.hidden = true;
 		}
 		if (importButton) importButton.hidden = !isError;
 	}

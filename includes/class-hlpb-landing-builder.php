@@ -47,6 +47,10 @@ final class HLPB_Landing_Builder {
 		add_action( 'template_redirect', array( __CLASS__, 'serve_static_export' ) );
 		add_action( 'wp_ajax_hlpb_render_section', array( __CLASS__, 'ajax_render_section' ) );
 		add_filter( 'post_type_link', array( __CLASS__, 'filter_landing_permalink' ), 10, 4 );
+		add_filter( 'manage_' . self::POST_TYPE . '_posts_columns', array( __CLASS__, 'add_clone_column' ) );
+		add_action( 'manage_' . self::POST_TYPE . '_posts_custom_column', array( __CLASS__, 'render_clone_column' ), 10, 2 );
+		add_action( 'admin_post_hlpb_clone_landing', array( __CLASS__, 'handle_clone_landing' ) );
+		add_action( 'admin_notices', array( __CLASS__, 'show_clone_notice' ) );
 		add_action( 'trashed_post', array( __CLASS__, 'delete_export_for_post' ) );
 		add_action( 'before_delete_post', array( __CLASS__, 'delete_export_for_post' ) );
 		add_action( 'untrashed_post', array( __CLASS__, 'restore_export_for_post' ) );
@@ -101,6 +105,110 @@ final class HLPB_Landing_Builder {
 		);
 	}
 
+	/** Add an always-visible clone action to each landing page row. */
+	public static function add_clone_column( $columns ) {
+		$columns['hlpb_clone'] = self::is_russian_admin_locale()
+			? 'Действия'
+			: __( 'Action', 'html-landing-page-builder-for-woocommerce' );
+		return $columns;
+	}
+
+	/** Render the clone button in the landing page list table. */
+	public static function render_clone_column( $column, $post_id ) {
+		if ( 'hlpb_clone' !== $column || ! current_user_can( 'edit_post', $post_id ) ) {
+			return;
+		}
+
+		$url = add_query_arg(
+			array(
+				'action' => 'hlpb_clone_landing',
+				'post'   => absint( $post_id ),
+			),
+			admin_url( 'admin-post.php' )
+		);
+		$url = wp_nonce_url( $url, 'hlpb_clone_landing_' . absint( $post_id ) );
+		$label = self::is_russian_admin_locale() ? 'Клонировать' : __( 'Clone', 'html-landing-page-builder-for-woocommerce' );
+		echo '<a class="button button-secondary button-small" href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
+	}
+
+	/** Create a draft duplicate of one landing page and its builder configuration. */
+	public static function handle_clone_landing() {
+		$source_id = isset( $_GET['post'] ) ? absint( wp_unslash( $_GET['post'] ) ) : 0;
+		if ( ! $source_id || self::POST_TYPE !== get_post_type( $source_id ) || ! current_user_can( 'edit_post', $source_id ) ) {
+			wp_die( esc_html__( 'You are not allowed to clone this landing page.', 'html-landing-page-builder-for-woocommerce' ) );
+		}
+		check_admin_referer( 'hlpb_clone_landing_' . $source_id );
+
+		$source    = get_post( $source_id );
+		$template  = self::get_template_slug( $source_id );
+		$title     = self::is_russian_admin_locale()
+			? sprintf( 'Копия — %s', get_the_title( $source_id ) )
+			: sprintf( __( 'Copy of %s', 'html-landing-page-builder-for-woocommerce' ), get_the_title( $source_id ) );
+		$clone_id  = wp_insert_post(
+			array(
+				'post_type'    => self::POST_TYPE,
+				'post_status'  => 'draft',
+				'post_title'   => $title,
+				'post_content' => $source->post_content,
+				'post_excerpt' => $source->post_excerpt,
+				'post_author'  => get_current_user_id(),
+			),
+			true
+		);
+		if ( is_wp_error( $clone_id ) ) {
+			wp_die( esc_html( $clone_id->get_error_message() ) );
+		}
+
+		$clone_id = absint( $clone_id );
+		$sections = get_post_meta( $source_id, self::META_KEY, true );
+		if ( ! is_array( $sections ) ) {
+			$sections = self::get_default_sections( $template );
+		}
+		update_post_meta( $clone_id, self::META_KEY, $sections );
+		update_post_meta( $clone_id, self::TEMPLATE_KEY, $template );
+		update_post_meta( $clone_id, self::EXPORT_PROMO_KEY, self::get_export_promo_folder( $source_id ) );
+		update_post_meta( $clone_id, self::EXPORT_SLUG_KEY, sanitize_title( get_post_field( 'post_name', $clone_id ) ) );
+
+		foreach ( $sections as $section ) {
+			if ( isset( $section['type'] ) && 'cart_section' === $section['type'] ) {
+				HLPB_Cart_Section::ensure_coupons( $clone_id, $section );
+				break;
+			}
+		}
+
+		$edit_url = add_query_arg(
+			array(
+				'post'       => $clone_id,
+				'action'     => 'edit',
+				'hlpb_cloned' => '1',
+			),
+			admin_url( 'post.php' )
+		);
+		wp_safe_redirect( $edit_url );
+		exit;
+	}
+
+	/** Show a short confirmation after opening a newly cloned draft. */
+	public static function show_clone_notice() {
+		if ( empty( $_GET['hlpb_cloned'] ) || '1' !== sanitize_text_field( wp_unslash( $_GET['hlpb_cloned'] ) ) ) {
+			return;
+		}
+		$post_id = isset( $_GET['post'] ) ? absint( wp_unslash( $_GET['post'] ) ) : 0;
+		if ( ! $post_id || self::POST_TYPE !== get_post_type( $post_id ) || ! current_user_can( 'edit_post', $post_id ) ) {
+			return;
+		}
+		$message = self::is_russian_admin_locale()
+			? 'Создан черновик-клон. Выберите шаблон и сохраните страницу.'
+			: __( 'A draft copy was created. Choose a template and save the landing page.', 'html-landing-page-builder-for-woocommerce' );
+		echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $message ) . '</p></div>';
+	}
+
+	/** Check the current admin language for the small number of Russian-only labels. */
+	private static function is_russian_admin_locale() {
+		$locale = function_exists( 'get_user_locale' ) ? get_user_locale() : get_locale();
+		return 0 === strpos( strtolower( (string) $locale ), 'ru' );
+	}
+
 	/**
 	 * Register static export routes for every configured public folder.
 	 *
@@ -147,8 +255,8 @@ final class HLPB_Landing_Builder {
 	 *
 	 * @return array<string, string>
 	 */
-	public static function get_section_types() {
-		return array(
+	public static function get_section_types( $template_slug = '' ) {
+		$types = array(
 			'header'       => __( 'Header', 'html-landing-page-builder-for-woocommerce' ),
 			'offer_line'   => __( 'Offer Line', 'html-landing-page-builder-for-woocommerce' ),
 			'cart_section' => __( 'Cart Section', 'html-landing-page-builder-for-woocommerce' ),
@@ -160,6 +268,17 @@ final class HLPB_Landing_Builder {
 			'limited_stock'=> __( 'Limited stock', 'html-landing-page-builder-for-woocommerce' ),
 			'footer'       => __( 'Footer', 'html-landing-page-builder-for-woocommerce' ),
 		);
+		$template = $template_slug ? self::get_template_info( $template_slug ) : false;
+		if ( $template && isset( $template['builder_sections'] ) && is_array( $template['builder_sections'] ) ) {
+			$types = array();
+			foreach ( $template['builder_sections'] as $type => $label ) {
+				$type = sanitize_key( $type );
+				if ( $type && is_string( $label ) && isset( $template['sections'][ $type ] ) ) {
+					$types[ $type ] = sanitize_text_field( $label );
+				}
+			}
+		}
+		return $types;
 	}
 
 	/**
@@ -167,8 +286,13 @@ final class HLPB_Landing_Builder {
 	 *
 	 * @return array<int, string>
 	 */
-	private static function get_singleton_section_types() {
-		return array( 'header', 'cart_section', 'footer' );
+	private static function get_singleton_section_types( $template_slug = '' ) {
+		$types    = array( 'header', 'cart_section', 'footer' );
+		$template = $template_slug ? self::get_template_info( $template_slug ) : false;
+		if ( $template && ! empty( $template['single_instance_sections'] ) && is_array( $template['single_instance_sections'] ) ) {
+			$types = array_merge( $types, array_map( 'sanitize_key', $template['single_instance_sections'] ) );
+		}
+		return array_values( array_unique( $types ) );
 	}
 
 	/**
@@ -192,7 +316,10 @@ final class HLPB_Landing_Builder {
 		);
 
 		if ( ! isset( $artwork[ $type ] ) ) {
-			return '';
+			if ( 0 !== strpos( $type, 'fn_' ) ) {
+				return '';
+			}
+			$artwork[ $type ] = '<rect class="hlpb-preview-soft" x="5" y="9" width="39" height="54" rx="4"/><circle class="hlpb-preview-accent" cx="24" cy="29" r="9"/><path class="hlpb-preview-line" d="m10 58 12-15 8 8 7-10 7 17M54 19h54m-54 7h43m-43 7h49m-49 7h34m-34 9h48m-48 7h28"/>';
 		}
 
 		return '<svg class="hlpb-section-preview-svg" viewBox="0 0 120 72" width="120" height="72" aria-hidden="true" focusable="false">' . $artwork[ $type ] . '</svg>';
@@ -203,9 +330,9 @@ final class HLPB_Landing_Builder {
 	 *
 	 * @return array<string, string>
 	 */
-	private static function get_section_previews() {
+	private static function get_section_previews( $template_slug = '' ) {
 		$previews = array();
-		foreach ( self::get_section_types() as $type => $label ) {
+		foreach ( self::get_section_types( $template_slug ) as $type => $label ) {
 			$previews[ $type ] = self::get_section_preview_svg( $type );
 		}
 		return $previews;
@@ -399,12 +526,16 @@ final class HLPB_Landing_Builder {
 		);
 		$template = self::get_template_info( $template_slug );
 		$items    = $template && ! empty( $template['default_layout'] ) && is_array( $template['default_layout'] ) ? $template['default_layout'] : $default_items;
-		$items    = array_values( array_filter( $items, static function ( $type ) { return isset( self::get_section_types()[ sanitize_key( $type ) ] ); } ) );
+		$types    = self::get_section_types( $template_slug );
+		$items    = array_values( array_filter( $items, static function ( $item ) use ( $types ) {
+			$type = is_array( $item ) && isset( $item['type'] ) ? sanitize_key( $item['type'] ) : sanitize_key( $item );
+			return isset( $types[ $type ] );
+		} ) );
 
 		$singletons_seen = array();
-		foreach ( $items as $type ) {
-			$type = sanitize_key( $type );
-			if ( in_array( $type, self::get_singleton_section_types(), true ) ) {
+		foreach ( $items as $item ) {
+			$type = is_array( $item ) && isset( $item['type'] ) ? sanitize_key( $item['type'] ) : sanitize_key( $item );
+			if ( in_array( $type, self::get_singleton_section_types( $template_slug ), true ) ) {
 				if ( isset( $singletons_seen[ $type ] ) ) {
 					continue;
 				}
@@ -416,6 +547,7 @@ final class HLPB_Landing_Builder {
 				'type'  => $type,
 				'order' => $index + 1,
 			);
+			$variant = is_array( $item ) && isset( $item['variant'] ) ? sanitize_key( $item['variant'] ) : '';
 
 			if ( 'text_image' === $type ) {
 				$section = array_merge( $section, self::get_demo_text_image( count( array_filter( $sections, static function ( $item ) { return 'text_image' === $item['type']; } ) ), $template_slug ) );
@@ -434,6 +566,7 @@ final class HLPB_Landing_Builder {
 			} elseif ( 'footer' === $type ) {
 				$section = array_merge( $section, self::get_default_footer_settings() );
 			}
+			$section = array_merge( $section, self::get_template_section_defaults( $template_slug, $type, $variant ) );
 
 			$sections[] = $section;
 		}
@@ -625,7 +758,7 @@ final class HLPB_Landing_Builder {
 				array( 'label' => 'Terms of Service', 'url' => '#terms' ),
 				array( 'label' => 'Returns', 'url' => '#returns' ),
 			),
-			'legal_note' => '🇬🇧 UK Owned & Operated',
+			'legal_note' => '',
 			'disclaimer' => 'Demo recreation. Review totals, customer quotes, prices, delivery, and stock wording are illustrative and should be replaced with verified store information.',
 			'background' => '#082b49',
 			'text_color' => '#e9f0f2',
@@ -678,7 +811,8 @@ final class HLPB_Landing_Builder {
 		if ( ! metadata_exists( 'post', $post->ID, self::META_KEY ) || ! is_array( $sections ) ) {
 			$sections = self::get_default_sections( $selected_template );
 		}
-		$types             = self::get_section_types();
+		$sections = self::migrate_template_sections( $sections, $selected_template );
+		$types             = self::get_section_types( $selected_template );
 		$post_slug         = get_post_field( 'post_name', $post->ID );
 		$post_slug         = $post_slug && 'auto-draft' !== $post_slug ? $post_slug : sanitize_title( $post->post_title );
 		$export_slug       = self::get_export_slug( $post->ID );
@@ -731,7 +865,7 @@ final class HLPB_Landing_Builder {
 					<?php echo self::render_section_card( $section, $selected_template ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Generated from escaped form controls. ?>
 				<?php endforeach; ?>
 			</div>
-			<p class="description"><?php esc_html_e( 'Header, Offer Line, Cart Section, Mix it your way, Why?, Text + Image, Reviews, FAQ, and Footer sections can be edited here. Other sections use their template demo content.', 'html-landing-page-builder-for-woocommerce' ); ?></p>
+			<p class="description"><?php if ( 'field-notes' === $selected_template ) : ?><?php esc_html_e( 'All Field Notes sections can be edited here. The calculator section lets you edit its introduction and choose which built-in calculators appear; its calculator logic stays intact.', 'html-landing-page-builder-for-woocommerce' ); ?><?php else : ?><?php esc_html_e( 'Header, Offer Line, Cart Section, Mix it your way, Why?, Text + Image, Reviews, FAQ, and Footer sections can be edited here. Other sections use their template demo content.', 'html-landing-page-builder-for-woocommerce' ); ?><?php endif; ?></p>
 		</div>
 		<?php
 	}
@@ -743,13 +877,13 @@ final class HLPB_Landing_Builder {
 	 * @return string
 	 */
 	public static function render_section_card( $section, $template_slug = 'cozy-mix' ) {
-		$types = self::get_section_types();
+		$types = self::get_section_types( $template_slug );
 		$type  = isset( $section['type'] ) && isset( $types[ $section['type'] ] ) ? $section['type'] : 'text_image';
 		$id    = isset( $section['id'] ) ? sanitize_key( $section['id'] ) : wp_generate_password( 10, false, false );
 		$order = isset( $section['order'] ) ? absint( $section['order'] ) : 1;
 		$label = $types[ $type ];
 		$html  = '<article class="hlpb-section-card is-collapsed" data-section-id="' . esc_attr( $id ) . '" data-section-type="' . esc_attr( $type ) . '">';
-		$duplicate_disabled = in_array( $type, self::get_singleton_section_types(), true );
+		$duplicate_disabled = in_array( $type, self::get_singleton_section_types( $template_slug ), true );
 		$duplicate_title    = $duplicate_disabled ? __( 'This section can only appear once.', 'html-landing-page-builder-for-woocommerce' ) : __( 'Duplicate section', 'html-landing-page-builder-for-woocommerce' );
 		$html .= '<div class="hlpb-section-heading"><span class="hlpb-drag-handle" aria-hidden="true">⠿</span><span class="hlpb-section-heading-preview" title="' . esc_attr( $label ) . '">' . self::get_section_preview_svg( $type ) . '</span><span class="hlpb-section-heading-label"><small>' . esc_html__( 'Section type', 'html-landing-page-builder-for-woocommerce' ) . '</small><strong class="hlpb-section-title">' . esc_html( $label ) . '</strong></span><label class="hlpb-order-label">' . esc_html__( 'Order', 'html-landing-page-builder-for-woocommerce' ) . ' <input class="hlpb-order" type="number" min="1" step="1" name="hlpb_sections[' . esc_attr( $id ) . '][order]" value="' . esc_attr( $order ) . '"></label><button type="button" class="button hlpb-toggle-section" aria-expanded="false" aria-controls="hlpb-content-' . esc_attr( $id ) . '">' . esc_html__( 'Expand', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button hlpb-clone-section" aria-label="' . esc_attr( $duplicate_title ) . '" title="' . esc_attr( $duplicate_title ) . '" ' . disabled( $duplicate_disabled, true, false ) . '>' . esc_html__( 'Duplicate', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button-link-delete hlpb-remove-section">' . esc_html__( 'Remove', 'html-landing-page-builder-for-woocommerce' ) . '</button></div>';
 		$html .= '<div class="hlpb-section-content" id="hlpb-content-' . esc_attr( $id ) . '"><input type="hidden" name="hlpb_sections[' . esc_attr( $id ) . '][id]" value="' . esc_attr( $id ) . '"><input type="hidden" name="hlpb_sections[' . esc_attr( $id ) . '][type]" value="' . esc_attr( $type ) . '">';
@@ -773,10 +907,123 @@ final class HLPB_Landing_Builder {
 		} elseif ( 'footer' === $type ) {
 			$html .= self::render_footer_fields( $section, $id, $template_slug );
 		} else {
-			$html .= '<p class="hlpb-section-demo">' . esc_html__( 'This section displays the matching demo content from the supplied landing page.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+			if ( empty( self::get_template_field_definitions( $template_slug, $type ) ) ) {
+				$html .= '<p class="hlpb-section-demo">' . esc_html__( 'This section displays the matching demo content from the supplied landing page.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+			}
 		}
+		$html .= self::render_template_section_fields( $section, $id, $template_slug );
 
 		$html .= '</div></article>';
+		return $html;
+	}
+
+	/** Return the editable field schema for one supplied template section. */
+	private static function get_template_field_definitions( $template_slug, $type ) {
+		$template = self::get_template_info( $template_slug );
+		if ( ! $template || empty( $template['editable_fields'][ $type ] ) || ! is_array( $template['editable_fields'][ $type ] ) ) {
+			return array();
+		}
+		return $template['editable_fields'][ $type ];
+	}
+
+	/** Build the default stored values declared by a template's field schema. */
+	private static function get_template_section_defaults( $template_slug, $type, $variant = '' ) {
+		$defaults = array();
+		foreach ( self::get_template_field_definitions( $template_slug, $type ) as $key => $field ) {
+			if ( ! is_array( $field ) || empty( $field['type'] ) ) {
+				continue;
+			}
+			$key  = sanitize_key( $key );
+			$kind = sanitize_key( $field['type'] );
+			if ( 'image' === $kind ) {
+				$defaults[ $key . '_id' ] = 0;
+				$defaults[ $key ]        = isset( $field['default'] ) ? sanitize_file_name( basename( (string) $field['default'] ) ) : '';
+			} elseif ( 'checklist' === $kind ) {
+				$defaults[ $key ] = isset( $field['default'] ) && is_array( $field['default'] ) ? array_values( $field['default'] ) : array();
+			} elseif ( isset( $field['default'] ) && is_scalar( $field['default'] ) ) {
+				$defaults[ $key ] = (string) $field['default'];
+			}
+		}
+		$template = self::get_template_info( $template_slug );
+		if ( $variant && $template && ! empty( $template['section_variants'][ $type ][ $variant ] ) && is_array( $template['section_variants'][ $type ][ $variant ] ) ) {
+			foreach ( $template['section_variants'][ $type ][ $variant ] as $key => $value ) {
+				$key = sanitize_key( $key );
+				if ( array_key_exists( $key, $defaults ) && is_scalar( $value ) ) {
+					$defaults[ $key ] = (string) $value;
+				}
+			}
+		}
+		return $defaults;
+	}
+
+	/** Render the editable text, image, link, and calculator selection controls for a template section. */
+	private static function render_template_section_fields( $section, $id, $template_slug ) {
+		$fields = self::get_template_field_definitions( $template_slug, $section['type'] );
+		if ( empty( $fields ) ) {
+			return '';
+		}
+		$defaults = self::get_template_section_defaults( $template_slug, $section['type'] );
+		$section  = array_merge( $defaults, $section );
+		$name     = 'hlpb_sections[' . $id . ']';
+		$html     = '<div class="hlpb-fields-column hlpb-template-fields">';
+		foreach ( $fields as $key => $field ) {
+			if ( ! is_array( $field ) || empty( $field['type'] ) || empty( $field['label'] ) ) {
+				continue;
+			}
+			$key   = sanitize_key( $key );
+			$kind  = sanitize_key( $field['type'] );
+			$label = sanitize_text_field( $field['label'] );
+			if ( 'image' === $kind ) {
+				$image_id = isset( $section[ $key . '_id' ] ) ? absint( $section[ $key . '_id' ] ) : 0;
+				$image_url = $image_id ? wp_get_attachment_image_url( $image_id, 'large' ) : false;
+				$default_image = isset( $section[ $key ] ) ? self::safe_demo_image( $section[ $key ], $template_slug ) : ( isset( $field['default'] ) ? self::safe_demo_image( $field['default'], $template_slug ) : '' );
+				$demo_url = $default_image ? self::get_template_asset_url( $template_slug ) . 'images/' . rawurlencode( $default_image ) : '';
+				$image_url = $image_url ? $image_url : $demo_url;
+				$html .= '<div class="hlpb-field"><label>' . esc_html( $label ) . '</label><div class="hlpb-image-control"><img class="hlpb-image-preview" src="' . esc_url( $image_url ) . '" alt=""><input type="hidden" class="hlpb-image-id" name="' . esc_attr( $name . '[' . $key . '_id]' ) . '" value="' . esc_attr( $image_id ) . '"><input type="hidden" name="' . esc_attr( $name . '[' . $key . ']' ) . '" value="' . esc_attr( $default_image ) . '"><input type="hidden" class="hlpb-demo-image" value="' . esc_attr( $default_image ) . '"><button type="button" class="button hlpb-select-image">' . esc_html__( 'Choose image', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button-link hlpb-clear-image">' . esc_html__( 'Use template image', 'html-landing-page-builder-for-woocommerce' ) . '</button></div></div>';
+				continue;
+			}
+			if ( 'select' === $kind ) {
+				$value = isset( $section[ $key ] ) ? (string) $section[ $key ] : '';
+				$html .= '<div class="hlpb-field"><label for="' . esc_attr( $id . '-' . $key ) . '">' . esc_html( $label ) . '</label><select id="' . esc_attr( $id . '-' . $key ) . '" name="' . esc_attr( $name . '[' . $key . ']' ) . '">';
+				foreach ( ( isset( $field['options'] ) && is_array( $field['options'] ) ? $field['options'] : array() ) as $option ) {
+					if ( ! is_array( $option ) || ! isset( $option['value'], $option['label'] ) ) {
+						continue;
+					}
+					$option_value = sanitize_key( $option['value'] );
+					$html .= '<option value="' . esc_attr( $option_value ) . '" ' . selected( $value, $option_value, false ) . '>' . esc_html( $option['label'] ) . '</option>';
+				}
+				$html .= '</select></div>';
+				continue;
+			}
+			if ( 'checklist' === $kind ) {
+				$selected = isset( $section[ $key ] ) && is_array( $section[ $key ] ) ? array_map( 'sanitize_key', $section[ $key ] ) : array();
+				$html .= '<fieldset class="hlpb-template-checklist"><legend>' . esc_html( $label ) . '</legend><p class="description">' . esc_html__( 'Choose which calculators appear in the customer menu. Their calculation logic stays unchanged.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+				foreach ( ( isset( $field['groups'] ) && is_array( $field['groups'] ) ? $field['groups'] : array() ) as $group ) {
+					if ( empty( $group['items'] ) || ! is_array( $group['items'] ) ) {
+						continue;
+					}
+					$html .= '<div class="hlpb-template-checklist-group"><strong>' . esc_html( isset( $group['label'] ) ? $group['label'] : '' ) . '</strong><div class="hlpb-template-checklist-items">';
+					foreach ( $group['items'] as $choice ) {
+						if ( ! is_array( $choice ) || empty( $choice['id'] ) || empty( $choice['label'] ) ) {
+							continue;
+						}
+						$value = sanitize_key( $choice['id'] );
+						$html .= '<label><input type="checkbox" name="' . esc_attr( $name . '[' . $key . '][]' ) . '" value="' . esc_attr( $value ) . '" ' . checked( in_array( $value, $selected, true ), true, false ) . '> ' . esc_html( $choice['label'] ) . '</label>';
+					}
+					$html .= '</div></div>';
+				}
+				$html .= '</fieldset>';
+				continue;
+			}
+			$value = isset( $section[ $key ] ) ? $section[ $key ] : '';
+			if ( 'textarea' === $kind ) {
+				$html .= '<div class="hlpb-field"><label for="' . esc_attr( $id . '-' . $key ) . '">' . esc_html( $label ) . '</label><textarea rows="3" id="' . esc_attr( $id . '-' . $key ) . '" name="' . esc_attr( $name . '[' . $key . ']' ) . '">' . esc_textarea( $value ) . '</textarea></div>';
+			} else {
+				$input_mode = 'url' === $kind ? ' inputmode="url"' : '';
+				$html .= '<div class="hlpb-field"><label for="' . esc_attr( $id . '-' . $key ) . '">' . esc_html( $label ) . '</label><input type="text"' . $input_mode . ' id="' . esc_attr( $id . '-' . $key ) . '" name="' . esc_attr( $name . '[' . $key . ']' ) . '" value="' . esc_attr( $value ) . '"></div>';
+			}
+		}
+		$html .= '</div>';
 		return $html;
 	}
 
@@ -1195,7 +1442,7 @@ final class HLPB_Landing_Builder {
 
 		$type  = isset( $_POST['type'] ) ? sanitize_key( wp_unslash( $_POST['type'] ) ) : '';
 		$template_slug = isset( $_POST['template'] ) ? sanitize_key( wp_unslash( $_POST['template'] ) ) : 'cozy-mix';
-		$types = self::get_section_types();
+		$types = self::get_section_types( $template_slug );
 		if ( ! isset( $types[ $type ] ) || ! self::get_template_info( $template_slug ) ) {
 			wp_send_json_error( array( 'message' => __( 'Choose a valid section type.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
 		}
@@ -1222,6 +1469,7 @@ final class HLPB_Landing_Builder {
 		} elseif ( 'footer' === $type ) {
 			$section = array_merge( $section, self::get_default_footer_settings() );
 		}
+		$section = array_merge( $section, self::get_template_section_defaults( $template_slug, $type ) );
 
 		wp_send_json_success( array( 'html' => self::render_section_card( $section, $template_slug ) ) );
 	}
@@ -1240,11 +1488,27 @@ final class HLPB_Landing_Builder {
 
 		wp_enqueue_media();
 		wp_enqueue_script( 'jquery-ui-sortable' );
-		wp_enqueue_style( 'hlpb-builder-admin', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/builder.css', array(), HLPB_LANDING_PAGE_BUILDER_VERSION );
-		wp_enqueue_style( 'hlpb-cart-section-admin', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/frontend/cart-section.css', array( 'hlpb-builder-admin' ), HLPB_LANDING_PAGE_BUILDER_VERSION );
-		wp_enqueue_script( 'hlpb-builder-admin', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/builder.js', array( 'jquery', 'jquery-ui-sortable' ), HLPB_LANDING_PAGE_BUILDER_VERSION, true );
+		$builder_css_path    = HLPB_LANDING_PAGE_BUILDER_PATH . 'assets/admin/builder.css';
+		$cart_admin_css_path = HLPB_LANDING_PAGE_BUILDER_PATH . 'assets/frontend/cart-section.css';
+		$builder_js_path     = HLPB_LANDING_PAGE_BUILDER_PATH . 'assets/admin/builder.js';
+		wp_enqueue_style( 'hlpb-builder-admin', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/builder.css', array(), is_file( $builder_css_path ) ? (string) filemtime( $builder_css_path ) : HLPB_LANDING_PAGE_BUILDER_VERSION );
+		wp_enqueue_style( 'hlpb-cart-section-admin', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/frontend/cart-section.css', array( 'hlpb-builder-admin' ), is_file( $cart_admin_css_path ) ? (string) filemtime( $cart_admin_css_path ) : HLPB_LANDING_PAGE_BUILDER_VERSION );
+		wp_enqueue_script( 'hlpb-builder-admin', HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/builder.js', array( 'jquery', 'jquery-ui-sortable' ), is_file( $builder_js_path ) ? (string) filemtime( $builder_js_path ) : HLPB_LANDING_PAGE_BUILDER_VERSION, true );
 		$template_slug = self::get_template_slug( get_the_ID() );
 		$template      = self::get_template_info( $template_slug );
+		$types_by_template = array();
+		$singletons_by_template = array();
+		$all_labels = array();
+		$all_previews = array();
+		foreach ( array_keys( self::get_templates() ) as $available_slug ) {
+			$available_types = self::get_section_types( $available_slug );
+			$types_by_template[ $available_slug ] = $available_types;
+			$singletons_by_template[ $available_slug ] = self::get_singleton_section_types( $available_slug );
+			$all_labels = array_merge( $all_labels, $available_types );
+			foreach ( $available_types as $type => $label ) {
+				$all_previews[ $type ] = self::get_section_preview_svg( $type );
+			}
+		}
 		wp_localize_script(
 			'hlpb-builder-admin',
 			'HLPBBuilder',
@@ -1252,9 +1516,11 @@ final class HLPB_Landing_Builder {
 				'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
 				'nonce'       => wp_create_nonce( 'hlpb_builder' ),
 				'icons'       => self::get_icon_labels(),
-				'labels'      => self::get_section_types(),
-				'previews'    => self::get_section_previews(),
-				'singleInstanceTypes' => self::get_singleton_section_types(),
+				'labels'      => $all_labels,
+				'previews'    => $all_previews,
+				'typesByTemplate' => $types_by_template,
+				'singleInstanceTypesByTemplate' => $singletons_by_template,
+				'singleInstanceTypes' => self::get_singleton_section_types( $template_slug ),
 				'error'       => __( 'The section could not be added. Please try again.', 'html-landing-page-builder-for-woocommerce' ),
 				'pluginUrl'   => HLPB_LANDING_PAGE_BUILDER_URL,
 				'imageBase'   => self::get_template_asset_url( $template_slug ) . 'images/',
@@ -1301,7 +1567,28 @@ final class HLPB_Landing_Builder {
 		$templates      = self::get_templates();
 		$template_slug  = isset( $_POST['hlpb_template'] ) ? sanitize_key( wp_unslash( $_POST['hlpb_template'] ) ) : self::get_template_slug( $post_id );
 		$input          = isset( $_POST['hlpb_sections'] ) ? wp_unslash( $_POST['hlpb_sections'] ) : array();
-		$sections       = self::sanitize_sections( $input, $template_slug );
+		$previous_template_slug = self::get_template_slug( $post_id );
+		if ( isset( $templates[ $template_slug ] ) && $template_slug !== $previous_template_slug ) {
+			$sections    = self::get_default_sections( $template_slug );
+			$cart_config = false;
+			foreach ( is_array( $input ) ? $input : array() as $raw_section ) {
+				if ( is_array( $raw_section ) && isset( $raw_section['type'] ) && 'cart_section' === sanitize_key( $raw_section['type'] ) ) {
+					$cart_config = HLPB_Cart_Section::sanitize( $raw_section );
+					break;
+				}
+			}
+			if ( $cart_config ) {
+				foreach ( $sections as &$section ) {
+					if ( isset( $section['type'] ) && 'cart_section' === $section['type'] ) {
+						$section = array_merge( $section, $cart_config );
+						break;
+					}
+				}
+				unset( $section );
+			}
+		} else {
+			$sections = self::sanitize_sections( $input, $template_slug );
+		}
 		$export_error   = '';
 		$previous_directory = self::get_current_export_relative_path( $post_id );
 		$previous_promo_folder = self::get_export_promo_folder( $post_id );
@@ -1548,7 +1835,7 @@ final class HLPB_Landing_Builder {
 		}
 
 		$asset_url = trailingslashit( home_url( '/' . rawurlencode( $promo_folder ) . '/' . rawurlencode( $slug ) . '/assets/' ) );
-		$images    = self::copy_section_images( $sections, $asset_dir, $asset_url );
+		$images    = self::copy_section_images( $sections, $asset_dir, $asset_url, $template_slug );
 		if ( is_wp_error( $images ) ) {
 			return $images;
 		}
@@ -1558,6 +1845,9 @@ final class HLPB_Landing_Builder {
 		if ( ! $styles_path ) {
 			return new WP_Error( 'hlpb_export_styles', __( 'The selected template stylesheet must be inside its assets folder.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
+		$styles_source  = self::resolve_template_file( $template_slug, $template['styles'] );
+		$styles_version = $styles_source && is_file( $styles_source ) ? (string) filemtime( $styles_source ) : HLPB_LANDING_PAGE_BUILDER_VERSION;
+		$styles_url     = add_query_arg( 'ver', $styles_version, $asset_url . $styles_path );
 		$cart_config      = $has_cart ? HLPB_Cart_Section::build_public_config( $post_id, $sections ) : array();
 		$cart_config_json = $cart_config ? wp_json_encode( $cart_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ) : '';
 		$hero_image       = $has_cart ? self::get_initial_cart_hero_image( $cart_config ) : array();
@@ -1577,7 +1867,7 @@ final class HLPB_Landing_Builder {
 			}
 			$html .= ' fetchpriority="high">' . "\n";
 		}
-		$html .= '<link rel="stylesheet" href="' . esc_url( $asset_url . $styles_path ) . '">' . "\n";
+		$html .= '<link rel="stylesheet" href="' . esc_url( $styles_url ) . '">' . "\n";
 		if ( $script_config ) {
 			$html .= '<script>window.HLPBDemo=' . $script_config . ";</script>\n";
 		}
@@ -1681,22 +1971,13 @@ final class HLPB_Landing_Builder {
 	 * @param string                           $asset_url Export assets URL.
 	 * @return array<int, string>|WP_Error
 	 */
-	private static function copy_section_images( $sections, $asset_dir, $asset_url ) {
+	private static function copy_section_images( $sections, $asset_dir, $asset_url, $template_slug = '' ) {
 		$images      = array();
 		$upload_info = wp_upload_dir();
 		$upload_root = isset( $upload_info['basedir'] ) ? realpath( $upload_info['basedir'] ) : false;
 		if ( ! $upload_root ) {
 			foreach ( $sections as $section ) {
-				$has_review_image = false;
-				if ( ! empty( $section['reviews'] ) && is_array( $section['reviews'] ) ) {
-					foreach ( $section['reviews'] as $review ) {
-						if ( ! empty( $review['image_id'] ) ) {
-							$has_review_image = true;
-							break;
-						}
-					}
-				}
-				if ( ! empty( $section['image_id'] ) || ! empty( $section['logo_id'] ) || $has_review_image ) {
+				if ( self::get_section_image_ids( $section, $template_slug ) ) {
 					return new WP_Error( 'hlpb_export_uploads_missing', __( 'WordPress uploads are unavailable, so the selected image cannot be included in a standalone export.', 'html-landing-page-builder-for-woocommerce' ) );
 				}
 			}
@@ -1704,12 +1985,7 @@ final class HLPB_Landing_Builder {
 		}
 		$upload_root = trailingslashit( strtolower( wp_normalize_path( $upload_root ) ) );
 		foreach ( $sections as $section ) {
-			$image_ids = array( isset( $section['image_id'] ) ? absint( $section['image_id'] ) : 0, isset( $section['logo_id'] ) ? absint( $section['logo_id'] ) : 0 );
-			if ( ! empty( $section['reviews'] ) && is_array( $section['reviews'] ) ) {
-				foreach ( $section['reviews'] as $review ) {
-					$image_ids[] = isset( $review['image_id'] ) ? absint( $review['image_id'] ) : 0;
-				}
-			}
+			$image_ids = self::get_section_image_ids( $section, $template_slug );
 			foreach ( array_unique( array_filter( $image_ids ) ) as $image_id ) {
 				if ( isset( $images[ $image_id ] ) ) {
 					continue;
@@ -1736,6 +2012,24 @@ final class HLPB_Landing_Builder {
 			}
 		}
 		return $images;
+	}
+
+	/** Collect attachment IDs used by built-in and manifest-defined image fields. */
+	private static function get_section_image_ids( $section, $template_slug = '' ) {
+		$image_ids = array( isset( $section['image_id'] ) ? absint( $section['image_id'] ) : 0, isset( $section['logo_id'] ) ? absint( $section['logo_id'] ) : 0 );
+		if ( ! empty( $section['reviews'] ) && is_array( $section['reviews'] ) ) {
+			foreach ( $section['reviews'] as $review ) {
+				$image_ids[] = isset( $review['image_id'] ) ? absint( $review['image_id'] ) : 0;
+			}
+		}
+		if ( $template_slug && isset( $section['type'] ) ) {
+			foreach ( self::get_template_field_definitions( $template_slug, $section['type'] ) as $key => $field ) {
+				if ( is_array( $field ) && isset( $field['type'] ) && 'image' === $field['type'] ) {
+					$image_ids[] = isset( $section[ sanitize_key( $key ) . '_id' ] ) ? absint( $section[ sanitize_key( $key ) . '_id' ] ) : 0;
+				}
+			}
+		}
+		return array_values( array_unique( array_filter( $image_ids ) ) );
 	}
 
 	/**
@@ -2118,7 +2412,7 @@ final class HLPB_Landing_Builder {
 			return array();
 		}
 
-		$allowed       = self::get_section_types();
+		$allowed       = self::get_section_types( $template_slug );
 		$icon_labels   = self::get_icon_labels();
 		$sections      = array();
 		$singletons    = array();
@@ -2131,7 +2425,7 @@ final class HLPB_Landing_Builder {
 			if ( ! isset( $allowed[ $type ] ) ) {
 				continue;
 			}
-			if ( in_array( $type, self::get_singleton_section_types(), true ) ) {
+			if ( in_array( $type, self::get_singleton_section_types( $template_slug ), true ) ) {
 				if ( isset( $singletons[ $type ] ) ) {
 					continue;
 				}
@@ -2341,6 +2635,7 @@ final class HLPB_Landing_Builder {
 					}
 				}
 			}
+			$section = self::sanitize_template_section_fields( $raw_section, $section, $template_slug, $type );
 			$sections[] = $section;
 		}
 
@@ -2356,6 +2651,55 @@ final class HLPB_Landing_Builder {
 		}
 
 		return $sections;
+	}
+
+	/** Sanitize and allowlist the fields declared by a supplied template section. */
+	private static function sanitize_template_section_fields( $raw_section, $section, $template_slug, $type ) {
+		$fields   = self::get_template_field_definitions( $template_slug, $type );
+		$defaults = self::get_template_section_defaults( $template_slug, $type );
+		foreach ( $fields as $key => $field ) {
+			if ( ! is_array( $field ) || empty( $field['type'] ) ) {
+				continue;
+			}
+			$key  = sanitize_key( $key );
+			$kind = sanitize_key( $field['type'] );
+			if ( 'image' === $kind ) {
+				$section[ $key . '_id' ] = isset( $raw_section[ $key . '_id' ] ) ? absint( $raw_section[ $key . '_id' ] ) : ( isset( $defaults[ $key . '_id' ] ) ? absint( $defaults[ $key . '_id' ] ) : 0 );
+				$image = isset( $raw_section[ $key ] ) && is_scalar( $raw_section[ $key ] ) ? sanitize_file_name( basename( (string) wp_unslash( $raw_section[ $key ] ) ) ) : ( isset( $defaults[ $key ] ) ? $defaults[ $key ] : '' );
+				$section[ $key ] = self::safe_demo_image( $image, $template_slug );
+			} elseif ( 'checklist' === $kind ) {
+				$choices = array();
+				foreach ( ( isset( $field['groups'] ) && is_array( $field['groups'] ) ? $field['groups'] : array() ) as $group ) {
+					foreach ( ( isset( $group['items'] ) && is_array( $group['items'] ) ? $group['items'] : array() ) as $choice ) {
+						if ( isset( $choice['id'] ) ) {
+							$choices[] = sanitize_key( $choice['id'] );
+						}
+					}
+				}
+				$raw_values = isset( $raw_section[ $key ] ) && is_array( $raw_section[ $key ] ) ? $raw_section[ $key ] : ( isset( $defaults[ $key ] ) && is_array( $defaults[ $key ] ) ? $defaults[ $key ] : array() );
+				$values = array_values( array_unique( array_intersect( $choices, array_map( 'sanitize_key', $raw_values ) ) ) );
+				$section[ $key ] = $values ? $values : array_slice( $choices, 0, 1 );
+			} elseif ( 'select' === $kind ) {
+				$choices = array();
+				foreach ( ( isset( $field['options'] ) && is_array( $field['options'] ) ? $field['options'] : array() ) as $option ) {
+					if ( isset( $option['value'] ) ) {
+						$choices[] = sanitize_key( $option['value'] );
+					}
+				}
+				$value = isset( $raw_section[ $key ] ) ? sanitize_key( $raw_section[ $key ] ) : ( isset( $defaults[ $key ] ) ? sanitize_key( $defaults[ $key ] ) : '' );
+				$section[ $key ] = in_array( $value, $choices, true ) ? $value : ( isset( $defaults[ $key ] ) ? $defaults[ $key ] : ( $choices ? $choices[0] : '' ) );
+			} else {
+				$value = isset( $raw_section[ $key ] ) && is_scalar( $raw_section[ $key ] ) ? (string) wp_unslash( $raw_section[ $key ] ) : ( isset( $defaults[ $key ] ) ? (string) $defaults[ $key ] : '' );
+				if ( 'textarea' === $kind ) {
+					$section[ $key ] = sanitize_textarea_field( $value );
+				} elseif ( 'url' === $kind ) {
+					$section[ $key ] = self::sanitize_menu_url( $value );
+				} else {
+					$section[ $key ] = sanitize_text_field( $value );
+				}
+			}
+		}
+		return $section;
 	}
 
 	/** Sanitize an absolute or site-relative navigation URL. */
@@ -2382,7 +2726,9 @@ final class HLPB_Landing_Builder {
 			return;
 		}
 		$asset_url = self::get_template_asset_url( $template_slug );
-		wp_enqueue_style( 'hlpb-landing-design', HLPB_LANDING_PAGE_BUILDER_URL . 'templates/' . $template_slug . '/' . ltrim( $template['styles'], '/' ), array(), HLPB_LANDING_PAGE_BUILDER_VERSION );
+		$styles_path    = self::resolve_template_file( $template_slug, $template['styles'] );
+		$styles_version = $styles_path && is_file( $styles_path ) ? (string) filemtime( $styles_path ) : HLPB_LANDING_PAGE_BUILDER_VERSION;
+		wp_enqueue_style( 'hlpb-landing-design', HLPB_LANDING_PAGE_BUILDER_URL . 'templates/' . $template_slug . '/' . ltrim( $template['styles'], '/' ), array(), $styles_version );
 		if ( ! empty( $template['script'] ) && is_file( self::resolve_template_file( $template_slug, $template['script'] ) ) ) {
 			wp_enqueue_script( 'hlpb-landing-design', HLPB_LANDING_PAGE_BUILDER_URL . 'templates/' . $template_slug . '/' . ltrim( $template['script'], '/' ), array(), HLPB_LANDING_PAGE_BUILDER_VERSION, true );
 			wp_localize_script(
@@ -2416,9 +2762,27 @@ final class HLPB_Landing_Builder {
 	public static function get_sections( $post_id ) {
 		$sections = get_post_meta( $post_id, self::META_KEY, true );
 		if ( metadata_exists( 'post', $post_id, self::META_KEY ) && is_array( $sections ) ) {
-			return $sections;
+			return self::migrate_template_sections( $sections, self::get_template_slug( $post_id ) );
 		}
 		return self::get_default_sections( self::get_template_slug( $post_id ) );
+	}
+
+	/** Migrate legacy Field Notes story cards to the shared, configurable story section. */
+	private static function migrate_template_sections( $sections, $template_slug ) {
+		if ( 'field-notes' !== $template_slug ) {
+			return $sections;
+		}
+		foreach ( $sections as $index => $section ) {
+			if ( ! is_array( $section ) || ! isset( $section['type'] ) || ! in_array( $section['type'], array( 'fn_fabric', 'fn_capsule' ), true ) ) {
+				continue;
+			}
+			$variant = 'fn_capsule' === $section['type'] ? 'capsule' : 'fabric';
+			$section = array_merge( self::get_template_section_defaults( $template_slug, 'fn_story', $variant ), $section );
+			$section['type'] = 'fn_story';
+			$section['image_position'] = 'capsule' === $variant ? 'left' : 'right';
+			$sections[ $index ] = $section;
+		}
+		return $sections;
 	}
 
 	/**
@@ -2457,6 +2821,11 @@ final class HLPB_Landing_Builder {
 		if ( 'footer' === $type ) {
 			return self::render_footer( $section, $template_slug, $asset_url, $custom_images );
 		}
+		$template = self::get_template_info( $template_slug );
+		if ( $template && isset( $template['sections'][ $type ] ) ) {
+			$fragment = self::get_demo_fragment( $type, $template_slug, $asset_url );
+			return self::apply_template_section_fields( $fragment, $section, $template_slug, $asset_url, $custom_images );
+		}
 
 		$fragment_keys = array(
 			'header'        => 'header',
@@ -2474,6 +2843,109 @@ final class HLPB_Landing_Builder {
 			return '';
 		}
 		return self::get_demo_fragment( $fragment_keys[ $type ], $template_slug, $asset_url );
+	}
+
+	/** Apply saved content and media values to a supplied template fragment. */
+	private static function apply_template_section_fields( $fragment, $section, $template_slug, $asset_url, $custom_images ) {
+		$fields = self::get_template_field_definitions( $template_slug, isset( $section['type'] ) ? $section['type'] : '' );
+		if ( '' === $fragment || empty( $fields ) ) {
+			return $fragment;
+		}
+		$section = array_merge( self::get_template_section_defaults( $template_slug, $section['type'] ), $section );
+		foreach ( $fields as $key => $field ) {
+			if ( ! is_array( $field ) || empty( $field['type'] ) ) {
+				continue;
+			}
+			$key  = sanitize_key( $key );
+			$kind = sanitize_key( $field['type'] );
+			if ( in_array( $kind, array( 'text', 'textarea' ), true ) ) {
+				$value = isset( $section[ $key ] ) ? (string) $section[ $key ] : '';
+				$value = nl2br( esc_html( $value ), false );
+				$pattern = '~(<([a-z][a-z0-9:-]*)(?:\s[^>]*)?\bdata-hlpb-field=["\']' . preg_quote( $key, '~' ) . '["\'][^>]*>)(.*?)(</\\2\s*>)~is';
+				$fragment = preg_replace_callback(
+					$pattern,
+					static function ( $matches ) use ( $value ) {
+						return $matches[1] . $value . $matches[4];
+					},
+					$fragment
+				);
+			} elseif ( 'url' === $kind ) {
+				$value = isset( $section[ $key ] ) ? self::sanitize_menu_url( $section[ $key ] ) : '';
+				if ( '' !== $value ) {
+					$pattern = '~<a\b(?=[^>]*\bdata-hlpb-href=["\']' . preg_quote( $key, '~' ) . '["\'])[^>]*>~i';
+					$fragment = preg_replace_callback(
+						$pattern,
+						static function ( $matches ) use ( $value ) {
+						return self::set_template_html_attribute( $matches[0], 'href', $value );
+					},
+					$fragment
+					);
+				}
+			} elseif ( 'image' === $kind ) {
+				$image_id = isset( $section[ $key . '_id' ] ) ? absint( $section[ $key . '_id' ] ) : 0;
+				$image_url = $image_id && isset( $custom_images[ $image_id ] ) ? $custom_images[ $image_id ] : false;
+				if ( ! $image_url && $image_id ) {
+					$image_url = wp_get_attachment_image_url( $image_id, 'large' );
+				}
+				if ( ! $image_url ) {
+					$default_image = isset( $section[ $key ] ) ? self::safe_demo_image( $section[ $key ], $template_slug ) : ( isset( $field['default'] ) ? self::safe_demo_image( $field['default'], $template_slug ) : '' );
+					$image_url     = $default_image ? trailingslashit( $asset_url ) . 'images/' . rawurlencode( $default_image ) : false;
+				}
+				if ( $image_url || false !== strpos( $fragment, 'data-hlpb-image="' . $key . '"' ) ) {
+					$pattern = '~<img\b(?=[^>]*\bdata-hlpb-image=["\']' . preg_quote( $key, '~' ) . '["\'])[^>]*>~i';
+					$fragment = preg_replace_callback(
+						$pattern,
+						static function ( $matches ) use ( $image_url, $section ) {
+						$tag = $image_url ? self::set_template_html_attribute( $matches[0], 'src', $image_url ) : $matches[0];
+						if ( preg_match( '~\bdata-hlpb-alt=["\']([^"\']+)["\']~i', $tag, $alt_match ) && isset( $section[ sanitize_key( $alt_match[1] ) ] ) ) {
+							$tag = self::set_template_html_attribute( $tag, 'alt', $section[ sanitize_key( $alt_match[1] ) ] );
+						}
+						return $tag;
+					},
+					$fragment
+					);
+				}
+			} elseif ( 'select' === $kind && 'image_position' === $key ) {
+				$position = isset( $section[ $key ] ) ? sanitize_key( $section[ $key ] ) : 'right';
+				$pattern = '~(<div\b[^>]*\bclass=["\']wrap duo(?: reverse)?["\'][^>]*>)~i';
+				$fragment = preg_replace_callback(
+					$pattern,
+					static function ( $matches ) use ( $position ) {
+						$class = 'left' === $position ? 'wrap duo reverse' : 'wrap duo';
+						return preg_replace( '~\bclass=["\']wrap duo(?: reverse)?["\']~i', 'class="' . $class . '"', $matches[1], 1 );
+					},
+					$fragment
+				);
+			}
+			if ( 'checklist' === $kind && 'calculators' === $key ) {
+				$enabled = isset( $section[ $key ] ) && is_array( $section[ $key ] ) ? array_values( array_map( 'sanitize_key', $section[ $key ] ) ) : array();
+				$encoded = esc_attr( wp_json_encode( $enabled ) );
+				$pattern = '~<section\b(?=[^>]*\bid=["\']calculator["\'])[^>]*>~i';
+				$fragment = preg_replace_callback(
+					$pattern,
+					static function ( $matches ) use ( $encoded ) {
+						return self::set_template_html_attribute( $matches[0], 'data-hlpb-calculators', $encoded );
+					},
+					$fragment
+				);
+			}
+		}
+		if ( 'fn_story' === $section['type'] && ! empty( $section['id'] ) ) {
+			$unique_id = 'field-note-story-' . sanitize_html_class( $section['id'] );
+			$fragment  = preg_replace( '~(<section\b[^>]*\bid=["\'])fabric(["\'][^>]*>)~i', '$1' . esc_attr( $unique_id ) . '$2', $fragment, 1 );
+		}
+		return $fragment;
+	}
+
+	/** Set or add one quoted HTML attribute on a tag. */
+	private static function set_template_html_attribute( $tag, $attribute, $value ) {
+		$attribute = sanitize_key( $attribute );
+		$pattern   = '~\s' . preg_quote( $attribute, '~' ) . '\s*=\s*(["\']).*?\1~i';
+		$replacement = ' ' . $attribute . '="' . esc_attr( $value ) . '"';
+		if ( preg_match( $pattern, $tag ) ) {
+			return preg_replace( $pattern, $replacement, $tag, 1 );
+		}
+		return preg_replace( '~\s*/?>$~', $replacement . '>', $tag, 1 );
 	}
 
 	/** Render the editable header and its selected menus. */
@@ -2725,6 +3197,10 @@ final class HLPB_Landing_Builder {
 			}
 		}
 		$legal_note = sanitize_text_field( $section['legal_note'] );
+		$legacy_legal_note = trim( str_replace( '🇬🇧', '', $legal_note ) );
+		if ( 0 === strcasecmp( $legacy_legal_note, 'UK Owned & Operated' ) ) {
+			$legal_note = '';
+		}
 		if ( '' !== $legal_note ) {
 			$legal_markup .= '<span>' . esc_html( $legal_note ) . '</span>';
 		}

@@ -1,0 +1,911 @@
+{
+  "name": "Field Notes — The Everyday Edit",
+  "description": "A monochrome apparel landing page based on the supplied Field Notes design, connected to live WooCommerce products, variations, offers, and checkout.",
+  "source": "source.html",
+  "styles": "assets/css/style.css",
+  "script": "assets/js/site.js",
+  "assets": "assets",
+  "default_image": "hoodie-texture.webp",
+  "default_layout": [
+    "fn_announcement",
+    "fn_header",
+    "cart_section",
+    "fn_winter",
+    "fn_edit",
+    {
+      "type": "fn_story",
+      "variant": "fabric"
+    },
+    {
+      "type": "fn_story",
+      "variant": "capsule"
+    },
+    "fn_calculator",
+    "fn_offers",
+    "fn_reviews",
+    "fn_faq",
+    "fn_footer"
+  ],
+  "builder_sections": {
+    "fn_announcement": "Announcement",
+    "fn_header": "Field Notes header",
+    "cart_section": "Shop & offer calculator",
+    "fn_winter": "Winter gift section",
+    "fn_edit": "The edit",
+    "fn_story": "Editorial story",
+    "fn_calculator": "Interactive field guide",
+    "fn_offers": "Bundle offers",
+    "fn_reviews": "Reviews",
+    "fn_faq": "FAQ",
+    "fn_footer": "Field Notes footer"
+  },
+  "single_instance_sections": [
+    "fn_header",
+    "cart_section",
+    "fn_footer"
+  ],
+  "editable_fields": {
+    "fn_announcement": {
+      "text": {
+        "label": "Announcement",
+        "type": "text",
+        "default": "A thoughtful little extra with every order · demo storefront"
+      }
+    },
+    "fn_header": {
+      "brand_name": {
+        "label": "Brand name",
+        "type": "text",
+        "default": "FIELD NOTES"
+      },
+      "brand_tagline": {
+        "label": "Brand tagline",
+        "type": "text",
+        "default": "APPAREL / 01"
+      },
+      "brand_url": {
+        "label": "Brand link",
+        "type": "url",
+        "default": "#top"
+      },
+      "shop_label": {
+        "label": "Shop link label",
+        "type": "text",
+        "default": "Shop"
+      },
+      "shop_url": {
+        "label": "Shop link URL",
+        "type": "url",
+        "default": "#shop"
+      },
+      "edit_label": {
+        "label": "Edit link label",
+        "type": "text",
+        "default": "The edit"
+      },
+      "edit_url": {
+        "label": "Edit link URL",
+        "type": "url",
+        "default": "#edit"
+      },
+      "calculator_label": {
+        "label": "Calculator link label",
+        "type": "text",
+        "default": "The calculator"
+      },
+      "calculator_url": {
+        "label": "Calculator link URL",
+        "type": "url",
+        "default": "#calculator"
+      },
+      "reviews_label": {
+        "label": "Reviews link label",
+        "type": "text",
+        "default": "Reviews"
+      },
+      "reviews_url": {
+        "label": "Reviews link URL",
+        "type": "url",
+        "default": "#reviews"
+      },
+      "faq_label": {
+        "label": "FAQ link label",
+        "type": "text",
+        "default": "FAQs"
+      },
+      "faq_url": {
+        "label": "FAQ link URL",
+        "type": "url",
+        "default": "#faqs"
+      },
+      "bag_label": {
+        "label": "Bag label",
+        "type": "text",
+        "default": "Bag"
+      },
+      "bag_url": {
+        "label": "Bag link URL",
+        "type": "url",
+        "default": "#shop"
+      }
+    },
+    "cart_section": {
+      "gallery_tag": {
+        "label": "Gallery tag",
+        "type": "text",
+        "default": "The everyday edit"
+      },
+      "product_kicker": {
+        "label": "Product eyebrow",
+        "type": "text",
+        "default": "The everyday edit"
+      },
+      "product_title": {
+        "label": "Product heading",
+        "type": "text",
+        "default": "EVERYDAY LAYER"
+      },
+      "rating_text": {
+        "label": "Rating text",
+        "type": "text",
+        "default": "4.9 · demo reviews"
+      },
+      "product_copy": {
+        "label": "Product introduction",
+        "type": "textarea",
+        "default": "Easy layers, thoughtful colour, and pieces made to work hard in a real wardrobe."
+      },
+      "price_note": {
+        "label": "Price note",
+        "type": "text",
+        "default": "Live store price per piece"
+      },
+      "countdown_label": {
+        "label": "Countdown label",
+        "type": "text",
+        "default": "Offer ends in"
+      },
+      "buy_tab": {
+        "label": "Buy More tab",
+        "type": "text",
+        "default": "Buy more"
+      },
+      "mix_tab": {
+        "label": "Mix & Match tab",
+        "type": "text",
+        "default": "Mix & match"
+      },
+      "bundle_tab": {
+        "label": "Bundle tab",
+        "type": "text",
+        "default": "Bundle"
+      },
+      "quantity_heading": {
+        "label": "Quantity step heading",
+        "type": "text",
+        "default": "STEP 1 · CHOOSE QUANTITY"
+      },
+      "mode_hint": {
+        "label": "Offer hint",
+        "type": "text",
+        "default": "Choose your offer and style every item."
+      },
+      "options_heading": {
+        "label": "Options step heading",
+        "type": "text",
+        "default": "STEP 2 · PICK EACH ITEM"
+      },
+      "add_button": {
+        "label": "Add to cart button",
+        "type": "text",
+        "default": "ADD TO BAG"
+      },
+      "trust_delivery_title": {
+        "label": "Delivery note title",
+        "type": "text",
+        "default": "Delivery note"
+      },
+      "trust_delivery_text": {
+        "label": "Delivery note text",
+        "type": "text",
+        "default": "2–4 days sample"
+      },
+      "trust_checkout_title": {
+        "label": "Checkout note title",
+        "type": "text",
+        "default": "Secure checkout"
+      },
+      "trust_checkout_text": {
+        "label": "Checkout note text",
+        "type": "text",
+        "default": "Checkout by WooCommerce"
+      },
+      "trust_gift_title": {
+        "label": "Gift note title",
+        "type": "text",
+        "default": "Gift-ready idea"
+      },
+      "trust_gift_text": {
+        "label": "Gift note text",
+        "type": "text",
+        "default": "Add a personal note"
+      },
+      "payment_label": {
+        "label": "Payment options heading",
+        "type": "text",
+        "default": "PAYMENT OPTIONS"
+      },
+      "payment_note": {
+        "label": "Payment options note",
+        "type": "text",
+        "default": "Set available options at checkout"
+      }
+    },
+    "fn_winter": {
+      "title": {
+        "label": "Heading",
+        "type": "text",
+        "default": "Make a little Christmas magic"
+      },
+      "subtitle": {
+        "label": "Introduction",
+        "type": "text",
+        "default": "Soft layers, thoughtful gifts and slower winter evenings."
+      },
+      "feature1_title": {
+        "label": "Point 1 title",
+        "type": "text",
+        "default": "Any colours"
+      },
+      "feature1_text": {
+        "label": "Point 1 text",
+        "type": "text",
+        "default": "Mix and match hoodies and blankets."
+      },
+      "feature2_title": {
+        "label": "Point 2 title",
+        "type": "text",
+        "default": "For everyone"
+      },
+      "feature2_text": {
+        "label": "Point 2 text",
+        "type": "text",
+        "default": "Cosy combinations for the whole family."
+      },
+      "feature3_title": {
+        "label": "Point 3 title",
+        "type": "text",
+        "default": "Create your set"
+      },
+      "feature3_text": {
+        "label": "Point 3 text",
+        "type": "text",
+        "default": "Build the perfect mix for your home."
+      }
+    },
+    "fn_edit": {
+      "eyebrow": {
+        "label": "Eyebrow",
+        "type": "text",
+        "default": "A wardrobe, considered"
+      },
+      "title": {
+        "label": "Heading",
+        "type": "text",
+        "default": "Good layers earn their place."
+      },
+      "intro": {
+        "label": "Introduction",
+        "type": "textarea",
+        "default": "Build outfits around pieces you reach for most: useful shapes, a little colour, and enough flexibility to make getting dressed feel easy."
+      },
+      "point1_title": {
+        "label": "Point 1 title",
+        "type": "text",
+        "default": "Start with fit"
+      },
+      "point1_text": {
+        "label": "Point 1 text",
+        "type": "text",
+        "default": "See the cut and proportions clearly with a simple fit guide."
+      },
+      "point2_title": {
+        "label": "Point 2 title",
+        "type": "text",
+        "default": "Add a colour"
+      },
+      "point2_text": {
+        "label": "Point 2 text",
+        "type": "text",
+        "default": "Pair a familiar shade with a small, well-chosen surprise."
+      },
+      "point3_title": {
+        "label": "Point 3 title",
+        "type": "text",
+        "default": "Wear it again"
+      },
+      "point3_text": {
+        "label": "Point 3 text",
+        "type": "text",
+        "default": "Show one layer working across an ordinary week."
+      },
+      "point4_title": {
+        "label": "Point 4 title",
+        "type": "text",
+        "default": "Keep the details"
+      },
+      "point4_text": {
+        "label": "Point 4 text",
+        "type": "text",
+        "default": "Helpful care and fabric notes keep pieces in rotation."
+      }
+    },
+    "fn_calculator": {
+      "eyebrow": {
+        "label": "Calculator introduction eyebrow",
+        "type": "text",
+        "default": "A little interactive field guide"
+      },
+      "title": {
+        "label": "Calculator introduction heading",
+        "type": "textarea",
+        "default": "Make a plan.\nMeet reality."
+      },
+      "intro": {
+        "label": "Calculator introduction text",
+        "type": "textarea",
+        "default": "Choose from ten useful helpers and ten unserious investigations. Pull the sliders and watch your estimates, verdict, and tiny story change."
+      },
+      "photo": {
+        "label": "Calculator introduction photo",
+        "type": "image",
+        "default": "fashion-look-05-sunset-streetwear.webp"
+      },
+      "photo_alt": {
+        "label": "Photo description",
+        "type": "text",
+        "default": "A cosy gift box with soft clothing"
+      },
+      "photo_caption": {
+        "label": "Photo caption",
+        "type": "text",
+        "default": "The everyday edit · sample look"
+      },
+      "calculators": {
+        "label": "Calculators shown in the menu",
+        "type": "checklist",
+        "default": [
+          "carry",
+          "inbox",
+          "meeting",
+          "plant",
+          "sock",
+          "snack",
+          "chat",
+          "tools",
+          "mug",
+          "paw",
+          "calendar",
+          "coins",
+          "hanger",
+          "clock",
+          "dumbbell",
+          "book",
+          "bolt",
+          "plate",
+          "leaf",
+          "film"
+        ],
+        "groups": [
+          {
+            "label": "Useful tools",
+            "items": [
+              {
+                "id": "carry",
+                "label": "The carry-on calculator"
+              },
+              {
+                "id": "calendar",
+                "label": "Week, with breathing room"
+              },
+              {
+                "id": "coins",
+                "label": "Split-the-bill helper"
+              },
+              {
+                "id": "hanger",
+                "label": "Cost-per-wear reality check"
+              },
+              {
+                "id": "clock",
+                "label": "Leave-on-time buffer"
+              },
+              {
+                "id": "dumbbell",
+                "label": "Gentle movement planner"
+              },
+              {
+                "id": "book",
+                "label": "Reading finish-line"
+              },
+              {
+                "id": "bolt",
+                "label": "Home energy nudge"
+              },
+              {
+                "id": "plate",
+                "label": "Dinner portions, minus guesswork"
+              },
+              {
+                "id": "leaf",
+                "label": "Garden watering rhythm"
+              }
+            ]
+          },
+          {
+            "label": "Funny science",
+            "items": [
+              {
+                "id": "inbox",
+                "label": "Inbox triage, with optimism"
+              },
+              {
+                "id": "meeting",
+                "label": "Meeting escape velocity"
+              },
+              {
+                "id": "plant",
+                "label": "Plant parent panic"
+              },
+              {
+                "id": "sock",
+                "label": "The laundry sock mystery"
+              },
+              {
+                "id": "snack",
+                "label": "Snack logistics office"
+              },
+              {
+                "id": "chat",
+                "label": "Group chat vacation"
+              },
+              {
+                "id": "tools",
+                "label": "DIY confidence meter"
+              },
+              {
+                "id": "mug",
+                "label": "Coffee runway"
+              },
+              {
+                "id": "paw",
+                "label": "Pet patience index"
+              },
+              {
+                "id": "film",
+                "label": "What-to-watch summit"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "fn_offers": {
+      "eyebrow": {
+        "label": "Eyebrow",
+        "type": "text",
+        "default": "COSY SETS, BETTER VALUE"
+      },
+      "title": {
+        "label": "Heading",
+        "type": "text",
+        "default": "Why bundle?"
+      },
+      "intro": {
+        "label": "Introduction",
+        "type": "text",
+        "default": "The more you gift (or keep for yourself), the more you save."
+      },
+      "benefit1": {
+        "label": "Benefit 1",
+        "type": "text",
+        "default": "Better value"
+      },
+      "benefit2": {
+        "label": "Benefit 2",
+        "type": "text",
+        "default": "The perfect pair"
+      },
+      "benefit3": {
+        "label": "Benefit 3",
+        "type": "text",
+        "default": "Ideal for gifting"
+      },
+      "benefit4": {
+        "label": "Benefit 4",
+        "type": "text",
+        "default": "More cosy moments"
+      },
+      "stock_title": {
+        "label": "Stock message heading",
+        "type": "text",
+        "default": "Limited stock available"
+      },
+      "stock_text": {
+        "label": "Stock message",
+        "type": "textarea",
+        "default": "Our cosy bundles are in high demand. Once they're gone, they may not be back for a while."
+      }
+    },
+    "fn_reviews": {
+      "eyebrow": {
+        "label": "Eyebrow",
+        "type": "text",
+        "default": "Customer story layout · demo"
+      },
+      "title": {
+        "label": "Heading",
+        "type": "text",
+        "default": "Notes from cosy homes."
+      },
+      "intro": {
+        "label": "Introduction",
+        "type": "textarea",
+        "default": "Illustrative review cards for layout preview. Replace sample quotes with verified store feedback before launch."
+      },
+      "review1_quote": {
+        "label": "Review 1 quote",
+        "type": "textarea",
+        "default": "“The perfect layer for a slow Sunday.”"
+      },
+      "review1_by": {
+        "label": "Review 1 attribution",
+        "type": "text",
+        "default": "Demo review · sample content"
+      },
+      "review1_photo": {
+        "label": "Review 1 photo",
+        "type": "image",
+        "default": "fashion-02-city-women.webp"
+      },
+      "review2_quote": {
+        "label": "Review 2 quote",
+        "type": "textarea",
+        "default": "“A lovely gift that feels personal.”"
+      },
+      "review2_by": {
+        "label": "Review 2 attribution",
+        "type": "text",
+        "default": "Demo review · sample content"
+      },
+      "review2_photo": {
+        "label": "Review 2 photo",
+        "type": "image",
+        "default": "fashion-06-mens-pair.webp"
+      },
+      "review3_quote": {
+        "label": "Review 3 quote",
+        "type": "textarea",
+        "default": "“Soft, easy to style, and easy to love.”"
+      },
+      "review3_by": {
+        "label": "Review 3 attribution",
+        "type": "text",
+        "default": "Demo review · sample content"
+      },
+      "review3_photo": {
+        "label": "Review 3 photo",
+        "type": "image",
+        "default": "fashion-07-vibrant-dress.webp"
+      }
+    },
+    "fn_faq": {
+      "title": {
+        "label": "FAQ heading",
+        "type": "textarea",
+        "default": "Frequently\nAsked Questions"
+      },
+      "subtitle": {
+        "label": "Introduction",
+        "type": "text",
+        "default": "Everything you need to know about your cosy order."
+      },
+      "q1": {
+        "label": "Question 1",
+        "type": "text",
+        "default": "How long does delivery take?"
+      },
+      "a1": {
+        "label": "Answer 1",
+        "type": "textarea",
+        "default": "Delivery details are a sample for this demo. Replace them with your confirmed dispatch and delivery times."
+      },
+      "q2": {
+        "label": "Question 2",
+        "type": "text",
+        "default": "Can I mix hoodies and blankets?"
+      },
+      "a2": {
+        "label": "Answer 2",
+        "type": "textarea",
+        "default": "The cosy set is designed for mix-and-match. Choose the pieces you want, then check each item’s available options."
+      },
+      "q3": {
+        "label": "Question 3",
+        "type": "text",
+        "default": "What if I'm not happy with my order?"
+      },
+      "a3": {
+        "label": "Answer 3",
+        "type": "textarea",
+        "default": "Add your verified returns window and instructions here so customers can decide with confidence."
+      },
+      "q4": {
+        "label": "Question 4",
+        "type": "text",
+        "default": "How do I care for my hoodie and blanket?"
+      },
+      "a4": {
+        "label": "Answer 4",
+        "type": "textarea",
+        "default": "Follow each item's care label. Add verified washing and drying instructions for every fabric."
+      },
+      "q5": {
+        "label": "Question 5",
+        "type": "text",
+        "default": "Do you offer gift wrapping?"
+      },
+      "a5": {
+        "label": "Answer 5",
+        "type": "textarea",
+        "default": "Add gift-wrapping details and any available personal-note options here."
+      }
+    },
+    "fn_footer": {
+      "brand_name": {
+        "label": "Footer brand name",
+        "type": "text",
+        "default": "FIELD NOTES"
+      },
+      "brand_tagline": {
+        "label": "Footer tagline",
+        "type": "text",
+        "default": "APPAREL / 01"
+      },
+      "brand_url": {
+        "label": "Brand link",
+        "type": "url",
+        "default": "#top"
+      },
+      "nav1": {
+        "label": "Navigation link 1",
+        "type": "text",
+        "default": "Shop"
+      },
+      "nav1_url": {
+        "label": "Navigation URL 1",
+        "type": "url",
+        "default": "#shop"
+      },
+      "nav2": {
+        "label": "Navigation link 2",
+        "type": "text",
+        "default": "The edit"
+      },
+      "nav2_url": {
+        "label": "Navigation URL 2",
+        "type": "url",
+        "default": "#edit"
+      },
+      "nav3": {
+        "label": "Navigation link 3",
+        "type": "text",
+        "default": "FAQs"
+      },
+      "nav3_url": {
+        "label": "Navigation URL 3",
+        "type": "url",
+        "default": "#faqs"
+      },
+      "nav4": {
+        "label": "Navigation link 4",
+        "type": "text",
+        "default": "The calculator"
+      },
+      "nav4_url": {
+        "label": "Navigation URL 4",
+        "type": "url",
+        "default": "#calculator"
+      },
+      "nav5": {
+        "label": "Navigation link 5",
+        "type": "text",
+        "default": "Reviews"
+      },
+      "nav5_url": {
+        "label": "Navigation URL 5",
+        "type": "url",
+        "default": "#reviews"
+      },
+      "social_instagram": {
+        "label": "Instagram URL",
+        "type": "url",
+        "default": "#instagram"
+      },
+      "social_facebook": {
+        "label": "Facebook URL",
+        "type": "url",
+        "default": "#facebook"
+      },
+      "social_pinterest": {
+        "label": "Pinterest URL",
+        "type": "url",
+        "default": "#pinterest"
+      },
+      "social_tiktok": {
+        "label": "TikTok URL",
+        "type": "url",
+        "default": "#tiktok"
+      },
+      "social_youtube": {
+        "label": "YouTube URL",
+        "type": "url",
+        "default": "#youtube"
+      },
+      "copyright": {
+        "label": "Copyright line",
+        "type": "text",
+        "default": "© 2026 FIELD NOTES. Demo concept page."
+      },
+      "legal1": {
+        "label": "Legal link 1",
+        "type": "text",
+        "default": "Privacy Policy"
+      },
+      "legal1_url": {
+        "label": "Legal URL 1",
+        "type": "url",
+        "default": "#privacy"
+      },
+      "legal2": {
+        "label": "Legal link 2",
+        "type": "text",
+        "default": "Terms of Service"
+      },
+      "legal2_url": {
+        "label": "Legal URL 2",
+        "type": "url",
+        "default": "#terms"
+      },
+      "legal3": {
+        "label": "Legal link 3",
+        "type": "text",
+        "default": "Returns"
+      },
+      "legal3_url": {
+        "label": "Legal URL 3",
+        "type": "url",
+        "default": "#returns"
+      },
+      "disclaimer": {
+        "label": "Footer disclaimer",
+        "type": "textarea",
+        "default": "Demo concept. Prices, shipping terms, payment badges, colour range and stock details are illustrative placeholders. Replace them with verified store information before launch."
+      }
+    },
+    "fn_story": {
+      "eyebrow": {
+        "label": "Eyebrow",
+        "type": "text",
+        "default": "Softness, shown up close"
+      },
+      "title": {
+        "label": "Heading",
+        "type": "text",
+        "default": "Comfort that keeps its shape."
+      },
+      "intro": {
+        "label": "Introduction",
+        "type": "textarea",
+        "default": "Texture, silhouette, and finishing details help shoppers picture a garment before it arrives. This sample story makes room for fabric feel, fit guidance, and simple care notes."
+      },
+      "photo": {
+        "label": "Section photo",
+        "type": "image",
+        "default": "hoodie-texture.webp"
+      },
+      "photo_alt": {
+        "label": "Photo description",
+        "type": "text",
+        "default": "Soft fabric close-up"
+      },
+      "photo_caption": {
+        "label": "Photo caption",
+        "type": "text",
+        "default": "Texture study · sample image"
+      },
+      "feature1_title": {
+        "label": "Detail 1 title",
+        "type": "text",
+        "default": "Fabric surface"
+      },
+      "feature1_text": {
+        "label": "Detail 1 text",
+        "type": "text",
+        "default": "Describe texture and weight from verified details."
+      },
+      "feature2_title": {
+        "label": "Detail 2 title",
+        "type": "text",
+        "default": "Shape and fit"
+      },
+      "feature2_text": {
+        "label": "Detail 2 text",
+        "type": "text",
+        "default": "Explain shoulder, sleeve, and length with clarity."
+      },
+      "feature3_title": {
+        "label": "Detail 3 title",
+        "type": "text",
+        "default": "Care made clear"
+      },
+      "feature3_text": {
+        "label": "Detail 3 text",
+        "type": "text",
+        "default": "Keep washing advice close to the garment."
+      },
+      "image_position": {
+        "label": "Photo position",
+        "type": "select",
+        "default": "right",
+        "options": [
+          {
+            "value": "right",
+            "label": "Photo on the right"
+          },
+          {
+            "value": "left",
+            "label": "Photo on the left"
+          }
+        ]
+      }
+    }
+  },
+  "sections": {
+    "sprite": "~<svg class=\"svg-sprite\".*?</svg>~s",
+    "fn_announcement": "~<div class=\"announce\"[^>]*>.*?</div>~s",
+    "fn_header": "~<header class=\"header\">.*?</header>~s",
+    "cart_section": "~<section class=\"hero wrap\" id=\"shop\">.*?</section>~s",
+    "fn_winter": "~<section class=\"winter-gift\" id=\"winter-gift\">.*?</section>~s",
+    "fn_edit": "~<section class=\"section\" id=\"edit\">.*?</section>~s",
+    "fn_calculator": "~<section class=\"section calc-section\" id=\"calculator\">.*?</section>~s",
+    "fn_offers": "~<section class=\"section bundle-reference\" id=\"offers\">.*?</section>~s",
+    "fn_reviews": "~<section class=\"section\" id=\"reviews\">.*?</section>~s",
+    "fn_faq": "~<section class=\"section faq-reference\" id=\"faqs\">.*?</section>~s",
+    "fn_footer": "~<footer class=\"footer\">.*?</footer>~s",
+    "buybar": "~<div class=\"mobile-buybar\">.*?</div>\\s*<div class=\"toast\".*?</div>~s",
+    "fn_story": "~<section class=\"section section-white\" id=\"fabric\">.*?</section>~s"
+  },
+  "section_variants": {
+    "fn_story": {
+      "capsule": {
+        "eyebrow": "The city capsule",
+        "title": "Fewer pieces. More ways to wear.",
+        "intro": "Pair a strong colour with an easy neutral, add a layer for changing weather, and let shoppers imagine how one item moves through the week.",
+        "photo": "fashion-look-04-denim-model.webp",
+        "photo_alt": "Close-up of soft fabric in cream and burgundy",
+        "photo_caption": "One edit · many outfits",
+        "feature1_title": "Layer with purpose",
+        "feature1_text": "Show what goes over or under the key piece.",
+        "feature2_title": "Build easy pairings",
+        "feature2_text": "Suggest colours and shapes that work together.",
+        "feature3_title": "Pack the repeaters",
+        "feature3_text": "Choose dependable favourites for the road.",
+        "image_position": "left"
+      },
+      "fabric": {
+        "image_position": "right"
+      }
+    }
+  }
+}

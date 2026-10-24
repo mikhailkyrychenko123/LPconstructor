@@ -9,6 +9,11 @@
 	var whyOfferGrids = document.querySelectorAll('[data-hlpb-why-offers]');
 	var hero = document.getElementById('heroImage');
 	var thumbs = document.querySelector('.gallery-thumbs');
+	var gallerySlideNo = document.getElementById('slideNo');
+	var galleryCounter = document.getElementById('counter');
+	var galleryTitle = document.getElementById('slideTitle');
+	var galleryCaption = document.getElementById('slideCaption');
+	var galleryDots = document.getElementById('dots');
 	var addButton = document.getElementById('addToCart');
 	var mobileAdd = document.getElementById('mobileAdd');
 	if (!section || !options || !offerGrid || !hero || !addButton) return;
@@ -567,6 +572,12 @@
 	function updateSummary() {
 		var totals = currentTotals();
 		setText('#oldTotal', money(totals.base)); setText('#saveTotal', '- ' + money(totals.saving)); setText('#payTotal', money(totals.total)); setText('#mobilePay', money(totals.total));
+		var priceItems = lineItems(state.mode);
+		if (priceItems.length) {
+			var priceProduct = products[priceItems[0].product_id];
+			var priceVariation = resolveVariation(priceItems[0]);
+			if (priceProduct) setText('#basePrice', money(priceVariation ? priceVariation.price : priceProduct.price));
+		}
 		if (addButton) addButton.disabled = !totals.valid;
 		if (mobileAdd) mobileAdd.disabled = !totals.valid;
 		section.querySelectorAll('.mode-tab').forEach(function (button) { button.setAttribute('aria-pressed', String(button.dataset.mode === state.mode)); });
@@ -593,6 +604,10 @@
 			}).join('');
 			thumbs.onclick = function (event) { var button = event.target.closest('[data-gallery-index]'); if (button) showSlide(Number(button.dataset.galleryIndex)); };
 		}
+		if (galleryDots) {
+			galleryDots.innerHTML = images.map(function (_, index) { return '<button type="button" aria-label="Go to image ' + (index + 1) + '" aria-pressed="' + (0 === index) + '" data-gallery-index="' + index + '"></button>'; }).join('');
+			galleryDots.onclick = function (event) { var button = event.target.closest('[data-gallery-index]'); if (button) showSlide(Number(button.dataset.galleryIndex)); };
+		}
 		showSlide(0);
 	}
 	function showSlide(index) {
@@ -600,6 +615,12 @@
 		index = (index + state.gallery.length) % state.gallery.length; var image = state.gallery[index];
 		hero.srcset = image.srcset || ''; hero.sizes = image.sizes || '(max-width: 700px) calc(100vw - 28px), 50vw'; hero.alt = image.alt || ''; hero.src = image.src;
 		if (thumbs) thumbs.querySelectorAll('.thumb').forEach(function (button) { var active = Number(button.dataset.galleryIndex) === index; button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active)); });
+		if (galleryDots) galleryDots.querySelectorAll('[data-gallery-index]').forEach(function (button) { var active = Number(button.dataset.galleryIndex) === index; button.classList.toggle('active', active); button.setAttribute('aria-pressed', String(active)); });
+		var position = String(index + 1).padStart(2, '0'); var count = String(state.gallery.length).padStart(2, '0');
+		if (gallerySlideNo) gallerySlideNo.textContent = 'Image ' + position + ' / ' + count;
+		if (galleryCounter) galleryCounter.textContent = position + ' / ' + count;
+		if (galleryTitle) galleryTitle.textContent = image.alt || 'Product image';
+		if (galleryCaption) galleryCaption.textContent = image.alt || '';
 	}
 	function showLoading(callback) {
 		section.classList.add('hlpb-is-loading');
@@ -702,6 +723,9 @@
 	var prev = section.querySelector('.arrow-prev'); var next = section.querySelector('.arrow-next');
 	if (prev) prev.addEventListener('click', function () { var current = Math.max(0, state.gallery.findIndex(function (image) { return image.src === hero.src; })); showSlide(current - 1); });
 	if (next) next.addEventListener('click', function () { var current = Math.max(0, state.gallery.findIndex(function (image) { return image.src === hero.src; })); showSlide(current + 1); });
+	var galleryPrev = document.getElementById('prev2'); var galleryNext = document.getElementById('next2');
+	if (galleryPrev) galleryPrev.addEventListener('click', function () { var current = Math.max(0, state.gallery.findIndex(function (image) { return image.src === hero.src; })); showSlide(current - 1); });
+	if (galleryNext) galleryNext.addEventListener('click', function () { var current = Math.max(0, state.gallery.findIndex(function (image) { return image.src === hero.src; })); showSlide(current + 1); });
 	renderItems(); renderOffers(); updateSummary(); updateGallery(getItems(state.mode)[0]); initCountdown();
 	refreshLiveSelections(getItems(state.mode)[0]);
 })();

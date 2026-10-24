@@ -416,6 +416,7 @@
 		var $option = $(this).find(':selected');
 		HLPBBuilder.imageBase = $option.data('image-base') || (HLPBBuilder.pluginUrl + 'templates/' + template + '/assets/images/');
 		HLPBBuilder.defaultImage = $option.data('default-image') || HLPBBuilder.defaultImage;
+		rebuildSectionTypeOptions(template);
 		$list.find('.hlpb-section-card[data-section-type="text_image"]').each(function () {
 			var $card = $(this);
 			if (!$card.find('.hlpb-image-id').val() || $card.find('.hlpb-image-id').val() === '0') {
@@ -424,6 +425,20 @@
 			}
 		});
 	});
+
+	function rebuildSectionTypeOptions(template) {
+		var types = HLPBBuilder.typesByTemplate && HLPBBuilder.typesByTemplate[template];
+		if (!types) {
+			return;
+		}
+
+		var $typeSelect = $('#hlpb-new-section-type').empty();
+		Object.keys(types).forEach(function (type) {
+			$('<option></option>').val(type).text(types[type]).appendTo($typeSelect);
+		});
+		HLPBBuilder.singleInstanceTypes = (HLPBBuilder.singleInstanceTypesByTemplate && HLPBBuilder.singleInstanceTypesByTemplate[template]) || ['header', 'cart_section', 'footer'];
+		updateNumbers();
+	}
 
 	function updateTypePreview() {
 		var type = $('#hlpb-new-section-type').val();

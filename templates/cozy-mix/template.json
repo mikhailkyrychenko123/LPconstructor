@@ -29,7 +29,7 @@
     "reviews": "~<section class=\"reviews-section container\" id=\"reviews\">.*?</section>~s",
     "faq": "~<section class=\"faq-section container\" id=\"faqs\">.*?</section>~s",
     "why": "~<section class=\"bundle-section\" id=\"bundles\">.*?</section>~s",
-    "limited_stock": "~<div class=\"container stock-note\">.*?</div>~s",
+    "limited_stock": "~<div class=\"container stock-note\">.*?</div></div>~s",
     "footer": "~<footer class=\"site-footer\">.*?</footer>~s",
     "sprite": "~<svg class=\"svg-sprite\".*?</svg>~s",
     "buybar": "~<div class=\"mobile-buybar\">.*?</div>\\s*<div class=\"toast\".*?</div>~s"

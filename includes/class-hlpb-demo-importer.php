@@ -86,6 +86,7 @@ final class HLPB_Demo_Importer {
 				'longWait'      => __( 'This is taking longer than usual. Keep this window open and wait for the result before starting another import.', 'html-landing-page-builder-for-woocommerce' ),
 				'invalidResponse' => __( 'The server returned an unexpected response (%d). Check the PHP error log for details.', 'html-landing-page-builder-for-woocommerce' ),
 				'openLanding'   => __( 'Open demo landing page', 'html-landing-page-builder-for-woocommerce' ),
+				'openFieldNotes' => __( 'Open Field Notes apparel demo', 'html-landing-page-builder-for-woocommerce' ),
 			)
 		);
 	}
@@ -107,8 +108,8 @@ final class HLPB_Demo_Importer {
 		echo '<div class="hlpb-onboarding-brand"><img class="hlpb-onboarding-brand-desktop" src="' . esc_url( $promo_image_url ) . '" width="876" height="1080" alt="' . esc_attr__( 'BuyGet landing page builder sales toolkit', 'html-landing-page-builder-for-woocommerce' ) . '"><div class="hlpb-onboarding-brand-mobile"><img src="' . esc_url( $logo_url ) . '" width="72" height="72" alt="' . esc_attr__( 'BuyGet logo', 'html-landing-page-builder-for-woocommerce' ) . '"><span>' . esc_html__( 'HTML Landing Page Builder for WooCommerce', 'html-landing-page-builder-for-woocommerce' ) . '</span></div></div>';
 		echo '<div class="hlpb-onboarding-content"><p class="hlpb-onboarding-eyebrow">' . esc_html__( 'WELCOME TO BUYGET', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
 		echo '<h1 id="hlpb-onboarding-title">' . esc_html__( 'Turn your WooCommerce products into a landing page that sells.', 'html-landing-page-builder-for-woocommerce' ) . '</h1>';
-		echo '<p id="hlpb-onboarding-copy" class="hlpb-onboarding-intro">' . esc_html__( 'Start with a ready-made shop: sample products, colour and size options, bundle offers, and a published demo landing page.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
-		echo '<ul class="hlpb-onboarding-points"><li>' . esc_html__( 'Three isolated demo products with variations and galleries', 'html-landing-page-builder-for-woocommerce' ) . '</li><li>' . esc_html__( 'Buy More, Mix & Match, and Cozy Bundle examples', 'html-landing-page-builder-for-woocommerce' ) . '</li><li>' . esc_html__( 'A published landing page at /promo/lp-demo/', 'html-landing-page-builder-for-woocommerce' ) . '</li><li>' . esc_html__( 'Static landing pages built to target a 100/100 Google PageSpeed score*', 'html-landing-page-builder-for-woocommerce' ) . '</li><li>' . esc_html__( 'Recommended with Caddy and CheckoutWC — fully compatible with both', 'html-landing-page-builder-for-woocommerce' ) . '</li></ul>';
+		echo '<p id="hlpb-onboarding-copy" class="hlpb-onboarding-intro">' . esc_html__( 'Start with a ready-made shop: sample products, colour and size options, bundle offers, and two published demo landing pages.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		echo '<ul class="hlpb-onboarding-points"><li>' . esc_html__( 'Three isolated demo products with variations and galleries', 'html-landing-page-builder-for-woocommerce' ) . '</li><li>' . esc_html__( 'Buy More, Mix & Match, and Cozy Bundle examples', 'html-landing-page-builder-for-woocommerce' ) . '</li><li>' . esc_html__( 'Two ready-to-use demo pages: /promo/lp-demo/ and /promo/field-notes-demo/', 'html-landing-page-builder-for-woocommerce' ) . '</li><li>' . esc_html__( 'Static landing pages built to target a 100/100 Google PageSpeed score*', 'html-landing-page-builder-for-woocommerce' ) . '</li><li>' . esc_html__( 'Recommended with Caddy and CheckoutWC — fully compatible with both', 'html-landing-page-builder-for-woocommerce' ) . '</li></ul>';
 		echo '<p class="hlpb-onboarding-footnote">' . esc_html__( '*Actual PageSpeed results depend on your hosting, theme, media, and other plugins.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
 		if ( $woocommerce_ready ) {
 			echo '<button type="button" class="button button-primary hlpb-onboarding-import" data-hlpb-import>' . esc_html__( 'Import demo data', 'html-landing-page-builder-for-woocommerce' ) . '<span aria-hidden="true">→</span></button>';
@@ -116,7 +117,7 @@ final class HLPB_Demo_Importer {
 			echo '<p class="hlpb-onboarding-warning">' . esc_html__( 'Activate WooCommerce to import the demo data.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
 		}
 		echo '<div class="hlpb-onboarding-progress" data-hlpb-progress hidden><span class="hlpb-onboarding-progress-label" data-hlpb-status role="status" aria-live="polite"></span><span class="hlpb-onboarding-track" role="progressbar" aria-label="' . esc_attr__( 'Import progress', 'html-landing-page-builder-for-woocommerce' ) . '"><span></span></span></div>';
-		echo '<div class="hlpb-onboarding-result" data-hlpb-result hidden><span class="hlpb-onboarding-result-mark" aria-hidden="true">✓</span><div><h2 data-hlpb-result-title></h2><ul data-hlpb-report></ul><a class="hlpb-onboarding-landing" data-hlpb-landing href="#" target="_blank" rel="noopener noreferrer"></a></div></div>';
+		echo '<div class="hlpb-onboarding-result" data-hlpb-result hidden><span class="hlpb-onboarding-result-mark" aria-hidden="true">✓</span><div><h2 data-hlpb-result-title></h2><ul data-hlpb-report></ul><a class="hlpb-onboarding-landing" data-hlpb-landing href="#" target="_blank" rel="noopener noreferrer"></a><a class="hlpb-onboarding-landing" data-hlpb-field-notes-landing href="#" target="_blank" rel="noopener noreferrer" hidden></a></div></div>';
 		echo '<div class="hlpb-onboarding-footer"><span>' . esc_html__( 'HTML Landing Page Builder for WooCommerce', 'html-landing-page-builder-for-woocommerce' ) . '</span><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="hlpb_dismiss_demo_import">';
 		wp_nonce_field( 'hlpb_dismiss_demo_import' );
 		echo '<button type="submit" class="button-link">' . esc_html__( 'Not now', 'html-landing-page-builder-for-woocommerce' ) . '</button></form></div></div></section></div>';
@@ -135,7 +136,7 @@ final class HLPB_Demo_Importer {
 		$has_owned_data     = ! empty( $owned_products ) || ! empty( $owned_attributes ) || ! empty( self::get_owned_ids( 'product_variation', self::VARIATION_META ) ) || ! empty( self::get_owned_ids( 'attachment', self::MEDIA_META ) );
 
 		echo '<div class="wrap"><h1>' . esc_html__( 'Demo Import', 'html-landing-page-builder-for-woocommerce' ) . '</h1>';
-		echo '<p>' . esc_html__( 'Import or remove the bundled WooCommerce demo catalog. Imported products and attributes are isolated with the Landing-demo suffix. Import also creates or refreshes /promo/lp-demo/ with Hoodies in Buy More and Hoodies plus Blankets in Mix & Match and Cozy Bundle. Reimporting refreshes the landing page from its saved settings without replacing your edits.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		echo '<p>' . esc_html__( 'Import or remove the bundled WooCommerce demo catalog. Imported products and attributes are isolated with the Landing-demo suffix. Import also creates or refreshes /promo/lp-demo/ and /promo/field-notes-demo/ with ready-to-use Buy More, Mix & Match, and Cozy Bundle examples. Reimporting refreshes each landing page from its saved settings without replacing your edits.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
 		self::render_result( $result );
 
 		if ( ! empty( $result['time'] ) ) {
@@ -147,7 +148,7 @@ final class HLPB_Demo_Importer {
 		}
 
 		echo '<h2>' . esc_html__( 'Import demo data', 'html-landing-page-builder-for-woocommerce' ) . '</h2>';
-		echo '<p>' . esc_html__( 'Creates or updates Blankets, Hoodies, and Test Simple (Discount product1), their variations and galleries, and separate Color and Size attributes. It also publishes /promo/lp-demo/ with a Buy More offer for Hoodies and Mix & Match and Cozy Bundle offers for Hoodies plus Blankets. Repeating the import updates the marked demo records and refreshes the landing page without replacing its saved sections.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		echo '<p>' . esc_html__( 'Creates or updates Blankets, Hoodies, and Test Simple (Discount product1), their variations and galleries, and separate Color and Size attributes. It publishes /promo/lp-demo/ in the Cozy Mix template and /promo/field-notes-demo/ in the Field Notes template; both are connected to the imported WooCommerce products and offer rules. Repeating the import updates marked demo records and refreshes both pages without replacing their saved sections.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="hlpb_import_demo_products">';
 		wp_nonce_field( 'hlpb_import_demo_products' );
 		echo '<button type="submit" class="button button-primary" ' . disabled( ! $woocommerce_ready, true, false ) . '>' . esc_html__( 'Import demo data', 'html-landing-page-builder-for-woocommerce' ) . '</button></form>';
@@ -207,7 +208,7 @@ final class HLPB_Demo_Importer {
 		} else {
 			$status  = ! empty( $result['landing_error'] ) ? 'partial' : 'success';
 			$message = ! empty( $result['landing_error'] )
-				? __( 'Demo products and attributes were imported, but the default landing page could not be published.', 'html-landing-page-builder-for-woocommerce' )
+				? __( 'Demo products and attributes were imported, but one or more ready-made landing pages could not be published.', 'html-landing-page-builder-for-woocommerce' )
 				: __( 'Demo data import completed.', 'html-landing-page-builder-for-woocommerce' );
 			self::store_result( 'import', $status, $message, $result['report'] );
 		}
@@ -250,7 +251,7 @@ final class HLPB_Demo_Importer {
 
 		$status  = ! empty( $result['landing_error'] ) ? 'partial' : 'success';
 		$message = ! empty( $result['landing_error'] )
-			? __( 'Demo products and attributes were imported, but the default landing page could not be published.', 'html-landing-page-builder-for-woocommerce' )
+			? __( 'Demo products and attributes were imported, but one or more ready-made landing pages could not be published.', 'html-landing-page-builder-for-woocommerce' )
 			: __( 'Demo data import completed.', 'html-landing-page-builder-for-woocommerce' );
 		self::store_result( 'import', $status, $message, $result['report'] );
 		delete_option( self::PROMPT_OPTION );
@@ -259,7 +260,8 @@ final class HLPB_Demo_Importer {
 				'status'      => $status,
 				'message'     => $message,
 				'report'      => $result['report'],
-				'landing_url' => ! empty( $result['landing_url'] ) ? esc_url_raw( $result['landing_url'] ) : '',
+				'landing_url'     => ! empty( $result['landing_url'] ) ? esc_url_raw( $result['landing_url'] ) : '',
+				'field_notes_url' => ! empty( $result['field_notes_url'] ) ? esc_url_raw( $result['field_notes_url'] ) : '',
 			)
 		);
 	}
@@ -802,9 +804,24 @@ final class HLPB_Demo_Importer {
 			__( 'Default demo landing page is available at %s', 'html-landing-page-builder-for-woocommerce' ),
 			$landing_result
 		);
+		$field_notes_result = self::create_field_notes_landing( $product_ids );
+		if ( is_wp_error( $field_notes_result ) ) {
+			$report[] = sprintf(
+				/* translators: %s is the reason the Field Notes demo landing page could not be published. */
+				__( 'Field Notes demo landing page /promo/field-notes-demo/ was not published: %s', 'html-landing-page-builder-for-woocommerce' ),
+				$field_notes_result->get_error_message()
+			);
+			return array( 'report' => $report, 'landing_error' => true, 'landing_url' => $landing_result );
+		}
+		$report[] = sprintf(
+			/* translators: %s is the URL of the Field Notes demo landing page. */
+			__( 'Field Notes apparel demo landing page is available at %s', 'html-landing-page-builder-for-woocommerce' ),
+			$field_notes_result
+		);
 		return array(
-			'report'      => $report,
-			'landing_url' => $landing_result,
+			'report'          => $report,
+			'landing_url'     => $landing_result,
+			'field_notes_url' => $field_notes_result,
 		);
 	}
 
@@ -816,8 +833,13 @@ final class HLPB_Demo_Importer {
 			return new WP_Error( 'hlpb_demo_landing_products_missing', __( 'The imported Hoodies and Blankets products could not be loaded.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
 
-		$landing_ids = self::get_owned_ids( HLPB_Landing_Builder::POST_TYPE, self::LANDING_META );
-		$landing_id  = ! empty( $landing_ids ) ? absint( $landing_ids[0] ) : 0;
+		$landing_id = 0;
+		foreach ( self::get_owned_ids( HLPB_Landing_Builder::POST_TYPE, self::LANDING_META ) as $owned_id ) {
+			if ( 'lp-demo' === get_post_field( 'post_name', $owned_id ) || 'cozy-mix' === get_post_meta( $owned_id, HLPB_Landing_Builder::TEMPLATE_KEY, true ) ) {
+				$landing_id = absint( $owned_id );
+				break;
+			}
+		}
 		if ( $landing_id && 'trash' === get_post_status( $landing_id ) ) {
 			return new WP_Error( 'hlpb_demo_landing_trashed', __( 'The generated demo landing page is in the Trash. Restore it before importing again.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
@@ -870,6 +892,86 @@ final class HLPB_Demo_Importer {
 			update_post_meta( $landing_id, HLPB_Landing_Builder::META_KEY, $sections );
 			update_post_meta( $landing_id, HLPB_Landing_Builder::EXPORT_PROMO_KEY, 'promo' );
 			update_post_meta( $landing_id, HLPB_Landing_Builder::EXPORT_SLUG_KEY, 'lp-demo' );
+		}
+
+		$sections = HLPB_Landing_Builder::get_sections( $landing_id );
+		foreach ( $sections as $section ) {
+			if ( isset( $section['type'] ) && 'cart_section' === $section['type'] ) {
+				HLPB_Cart_Section::ensure_coupons( $landing_id, $section );
+				break;
+			}
+		}
+
+		return HLPB_Landing_Builder::publish_static_export( $landing_id );
+	}
+
+	/** Create or refresh the ready-to-use Field Notes apparel landing page. */
+	private static function create_field_notes_landing( $product_ids ) {
+		$hoodie_id  = absint( $product_ids['hoodies'] ?? 0 );
+		$blanket_id = absint( $product_ids['blankets'] ?? 0 );
+		if ( ! $hoodie_id || ! $blanket_id || ! wc_get_product( $hoodie_id ) || ! wc_get_product( $blanket_id ) ) {
+			return new WP_Error( 'hlpb_field_notes_products_missing', __( 'The imported Hoodies and Blankets products could not be loaded for the Field Notes landing page.', 'html-landing-page-builder-for-woocommerce' ) );
+		}
+
+		$landing_id = 0;
+		foreach ( self::get_owned_ids( HLPB_Landing_Builder::POST_TYPE, self::LANDING_META ) as $owned_id ) {
+			if ( 'field-notes-demo' === get_post_field( 'post_name', $owned_id ) ) {
+				$landing_id = absint( $owned_id );
+				break;
+			}
+		}
+		if ( $landing_id && 'trash' === get_post_status( $landing_id ) ) {
+			return new WP_Error( 'hlpb_field_notes_landing_trashed', __( 'The generated Field Notes landing page is in the Trash. Restore it before importing again.', 'html-landing-page-builder-for-woocommerce' ) );
+		}
+
+		if ( ! $landing_id ) {
+			$slug_conflicts = get_posts(
+				array(
+					'post_type'      => HLPB_Landing_Builder::POST_TYPE,
+					'post_status'    => array( 'publish', 'draft', 'pending', 'private', 'future', 'trash' ),
+					'name'           => 'field-notes-demo',
+					'posts_per_page' => 1,
+					'fields'         => 'ids',
+					'no_found_rows'  => true,
+				)
+			);
+			if ( ! empty( $slug_conflicts ) ) {
+				return new WP_Error( 'hlpb_field_notes_landing_slug_conflict', __( 'A different landing page already uses the field-notes-demo folder.', 'html-landing-page-builder-for-woocommerce' ) );
+			}
+
+			$sections  = HLPB_Landing_Builder::get_default_sections( 'field-notes' );
+			$cart_data = HLPB_Cart_Section::defaults();
+			$cart_data['modes']['buy']['products']    = array( $hoodie_id );
+			$cart_data['modes']['mix']['products']    = array( $hoodie_id, $blanket_id );
+			$cart_data['modes']['bundle']['products'] = array( $hoodie_id, $blanket_id );
+			$cart_data = HLPB_Cart_Section::sanitize( $cart_data );
+			foreach ( $sections as &$section ) {
+				if ( isset( $section['type'] ) && 'cart_section' === $section['type'] ) {
+					$section = array_merge( $section, $cart_data );
+					break;
+				}
+			}
+			unset( $section );
+
+			$landing_id = wp_insert_post(
+				array(
+					'post_type'   => HLPB_Landing_Builder::POST_TYPE,
+					'post_status' => 'publish',
+					'post_title'  => __( 'Field Notes Demo', 'html-landing-page-builder-for-woocommerce' ),
+					'post_name'   => 'field-notes-demo',
+				),
+				true
+			);
+			if ( is_wp_error( $landing_id ) ) {
+				return $landing_id;
+			}
+
+			$landing_id = absint( $landing_id );
+			update_post_meta( $landing_id, self::LANDING_META, 'field-notes' );
+			update_post_meta( $landing_id, HLPB_Landing_Builder::TEMPLATE_KEY, 'field-notes' );
+			update_post_meta( $landing_id, HLPB_Landing_Builder::META_KEY, $sections );
+			update_post_meta( $landing_id, HLPB_Landing_Builder::EXPORT_PROMO_KEY, 'promo' );
+			update_post_meta( $landing_id, HLPB_Landing_Builder::EXPORT_SLUG_KEY, 'field-notes-demo' );
 		}
 
 		$sections = HLPB_Landing_Builder::get_sections( $landing_id );
