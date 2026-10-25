@@ -13,9 +13,10 @@ $landing_id = get_queried_object_id();
 $template_slug = HLPB_Landing_Builder::get_template_slug( $landing_id );
 $asset_url = HLPB_Landing_Builder::get_template_asset_url( $template_slug );
 $sections   = HLPB_Landing_Builder::get_sections( $landing_id );
+$seo = HLPB_Landing_Builder::get_seo_settings( $landing_id );
 $has_cart   = false;
 foreach ( $sections as $section ) {
-	if ( isset( $section['type'] ) && 'cart_section' === $section['type'] ) {
+	if ( isset( $section['type'] ) && 'cart_section' === $section['type'] && ( ! array_key_exists( 'visible', $section ) || ! empty( $section['visible'] ) ) ) {
 		$has_cart = true;
 		break;
 	}
@@ -26,7 +27,7 @@ foreach ( $sections as $section ) {
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 	<meta name="theme-color" content="#fffdf9">
-	<title><?php echo esc_html( wp_get_document_title() ); ?></title>
+	<title><?php echo esc_html( $seo['title'] ); ?></title>
 	<?php wp_head(); ?>
 </head>
 <body <?php body_class( $has_cart ? 'hlpb-landing-page' : 'hlpb-landing-page hlpb-no-cart' ); ?>>

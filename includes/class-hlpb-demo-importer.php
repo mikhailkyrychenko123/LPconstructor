@@ -898,6 +898,7 @@ final class HLPB_Demo_Importer {
 			update_post_meta( $landing_id, HLPB_Landing_Builder::EXPORT_PROMO_KEY, 'promo' );
 			update_post_meta( $landing_id, HLPB_Landing_Builder::EXPORT_SLUG_KEY, 'lp-demo' );
 		}
+		self::sync_demo_seo_settings( $landing_id, 'cozy-mix' );
 
 		$sections = HLPB_Landing_Builder::get_sections( $landing_id );
 		$filtered_sections = array_values(
@@ -1009,6 +1010,7 @@ final class HLPB_Demo_Importer {
 		// Correct legacy demo records as well as newly created ones so the editor exposes this template's sections.
 		update_post_meta( $landing_id, self::LANDING_META, 'field-notes' );
 		update_post_meta( $landing_id, HLPB_Landing_Builder::TEMPLATE_KEY, 'field-notes' );
+		self::sync_demo_seo_settings( $landing_id, 'field-notes' );
 		update_post_meta( $landing_id, HLPB_Landing_Builder::EXPORT_PROMO_KEY, 'promo' );
 		update_post_meta( $landing_id, HLPB_Landing_Builder::EXPORT_SLUG_KEY, 'field-notes-demo' );
 
@@ -1021,6 +1023,45 @@ final class HLPB_Demo_Importer {
 		}
 
 		return HLPB_Landing_Builder::publish_static_export( $landing_id );
+	}
+
+	/** Refresh shipped SEO copy on demo landings while preserving deliberate edits. */
+	private static function sync_demo_seo_settings( $landing_id, $template_slug ) {
+		$defaults = HLPB_Landing_Builder::get_default_seo_settings( $landing_id, $template_slug );
+		$stored   = get_post_meta( $landing_id, HLPB_Landing_Builder::SEO_META_KEY, true );
+		if ( ! is_array( $stored ) ) {
+			update_post_meta( $landing_id, HLPB_Landing_Builder::SEO_META_KEY, $defaults );
+			return;
+		}
+
+		$previous_defaults = 'field-notes' === $template_slug
+			? array(
+				'title'              => 'Field Notes Apparel | Build Your Everyday Edit',
+				'description'        => 'Explore the Field Notes apparel edit: plan a practical capsule wardrobe, compare outfit ideas, and find versatile pieces for everyday wear.',
+				'social_title'       => 'Field Notes Apparel | Build Your Everyday Edit',
+				'social_description' => 'A thoughtful apparel edit with practical outfit ideas, considered details, and useful tools for everyday style.',
+			)
+			: array(
+				'title'              => 'Cozy Hoodie & Blanket Bundles | Nest & Nook',
+				'description'        => 'Build a cozy bundle with soft hoodies and blankets from Nest & Nook. Mix your favourite pieces, explore bundle savings, and find comfort for every day.',
+				'social_title'       => 'Cozy Hoodie & Blanket Bundles | Nest & Nook',
+				'social_description' => 'Choose your favourite hoodies and blankets, make a cosy mix, and discover bundle savings for everyday comfort.',
+			);
+
+		foreach ( $defaults as $key => $default_value ) {
+			if ( ! array_key_exists( $key, $stored ) ) {
+				$stored[ $key ] = $default_value;
+				continue;
+			}
+
+			$current_value = is_scalar( $stored[ $key ] ) ? trim( (string) $stored[ $key ] ) : '';
+			$is_shipped_copy = isset( $previous_defaults[ $key ] ) && $current_value === $previous_defaults[ $key ];
+			if ( '' === $current_value || $is_shipped_copy ) {
+				$stored[ $key ] = $default_value;
+			}
+		}
+
+		update_post_meta( $landing_id, HLPB_Landing_Builder::SEO_META_KEY, $stored );
 	}
 
 	/** Build the current Field Notes demo layout with the imported products in its offer calculator. */

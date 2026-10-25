@@ -12,6 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class HLPB_Landing_Builder {
 	const POST_TYPE    = 'hlpb_landing';
 	const META_KEY     = '_hlpb_sections';
+	const SEO_META_KEY = '_hlpb_seo';
 	const TEMPLATE_KEY = '_hlpb_template';
 	const EXPORT_KEY   = '_hlpb_export_path';
 	const EXPORT_SLUG_KEY = '_hlpb_export_slug';
@@ -41,6 +42,10 @@ final class HLPB_Landing_Builder {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'show_export_notice' ) );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_frontend_assets' ) );
+		add_action( 'wp_head', array( __CLASS__, 'render_seo_meta_tags' ), 2 );
+		add_filter( 'pre_get_document_title', array( __CLASS__, 'filter_document_title' ) );
+		add_filter( 'get_canonical_url', array( __CLASS__, 'filter_canonical_url' ), 20, 2 );
+		add_filter( 'wp_robots', array( __CLASS__, 'filter_robots' ) );
 		add_filter( 'template_include', array( __CLASS__, 'select_template' ) );
 		add_filter( 'query_vars', array( __CLASS__, 'register_export_query_var' ) );
 		add_filter( 'use_block_editor_for_post_type', array( __CLASS__, 'use_classic_editor' ), 10, 2 );
@@ -166,6 +171,9 @@ final class HLPB_Landing_Builder {
 		}
 		update_post_meta( $clone_id, self::META_KEY, $sections );
 		update_post_meta( $clone_id, self::TEMPLATE_KEY, $template );
+		$seo = self::get_seo_settings( $source_id );
+		$seo['canonical'] = '';
+		update_post_meta( $clone_id, self::SEO_META_KEY, $seo );
 		update_post_meta( $clone_id, self::EXPORT_PROMO_KEY, self::get_export_promo_folder( $source_id ) );
 		update_post_meta( $clone_id, self::EXPORT_SLUG_KEY, sanitize_title( get_post_field( 'post_name', $clone_id ) ) );
 
@@ -431,6 +439,194 @@ final class HLPB_Landing_Builder {
 			return $slug;
 		}
 		return isset( $templates['cozy-mix'] ) ? 'cozy-mix' : ( $templates ? key( $templates ) : '' );
+	}
+
+	/** Return SEO defaults tailored to the selected landing page design. */
+	public static function get_default_seo_settings( $post_id = 0, $template_slug = '' ) {
+		$template_slug = $template_slug ? sanitize_key( $template_slug ) : ( $post_id ? self::get_template_slug( $post_id ) : 'cozy-mix' );
+		if ( 'field-notes' === $template_slug ) {
+			return array(
+				'title' => 'Capsule Wardrobe Planner & Outfit Guide | Field Notes',
+				'description' => 'Plan a practical capsule wardrobe with Field Notes. Explore outfit ideas, compare style tools, and build an everyday edit around versatile clothing.',
+				'canonical' => '',
+				'index' => 1,
+				'follow' => 1,
+				'social_title' => 'Plan Your Everyday Edit | Field Notes Apparel',
+				'social_description' => 'Explore capsule wardrobe ideas, practical outfit planning, and playful tools that make getting dressed easier.',
+				'social_image' => '',
+			);
+		}
+
+		return array(
+			'title' => 'Cozy Hoodie & Blanket Bundles | Nest & Nook',
+			'description' => 'Build a cozy hoodie and blanket bundle with Nest & Nook. Mix your favourite pieces, compare bundle offers, and find soft everyday comfort.',
+			'canonical' => '',
+			'index' => 1,
+			'follow' => 1,
+			'social_title' => 'Build Your Cozy Mix | Nest & Nook Hoodies & Blankets',
+			'social_description' => 'Choose hoodies and blankets, mix your favourites, and explore bundle savings for comfort at home and beyond.',
+			'social_image' => '',
+		);
+	}
+
+	/** Get sanitized per-landing SEO values, falling back to design-specific demo copy. */
+	public static function get_seo_settings( $post_id ) {
+		$defaults = self::get_default_seo_settings( $post_id );
+		$stored   = get_post_meta( $post_id, self::SEO_META_KEY, true );
+		if ( ! is_array( $stored ) ) {
+			$stored = array();
+		}
+		$seo = array_merge( $defaults, $stored );
+		$seo['title'] = is_scalar( $seo['title'] ) ? sanitize_text_field( (string) $seo['title'] ) : '';
+		$seo['description'] = is_scalar( $seo['description'] ) ? sanitize_textarea_field( (string) $seo['description'] ) : '';
+		$seo['canonical'] = is_scalar( $seo['canonical'] ) ? esc_url_raw( (string) $seo['canonical'], array( 'http', 'https' ) ) : '';
+		$seo['index'] = empty( $seo['index'] ) ? 0 : 1;
+		$seo['follow'] = empty( $seo['follow'] ) ? 0 : 1;
+		$seo['social_title'] = is_scalar( $seo['social_title'] ) ? sanitize_text_field( (string) $seo['social_title'] ) : '';
+		$seo['social_description'] = is_scalar( $seo['social_description'] ) ? sanitize_textarea_field( (string) $seo['social_description'] ) : '';
+		$seo['social_image'] = is_scalar( $seo['social_image'] ) ? esc_url_raw( (string) $seo['social_image'], array( 'http', 'https' ) ) : '';
+		if ( '' === $seo['title'] ) {
+			$seo['title'] = $defaults['title'];
+		}
+		if ( '' === trim( $seo['description'] ) ) {
+			$seo['description'] = $defaults['description'];
+		}
+		if ( '' === $seo['social_title'] ) {
+			$seo['social_title'] = $seo['title'];
+		}
+		if ( '' === trim( $seo['social_description'] ) ) {
+			$seo['social_description'] = $seo['description'];
+		}
+		return $seo;
+	}
+
+	/** Override the document title for landing pages with their SEO title. */
+	public static function filter_document_title( $title ) {
+		$post_id = get_queried_object_id();
+		if ( $post_id && self::POST_TYPE === get_post_type( $post_id ) ) {
+			$seo = self::get_seo_settings( $post_id );
+			return $seo['title'];
+		}
+		return $title;
+	}
+
+	/** Use the landing's optional canonical URL, otherwise keep WordPress's permalink. */
+	public static function filter_canonical_url( $canonical_url, $post ) {
+		if ( $post instanceof WP_Post && self::POST_TYPE === $post->post_type ) {
+			$seo = self::get_seo_settings( $post->ID );
+			return $seo['canonical'] ? $seo['canonical'] : $canonical_url;
+		}
+		return $canonical_url;
+	}
+
+	/** Respect the landing's index/follow switches while preserving WordPress robot directives. */
+	public static function filter_robots( $robots ) {
+		$post_id = get_queried_object_id();
+		if ( ! $post_id || self::POST_TYPE !== get_post_type( $post_id ) ) {
+			return $robots;
+		}
+		$seo = self::get_seo_settings( $post_id );
+		if ( $seo['index'] ) {
+			unset( $robots['noindex'] );
+			$robots['index'] = true;
+		} else {
+			unset( $robots['index'] );
+			$robots['noindex'] = true;
+		}
+		if ( $seo['follow'] ) {
+			unset( $robots['nofollow'] );
+			$robots['follow'] = true;
+		} else {
+			unset( $robots['follow'] );
+			$robots['nofollow'] = true;
+		}
+		$robots['max-image-preview'] = 'large';
+		return $robots;
+	}
+
+	/** Print page description and social-sharing metadata on WordPress-rendered landing pages. */
+	public static function render_seo_meta_tags() {
+		$post_id = get_queried_object_id();
+		if ( ! $post_id || self::POST_TYPE !== get_post_type( $post_id ) ) {
+			return;
+		}
+		$seo = self::get_seo_settings( $post_id );
+		$url = $seo['canonical'] ? $seo['canonical'] : get_permalink( $post_id );
+		$social_image = self::get_landing_social_image( $post_id, $seo );
+		echo '<meta name="description" content="' . esc_attr( $seo['description'] ) . '">' . "\n";
+		echo '<meta property="og:type" content="website">' . "\n";
+		echo '<meta property="og:site_name" content="' . esc_attr( get_bloginfo( 'name' ) ) . '">' . "\n";
+		echo '<meta property="og:title" content="' . esc_attr( $seo['social_title'] ) . '">' . "\n";
+		echo '<meta property="og:description" content="' . esc_attr( $seo['social_description'] ) . '">' . "\n";
+		echo '<meta property="og:url" content="' . esc_url( $url ) . '">' . "\n";
+		echo '<meta property="og:locale" content="' . esc_attr( get_locale() ) . '">' . "\n";
+		if ( $social_image ) {
+			echo '<meta property="og:image" content="' . esc_url( $social_image ) . '">' . "\n";
+			echo '<meta property="og:image:alt" content="' . esc_attr( $seo['social_title'] ) . '">' . "\n";
+			echo '<meta name="twitter:card" content="summary_large_image">' . "\n";
+			echo '<meta name="twitter:image" content="' . esc_url( $social_image ) . '">' . "\n";
+		} else {
+			echo '<meta name="twitter:card" content="summary">' . "\n";
+		}
+		echo '<meta name="twitter:title" content="' . esc_attr( $seo['social_title'] ) . '">' . "\n";
+		echo '<meta name="twitter:description" content="' . esc_attr( $seo['social_description'] ) . '">' . "\n";
+	}
+
+	/** Use the selected image or the landing's lead product image for social cards. */
+	private static function get_landing_social_image( $post_id, $seo = array() ) {
+		if ( ! empty( $seo['social_image'] ) ) {
+			return $seo['social_image'];
+		}
+		foreach ( self::get_sections( $post_id ) as $section ) {
+			if ( ! is_array( $section ) || empty( $section['type'] ) || 'cart_section' !== $section['type'] || ( array_key_exists( 'visible', $section ) && empty( $section['visible'] ) ) ) {
+				continue;
+			}
+			$settings = HLPB_Cart_Section::sanitize( $section );
+			foreach ( array( 'buy', 'mix', 'bundle' ) as $mode ) {
+				$mode_settings = $settings['modes'][ $mode ] ?? array();
+				$product_ids = array_values( array_filter( array_map( 'absint', (array) ( $mode_settings['products'] ?? array() ) ) ) );
+				$minimum = 'buy' === $mode ? 1 : 2;
+				if ( empty( $mode_settings['enabled'] ) || count( $product_ids ) < $minimum ) {
+					continue;
+				}
+				$product = function_exists( 'wc_get_product' ) ? wc_get_product( $product_ids[0] ) : false;
+				$image_id = $product && method_exists( $product, 'get_image_id' ) ? absint( $product->get_image_id() ) : 0;
+				$image_url = $image_id ? wp_get_attachment_image_url( $image_id, 'full' ) : '';
+				if ( $image_url ) {
+					return esc_url_raw( $image_url, array( 'http', 'https' ) );
+				}
+			}
+		}
+		$template = self::get_template_info( self::get_template_slug( $post_id ) );
+		if ( $template && ! empty( $template['default_image'] ) ) {
+			return self::get_template_asset_url( $template['slug'] ) . 'images/' . rawurlencode( sanitize_file_name( $template['default_image'] ) );
+		}
+		return '';
+	}
+
+	/** Build metadata tags for the independent static HTML copy. */
+	private static function render_static_seo_meta_tags( $seo, $canonical_url, $social_image ) {
+		$robots = ( $seo['index'] ? 'index' : 'noindex' ) . ',' . ( $seo['follow'] ? 'follow' : 'nofollow' ) . ',max-image-preview:large';
+		$html  = '<meta name="description" content="' . esc_attr( $seo['description'] ) . '">' . "\n";
+		$html .= '<meta name="robots" content="' . esc_attr( $robots ) . '">' . "\n";
+		$html .= '<link rel="canonical" href="' . esc_url( $canonical_url ) . '">' . "\n";
+		$html .= '<meta property="og:type" content="website">' . "\n";
+		$html .= '<meta property="og:site_name" content="' . esc_attr( get_bloginfo( 'name' ) ) . '">' . "\n";
+		$html .= '<meta property="og:title" content="' . esc_attr( $seo['social_title'] ) . '">' . "\n";
+		$html .= '<meta property="og:description" content="' . esc_attr( $seo['social_description'] ) . '">' . "\n";
+		$html .= '<meta property="og:url" content="' . esc_url( $canonical_url ) . '">' . "\n";
+		$html .= '<meta property="og:locale" content="' . esc_attr( get_locale() ) . '">' . "\n";
+		if ( $social_image ) {
+			$html .= '<meta property="og:image" content="' . esc_url( $social_image ) . '">' . "\n";
+			$html .= '<meta property="og:image:alt" content="' . esc_attr( $seo['social_title'] ) . '">' . "\n";
+			$html .= '<meta name="twitter:card" content="summary_large_image">' . "\n";
+			$html .= '<meta name="twitter:image" content="' . esc_url( $social_image ) . '">' . "\n";
+		} else {
+			$html .= '<meta name="twitter:card" content="summary">' . "\n";
+		}
+		$html .= '<meta name="twitter:title" content="' . esc_attr( $seo['social_title'] ) . '">' . "\n";
+		$html .= '<meta name="twitter:description" content="' . esc_attr( $seo['social_description'] ) . '">' . "\n";
+		return $html;
 	}
 
 	/**
@@ -881,6 +1077,7 @@ final class HLPB_Landing_Builder {
 				<?php endforeach; ?>
 			</div>
 			<p class="description"><?php if ( 'field-notes' === $selected_template ) : ?><?php esc_html_e( 'All Field Notes sections can be edited here. The calculator section lets you edit its introduction and choose which built-in calculators appear; its calculator logic stays intact.', 'html-landing-page-builder-for-woocommerce' ); ?><?php else : ?><?php esc_html_e( 'Header, Offer Line, Cart Section, Mix it your way, Why?, Text + Image, Reviews, FAQ, and Footer sections can be edited here. Other sections use their template demo content.', 'html-landing-page-builder-for-woocommerce' ); ?><?php endif; ?></p>
+			<?php echo self::render_seo_fields( $post->ID ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Generated SEO controls are individually escaped. ?>
 		</div>
 		<?php
 	}
@@ -897,10 +1094,11 @@ final class HLPB_Landing_Builder {
 		$id    = isset( $section['id'] ) ? sanitize_key( $section['id'] ) : wp_generate_password( 10, false, false );
 		$order = isset( $section['order'] ) ? absint( $section['order'] ) : 1;
 		$label = $types[ $type ];
+		$visible = ! array_key_exists( 'visible', $section ) || ! empty( $section['visible'] );
 		$html  = '<article class="hlpb-section-card is-collapsed" data-section-id="' . esc_attr( $id ) . '" data-section-type="' . esc_attr( $type ) . '">';
 		$duplicate_disabled = in_array( $type, self::get_singleton_section_types( $template_slug ), true );
 		$duplicate_title    = $duplicate_disabled ? __( 'This section can only appear once.', 'html-landing-page-builder-for-woocommerce' ) : __( 'Duplicate section', 'html-landing-page-builder-for-woocommerce' );
-		$html .= '<div class="hlpb-section-heading"><span class="hlpb-drag-handle" aria-hidden="true">⠿</span><span class="hlpb-section-heading-preview" title="' . esc_attr( $label ) . '">' . self::get_section_preview_svg( $type ) . '</span><span class="hlpb-section-heading-label"><small>' . esc_html__( 'Section type', 'html-landing-page-builder-for-woocommerce' ) . '</small><strong class="hlpb-section-title">' . esc_html( $label ) . '</strong></span><label class="hlpb-order-label">' . esc_html__( 'Order', 'html-landing-page-builder-for-woocommerce' ) . ' <input class="hlpb-order" type="number" min="1" step="1" name="hlpb_sections[' . esc_attr( $id ) . '][order]" value="' . esc_attr( $order ) . '"></label><button type="button" class="button hlpb-toggle-section" aria-expanded="false" aria-controls="hlpb-content-' . esc_attr( $id ) . '">' . esc_html__( 'Expand', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button hlpb-clone-section" aria-label="' . esc_attr( $duplicate_title ) . '" title="' . esc_attr( $duplicate_title ) . '" ' . disabled( $duplicate_disabled, true, false ) . '>' . esc_html__( 'Duplicate', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button-link-delete hlpb-remove-section">' . esc_html__( 'Remove', 'html-landing-page-builder-for-woocommerce' ) . '</button></div>';
+		$html .= '<div class="hlpb-section-heading"><span class="hlpb-drag-handle" aria-hidden="true">⠿</span><span class="hlpb-section-heading-preview" title="' . esc_attr( $label ) . '">' . self::get_section_preview_svg( $type ) . '</span><span class="hlpb-section-heading-label"><small>' . esc_html__( 'Section type', 'html-landing-page-builder-for-woocommerce' ) . '</small><strong class="hlpb-section-title">' . esc_html( $label ) . '</strong><span class="hlpb-section-hidden-label" ' . ( $visible ? 'hidden' : '' ) . '>' . esc_html__( 'Hidden on published page', 'html-landing-page-builder-for-woocommerce' ) . '</span></span><label class="hlpb-order-label">' . esc_html__( 'Order', 'html-landing-page-builder-for-woocommerce' ) . ' <input class="hlpb-order" type="number" min="1" step="1" name="hlpb_sections[' . esc_attr( $id ) . '][order]" value="' . esc_attr( $order ) . '"></label><input class="hlpb-section-visible-value" type="hidden" name="hlpb_sections[' . esc_attr( $id ) . '][visible]" value="' . ( $visible ? '1' : '0' ) . '"><button type="button" class="button hlpb-visibility-toggle" aria-pressed="' . ( $visible ? 'true' : 'false' ) . '" aria-label="' . esc_attr( $visible ? __( 'Hide section on published page', 'html-landing-page-builder-for-woocommerce' ) : __( 'Show section on published page', 'html-landing-page-builder-for-woocommerce' ) ) . '" title="' . esc_attr( $visible ? __( 'Hide section on published page', 'html-landing-page-builder-for-woocommerce' ) : __( 'Show section on published page', 'html-landing-page-builder-for-woocommerce' ) ) . '">' . self::get_visibility_icon( $visible ) . '</button><button type="button" class="button hlpb-toggle-section" aria-expanded="false" aria-controls="hlpb-content-' . esc_attr( $id ) . '">' . esc_html__( 'Expand', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button hlpb-clone-section" aria-label="' . esc_attr( $duplicate_title ) . '" title="' . esc_attr( $duplicate_title ) . '" ' . disabled( $duplicate_disabled, true, false ) . '>' . esc_html__( 'Duplicate', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button-link-delete hlpb-remove-section">' . esc_html__( 'Remove', 'html-landing-page-builder-for-woocommerce' ) . '</button></div>';
 		$html .= '<div class="hlpb-section-content" id="hlpb-content-' . esc_attr( $id ) . '"><input type="hidden" name="hlpb_sections[' . esc_attr( $id ) . '][id]" value="' . esc_attr( $id ) . '"><input type="hidden" name="hlpb_sections[' . esc_attr( $id ) . '][type]" value="' . esc_attr( $type ) . '">';
 
 		if ( 'text_image' === $type ) {
@@ -930,6 +1128,33 @@ final class HLPB_Landing_Builder {
 
 		$html .= '</div></article>';
 		return $html;
+	}
+
+	/** Render page-specific search and social preview settings after the section list. */
+	private static function render_seo_fields( $post_id ) {
+		$seo = self::get_seo_settings( $post_id );
+		$canonical_preview = $seo['canonical'] ? $seo['canonical'] : self::build_export_url( self::get_export_promo_folder( $post_id ), self::get_export_slug( $post_id ) );
+		$social_image_preview = self::get_landing_social_image( $post_id, $seo );
+		$html = '<section class="hlpb-seo-settings"><h3>' . esc_html__( 'SEO settings', 'html-landing-page-builder-for-woocommerce' ) . '</h3><p class="description">' . esc_html__( 'These settings apply only to this landing page. The description is required and is included in search and social previews.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		$html .= '<div class="hlpb-seo-grid"><div class="hlpb-field"><label for="hlpb-seo-title">' . esc_html__( 'SEO title', 'html-landing-page-builder-for-woocommerce' ) . '</label><input id="hlpb-seo-title" type="text" name="hlpb_seo[title]" value="' . esc_attr( $seo['title'] ) . '" maxlength="70" required><p class="description">' . esc_html__( 'Used as the browser and search result title.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+		$html .= '<div class="hlpb-field"><label for="hlpb-seo-description">' . esc_html__( 'Meta description', 'html-landing-page-builder-for-woocommerce' ) . '</label><textarea id="hlpb-seo-description" name="hlpb_seo[description]" rows="3" maxlength="160" required>' . esc_textarea( $seo['description'] ) . '</textarea><p class="description">' . esc_html__( 'Required. Aim for a clear summary under 160 characters.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+		$html .= '<div class="hlpb-field"><label for="hlpb-seo-canonical">' . esc_html__( 'Canonical URL (optional)', 'html-landing-page-builder-for-woocommerce' ) . '</label><input id="hlpb-seo-canonical" type="url" name="hlpb_seo[canonical]" value="' . esc_attr( $seo['canonical'] ) . '" placeholder="' . esc_attr__( 'Leave blank to use this landing page URL', 'html-landing-page-builder-for-woocommerce' ) . '"><p class="description">' . esc_html__( 'Leave blank to use the published landing URL automatically. Set a URL only when another page is the preferred original.', 'html-landing-page-builder-for-woocommerce' ) . '<br><strong>' . esc_html__( 'Current canonical:', 'html-landing-page-builder-for-woocommerce' ) . '</strong> <code>' . esc_html( $canonical_preview ) . '</code></p></div>';
+		$html .= '<div class="hlpb-field"><label for="hlpb-seo-image">' . esc_html__( 'Social sharing image URL (optional)', 'html-landing-page-builder-for-woocommerce' ) . '</label><input id="hlpb-seo-image" type="url" name="hlpb_seo[social_image]" value="' . esc_attr( $seo['social_image'] ) . '" placeholder="https://example.com/image.jpg"><p class="description">' . esc_html__( 'Leave blank to use the lead product image (or the template image). A wide image around 1200 × 630 px works well.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		if ( ! $seo['social_image'] && $social_image_preview ) {
+			$html .= '<p class="description"><strong>' . esc_html__( 'Current automatic image:', 'html-landing-page-builder-for-woocommerce' ) . '</strong><br><img src="' . esc_url( $social_image_preview ) . '" alt="" loading="lazy" style="display:block;max-width:180px;max-height:110px;width:auto;height:auto;margin-top:6px;border:1px solid #dcdcde;border-radius:4px"></p>';
+		}
+		$html .= '</div></div>';
+		$html .= '<fieldset class="hlpb-seo-social"><legend>' . esc_html__( 'Social preview', 'html-landing-page-builder-for-woocommerce' ) . '</legend><div class="hlpb-seo-grid"><div class="hlpb-field"><label for="hlpb-seo-social-title">' . esc_html__( 'Social title', 'html-landing-page-builder-for-woocommerce' ) . '</label><input id="hlpb-seo-social-title" type="text" name="hlpb_seo[social_title]" value="' . esc_attr( $seo['social_title'] ) . '" maxlength="100"></div><div class="hlpb-field"><label for="hlpb-seo-social-description">' . esc_html__( 'Social description', 'html-landing-page-builder-for-woocommerce' ) . '</label><textarea id="hlpb-seo-social-description" name="hlpb_seo[social_description]" rows="3" maxlength="200">' . esc_textarea( $seo['social_description'] ) . '</textarea></div></div></fieldset>';
+		$html .= '<fieldset class="hlpb-seo-robots"><legend>' . esc_html__( 'Search visibility', 'html-landing-page-builder-for-woocommerce' ) . '</legend><input type="hidden" name="hlpb_seo[index]" value="0"><label class="hlpb-checkbox"><input type="checkbox" name="hlpb_seo[index]" value="1" ' . checked( $seo['index'], 1, false ) . '> ' . esc_html__( 'Allow search engines to index this page', 'html-landing-page-builder-for-woocommerce' ) . '</label><input type="hidden" name="hlpb_seo[follow]" value="0"><label class="hlpb-checkbox"><input type="checkbox" name="hlpb_seo[follow]" value="1" ' . checked( $seo['follow'], 1, false ) . '> ' . esc_html__( 'Allow search engines to follow links on this page', 'html-landing-page-builder-for-woocommerce' ) . '</label><p class="description">' . esc_html__( 'Both options are enabled by default for the demo landing pages.', 'html-landing-page-builder-for-woocommerce' ) . '</p></fieldset></section>';
+		return $html;
+	}
+
+	/** Inline eye icons for the section visibility control. */
+	private static function get_visibility_icon( $visible ) {
+		if ( $visible ) {
+			return '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
+		}
+		return '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="m3 3 18 18M10.6 5.2A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a16.5 16.5 0 0 1-3.1 3.8M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7c1 0 2-.2 2.8-.5M9.9 9.9a3 3 0 0 0 4.2 4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 	}
 
 	/** Return the editable field schema for one supplied template section. */
@@ -1556,6 +1781,13 @@ final class HLPB_Landing_Builder {
 				'benefitLabel' => __( 'Benefit', 'html-landing-page-builder-for-woocommerce' ),
 				'collapseSection' => __( 'Collapse', 'html-landing-page-builder-for-woocommerce' ),
 				'expandSection' => __( 'Expand', 'html-landing-page-builder-for-woocommerce' ),
+				'hideSection' => __( 'Hide section on published page', 'html-landing-page-builder-for-woocommerce' ),
+				'showSection' => __( 'Show section on published page', 'html-landing-page-builder-for-woocommerce' ),
+				'visibilityIcons' => array(
+					'visible' => self::get_visibility_icon( true ),
+					'hidden' => self::get_visibility_icon( false ),
+				),
+				'hiddenSectionLabel' => __( 'Hidden on published page', 'html-landing-page-builder-for-woocommerce' ),
 				'reviewLabel' => __( 'Review', 'html-landing-page-builder-for-woocommerce' ),
 				'faqQuestionLabel' => __( 'Question', 'html-landing-page-builder-for-woocommerce' ),
 				'footerLinkLabel' => __( 'Link', 'html-landing-page-builder-for-woocommerce' ),
@@ -1642,6 +1874,23 @@ final class HLPB_Landing_Builder {
 		if ( isset( $templates[ $template_slug ] ) ) {
 			update_post_meta( $post_id, self::TEMPLATE_KEY, $template_slug );
 		}
+		$seo_input = isset( $_POST['hlpb_seo'] ) && is_array( $_POST['hlpb_seo'] ) ? wp_unslash( $_POST['hlpb_seo'] ) : array();
+		$seo_defaults = self::get_default_seo_settings( $post_id, $template_slug );
+		$seo_title = isset( $seo_input['title'] ) ? sanitize_text_field( $seo_input['title'] ) : $seo_defaults['title'];
+		$seo_description = isset( $seo_input['description'] ) ? sanitize_textarea_field( $seo_input['description'] ) : $seo_defaults['description'];
+		$seo_social_title = isset( $seo_input['social_title'] ) ? sanitize_text_field( $seo_input['social_title'] ) : '';
+		$seo_social_description = isset( $seo_input['social_description'] ) ? sanitize_textarea_field( $seo_input['social_description'] ) : '';
+		$seo = array(
+			'title' => '' !== $seo_title ? $seo_title : $seo_defaults['title'],
+			'description' => '' !== trim( $seo_description ) ? $seo_description : $seo_defaults['description'],
+			'canonical' => isset( $seo_input['canonical'] ) && is_scalar( $seo_input['canonical'] ) ? esc_url_raw( (string) $seo_input['canonical'], array( 'http', 'https' ) ) : '',
+			'index' => isset( $seo_input['index'] ) && is_scalar( $seo_input['index'] ) && '1' === (string) $seo_input['index'] ? 1 : 0,
+			'follow' => isset( $seo_input['follow'] ) && is_scalar( $seo_input['follow'] ) && '1' === (string) $seo_input['follow'] ? 1 : 0,
+			'social_title' => '' !== $seo_social_title ? $seo_social_title : ( '' !== $seo_title ? $seo_title : $seo_defaults['title'] ),
+			'social_description' => '' !== trim( $seo_social_description ) ? $seo_social_description : ( '' !== trim( $seo_description ) ? $seo_description : $seo_defaults['description'] ),
+			'social_image' => isset( $seo_input['social_image'] ) && is_scalar( $seo_input['social_image'] ) ? esc_url_raw( (string) $seo_input['social_image'], array( 'http', 'https' ) ) : '',
+		);
+		update_post_meta( $post_id, self::SEO_META_KEY, $seo );
 
 		self::$pending_static_exports[ $post_id ] = array(
 			'previous_directory'    => $previous_directory,
@@ -1843,7 +2092,14 @@ final class HLPB_Landing_Builder {
 		if ( ! $template_assets || ! is_dir( $template_assets ) || ! self::copy_template_directory( $template_assets, $asset_dir ) ) {
 			return new WP_Error( 'hlpb_export_assets', __( 'The selected template assets could not be copied to the export folder.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
-		$sections  = self::get_sections( $post_id );
+		$sections  = array_values(
+			array_filter(
+				self::get_sections( $post_id ),
+				static function ( $section ) {
+					return ! is_array( $section ) || ! array_key_exists( 'visible', $section ) || ! empty( $section['visible'] );
+				}
+			)
+		);
 		$has_cart = (bool) array_filter( $sections, static function ( $section ) { return isset( $section['type'] ) && 'cart_section' === $section['type']; } );
 		if ( $has_cart && ! HLPB_Cart_Section::copy_export_assets( $asset_dir ) ) {
 			return new WP_Error( 'hlpb_export_cart_assets', __( 'The Cart Section interaction files could not be copied to the export folder.', 'html-landing-page-builder-for-woocommerce' ) );
@@ -1867,14 +2123,20 @@ final class HLPB_Landing_Builder {
 		$cart_config_json = $cart_config ? wp_json_encode( $cart_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ) : '';
 		$hero_image       = $has_cart ? self::get_initial_cart_hero_image( $cart_config ) : array();
 
-		$title     = get_the_title( $post_id );
-		$title_html = esc_html( $title );
+		$seo = self::get_seo_settings( $post_id );
+		$title_html = esc_html( $seo['title'] );
+		$canonical_url = $seo['canonical'] ? $seo['canonical'] : self::build_export_url( $promo_folder, $slug );
+		$social_image = $seo['social_image'] ? $seo['social_image'] : ( $hero_image['src'] ?? '' );
+		if ( ! $social_image && ! empty( $template['default_image'] ) ) {
+			$social_image = $asset_url . 'images/' . rawurlencode( sanitize_file_name( $template['default_image'] ) );
+		}
 		$language  = esc_attr( get_bloginfo( 'language' ) );
 		$script_config = wp_json_encode(
 			array( 'assetsUrl' => $asset_url ),
 			JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
 		);
 		$html = "<!doctype html>\n<html lang=\"{$language}\">\n<head>\n<meta charset=\"" . esc_attr( get_bloginfo( 'charset' ) ) . "\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,viewport-fit=cover\">\n<meta name=\"theme-color\" content=\"#fffdf9\">\n<title>{$title_html}</title>\n";
+		$html .= self::render_static_seo_meta_tags( $seo, $canonical_url, $social_image );
 		if ( ! empty( $hero_image['src'] ) ) {
 			$html .= '<link rel="preload" as="image" href="' . esc_url( $hero_image['src'] ) . '"';
 			if ( ! empty( $hero_image['srcset'] ) ) {
@@ -2455,6 +2717,7 @@ final class HLPB_Landing_Builder {
 				'id'    => $id,
 				'type'  => $type,
 				'order' => isset( $raw_section['order'] ) ? max( 1, absint( $raw_section['order'] ) ) : count( $sections ) + 1,
+				'visible' => ! array_key_exists( 'visible', $raw_section ) || ( is_scalar( $raw_section['visible'] ) && '1' === (string) $raw_section['visible'] ) ? 1 : 0,
 			);
 
 			if ( 'text_image' === $type ) {
@@ -2807,6 +3070,9 @@ final class HLPB_Landing_Builder {
 	 * @return string
 	 */
 	public static function render_frontend_section( $section, $template_slug = 'cozy-mix', $asset_url = '', $custom_images = array() ) {
+		if ( is_array( $section ) && array_key_exists( 'visible', $section ) && empty( $section['visible'] ) ) {
+			return '';
+		}
 		$type = isset( $section['type'] ) ? sanitize_key( $section['type'] ) : '';
 		$asset_url = $asset_url ? trailingslashit( $asset_url ) : self::get_template_asset_url( $template_slug );
 		if ( 'sprite' === $type ) {

@@ -115,6 +115,18 @@
 		var $card = $(this).closest('.hlpb-section-card');
 		setCardCollapsed($card, !$card.hasClass('is-collapsed'));
 	});
+	$list.on('click', '.hlpb-visibility-toggle', function () {
+		var $button = $(this);
+		var $card = $button.closest('.hlpb-section-card');
+		var visible = $button.attr('aria-pressed') !== 'true';
+		$button.attr('aria-pressed', visible ? 'true' : 'false');
+		$button.attr('aria-label', visible ? HLPBBuilder.hideSection : HLPBBuilder.showSection);
+		$button.attr('title', visible ? HLPBBuilder.hideSection : HLPBBuilder.showSection);
+		$button.html(visible ? HLPBBuilder.visibilityIcons.visible : HLPBBuilder.visibilityIcons.hidden);
+		$card.find('.hlpb-section-visible-value').first().val(visible ? '1' : '0');
+		$card.toggleClass('is-hidden-on-page', !visible);
+		$card.find('.hlpb-section-hidden-label').first().prop('hidden', visible).text(HLPBBuilder.hiddenSectionLabel);
+	});
 	$('#hlpb-collapse-all').on('click', function () { setAllSectionsCollapsed(true); });
 	$('#hlpb-expand-all').on('click', function () { setAllSectionsCollapsed(false); });
 	setAllSectionsCollapsed(true);
