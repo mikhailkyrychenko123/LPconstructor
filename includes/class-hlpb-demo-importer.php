@@ -923,6 +923,25 @@ final class HLPB_Demo_Importer {
 		if ( $sections_changed ) {
 			$sections = $filtered_sections;
 		}
+		$default_header = array();
+		foreach ( HLPB_Landing_Builder::get_default_sections( 'cozy-mix' ) as $default_section ) {
+			if ( isset( $default_section['type'] ) && 'header' === $default_section['type'] ) {
+				$default_header = $default_section;
+				break;
+			}
+		}
+		foreach ( $sections as &$section ) {
+			if ( ! is_array( $section ) || ! isset( $section['type'] ) || 'header' !== $section['type'] ) {
+				continue;
+			}
+			foreach ( array( 'brand_name', 'brand_tagline' ) as $text_key ) {
+				if ( ! array_key_exists( $text_key, $section ) && isset( $default_header[ $text_key ] ) ) {
+					$section[ $text_key ] = $default_header[ $text_key ];
+					$sections_changed = true;
+				}
+			}
+		}
+		unset( $section );
 		foreach ( $sections as $index => &$section ) {
 			if ( ! is_array( $section ) ) {
 				continue;

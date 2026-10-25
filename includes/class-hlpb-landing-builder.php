@@ -796,6 +796,8 @@ final class HLPB_Landing_Builder {
 	private static function get_default_header_settings() {
 		return array(
 			'logo_id' => 0,
+			'brand_name' => 'NEST & NOOK',
+			'brand_tagline' => 'COMFORT GOODS',
 			'left_menu_mode' => 'custom',
 			'left_menu_id' => 0,
 			'left_menu_items' => array( array( 'label' => __( 'Home', 'html-landing-page-builder-for-woocommerce' ), 'url' => home_url( '/' ) ) ),
@@ -1278,6 +1280,9 @@ final class HLPB_Landing_Builder {
 		$logo_url = $logo_url ? $logo_url : self::get_template_asset_url( $template_slug ) . 'icons/nest-stack.svg';
 		$name = 'hlpb_sections[' . $id . ']';
 		$html = '<div class="hlpb-header-fields"><div class="hlpb-field"><label>' . esc_html__( 'Logo', 'html-landing-page-builder-for-woocommerce' ) . '</label><div class="hlpb-image-control"><img class="hlpb-logo-preview" src="' . esc_url( $logo_url ) . '" alt=""><input class="hlpb-logo-id" type="hidden" name="' . esc_attr( $name . '[logo_id]' ) . '" value="' . esc_attr( $logo_id ) . '"><button type="button" class="button hlpb-select-image" data-image-target="logo">' . esc_html__( 'Choose logo', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button-link hlpb-clear-logo">' . esc_html__( 'Use template logo', 'html-landing-page-builder-for-woocommerce' ) . '</button></div><p class="description">' . esc_html__( 'Without a selected image, the logo and wordmark from the template are shown.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+		if ( 'cozy-mix' === $template_slug ) {
+			$html .= '<div class="hlpb-header-wordmark-fields">' . self::text_field( $name . '[brand_name]', __( 'Brand name beside the logo', 'html-landing-page-builder-for-woocommerce' ), $section['brand_name'] ) . self::text_field( $name . '[brand_tagline]', __( 'Brand tagline', 'html-landing-page-builder-for-woocommerce' ), $section['brand_tagline'] ) . '<p class="description">' . esc_html__( 'These lines appear beside the logo in the Cozy header.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+		}
 		$html .= self::render_menu_editor( $id, 'left', __( 'Left menu', 'html-landing-page-builder-for-woocommerce' ), $section );
 		$html .= self::render_menu_editor( $id, 'right', __( 'Right menu', 'html-landing-page-builder-for-woocommerce' ), $section );
 		$html .= '</div>';
@@ -2755,6 +2760,12 @@ final class HLPB_Landing_Builder {
 			} elseif ( 'header' === $type ) {
 				$defaults = self::get_default_header_settings();
 				$section['logo_id'] = isset( $raw_section['logo_id'] ) ? absint( $raw_section['logo_id'] ) : 0;
+				if ( 'cozy-mix' === $template_slug ) {
+					foreach ( array( 'brand_name', 'brand_tagline' ) as $text_key ) {
+						$value = isset( $raw_section[ $text_key ] ) && is_scalar( $raw_section[ $text_key ] ) ? (string) $raw_section[ $text_key ] : $defaults[ $text_key ];
+						$section[ $text_key ] = sanitize_text_field( $value );
+					}
+				}
 				foreach ( array( 'left', 'right' ) as $side ) {
 					$mode = isset( $raw_section[ $side . '_menu_mode' ] ) ? sanitize_key( $raw_section[ $side . '_menu_mode' ] ) : 'custom';
 					$section[ $side . '_menu_mode' ] = 'wp_menu' === $mode ? 'wp_menu' : 'custom';
@@ -3281,11 +3292,17 @@ final class HLPB_Landing_Builder {
 			$logo_url = wp_get_attachment_image_url( $logo_id, 'medium' );
 		}
 		$site_name = get_bloginfo( 'name' );
+		$brand_name = isset( $section['brand_name'] ) ? sanitize_text_field( $section['brand_name'] ) : 'NEST & NOOK';
+		$brand_tagline = isset( $section['brand_tagline'] ) ? sanitize_text_field( $section['brand_tagline'] ) : 'COMFORT GOODS';
+		$brand_text = '';
+		if ( '' !== $brand_name || '' !== $brand_tagline ) {
+			$brand_text = '<span>' . ( '' !== $brand_name ? '<b>' . esc_html( $brand_name ) . '</b>' : '' ) . ( '' !== $brand_tagline ? '<small>' . esc_html( $brand_tagline ) . '</small>' : '' ) . '</span>';
+		}
 		if ( $logo_url ) {
 			$alt = get_post_meta( $logo_id, '_wp_attachment_image_alt', true );
-			$brand = '<img class="hlpb-custom-logo" src="' . esc_url( $logo_url ) . '" alt="' . esc_attr( $alt ? $alt : $site_name ) . '" style="max-height:44px;width:auto;object-fit:contain">';
+			$brand = '<img class="hlpb-custom-logo" src="' . esc_url( $logo_url ) . '" alt="' . esc_attr( $alt ? $alt : ( $brand_name ? $brand_name : $site_name ) ) . '" style="max-height:44px;width:auto;object-fit:contain">' . $brand_text;
 		} else {
-			$brand = '<img src="' . esc_url( $asset_url . 'icons/nest-stack.svg' ) . '" width="34" height="28" alt=""><span><b>NEST &amp; NOOK</b><small>COMFORT GOODS</small></span>';
+			$brand = '<img src="' . esc_url( $asset_url . 'icons/nest-stack.svg' ) . '" width="34" height="28" alt="">' . $brand_text;
 		}
 		$left_links = self::render_header_links( $section, 'left' );
 		$right_links = self::render_header_links( $section, 'right' );
