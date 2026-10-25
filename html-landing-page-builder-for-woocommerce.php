@@ -1,12 +1,15 @@
 <?php
 /**
  * Plugin Name: HTML Landing Page Builder for WooCommerce
- * Description: Build HTML landing pages in WooCommerce and configure visual product attributes.
+ * Description: Create standalone WooCommerce landing pages with editable sections, bundle offers, and a live cart.
  * Version: 0.6.8
  * Requires at least: 6.2
  * Requires PHP: 7.4
+ * Requires Plugins: woocommerce
+ * Author: BuyGet
+ * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: html-landing-page-builder-for-woocommerce
- * Domain Path: /languages
  *
  * @package HTMLLandingPageBuilderForWooCommerce
  */

@@ -81,11 +81,7 @@ final class HLPB_Offer_Analytics {
 		nocache_headers();
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
-		$output = fopen( 'php://output', 'w' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fopen -- Stream the requested CSV download.
-		if ( false === $output ) {
-			exit;
-		}
-		fwrite( $output, "\xEF\xBB\xBF" ); // UTF-8 BOM for spreadsheet applications.
+		echo "\xEF\xBB\xBF"; // UTF-8 BOM for spreadsheet applications.
 		$headers = array(
 			'record_type', 'order_id', 'order_date', 'order_status', 'landing_page_id', 'landing_page',
 			'offer_mode', 'campaign_name', 'coupon_code', 'bundle_id', 'product_id', 'variation_id',
@@ -93,7 +89,7 @@ final class HLPB_Offer_Analytics {
 			'discounted_total_ex_tax', 'line_discount_ex_tax', 'refunded_amount_ex_tax', 'net_sales_ex_tax',
 			'line_tax', 'coupon_discount_ex_tax', 'coupon_discount_tax', 'currency', 'is_gift', 'is_addon',
 		);
-		self::write_csv_row( $output, $headers );
+		self::write_csv_row( $headers );
 
 		$page = 1;
 		do {
@@ -105,7 +101,6 @@ final class HLPB_Offer_Analytics {
 
 				foreach ( $coupon_rows as $row ) {
 					self::write_csv_row(
-						$output,
 						array(
 							'coupon_usage', $row['order_id'], $row['order_date'], $row['order_status'], $row['landing_id'], $row['landing_title'],
 							$row['mode'], $row['campaign_name'], $row['code'], '', '', '', '', '', '', '', '', '', '', '', '', '', '',
@@ -116,7 +111,6 @@ final class HLPB_Offer_Analytics {
 
 				foreach ( $item_rows as $row ) {
 					self::write_csv_row(
-						$output,
 						array(
 							'product_sale', $row['order_id'], $row['order_date'], $row['order_status'], $row['landing_id'], $row['landing_title'],
 							$row['mode'], $row['campaign_name'], $row['coupon_code'], $row['bundle_id'], $row['product_id'], $row['variation_id'],
@@ -130,7 +124,6 @@ final class HLPB_Offer_Analytics {
 			++$page;
 		} while ( $page <= $result['max_pages'] );
 
-		fclose( $output ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fclose -- Close the CSV output stream.
 		exit;
 	}
 
@@ -356,13 +349,14 @@ final class HLPB_Offer_Analytics {
 			$product_name = sanitize_text_field( $item->get_name() );
 			$sku = $product && $product->get_sku() ? $product->get_sku() : ( $parent_product ? $parent_product->get_sku() : '' );
 			$landing_title = get_the_title( $landing_id );
+			$fallback_landing_title = self::fallback_landing_title( $landing_id );
 			$variation = self::get_variation_label( $item );
 			$rows[] = array(
 				'order_id'           => absint( $order->get_id() ),
 				'order_date'         => $date ? wc_format_datetime( $date, 'Y-m-d H:i:s' ) : '',
 				'order_status'       => $order->get_status(),
 				'landing_id'         => $landing_id,
-				'landing_title'      => $landing_title ? sanitize_text_field( $landing_title ) : sprintf( __( 'Landing page #%d', 'html-landing-page-builder-for-woocommerce' ), $landing_id ),
+				'landing_title'      => $landing_title ? sanitize_text_field( $landing_title ) : $fallback_landing_title,
 				'mode'               => $mode,
 				'campaign_name'      => $campaign_name,
 				'coupon_id'          => $coupon_id,
@@ -409,13 +403,14 @@ final class HLPB_Offer_Analytics {
 			$campaign = sanitize_text_field( $coupon->get_code() );
 		}
 		$landing_title = $landing_id ? get_the_title( $landing_id ) : '';
+		$fallback_landing_title = $landing_id ? self::fallback_landing_title( $landing_id ) : '';
 		$data = array(
 			'coupon_id'     => $coupon_id,
 			'code'          => sanitize_text_field( $coupon->get_code() ? $coupon->get_code() : $code ),
 			'campaign_name' => $campaign,
 			'mode'          => sanitize_key( $coupon->get_meta( '_hlpb_offer_mode', true ) ),
 			'landing_id'    => $landing_id,
-			'landing_title' => $landing_title ? sanitize_text_field( $landing_title ) : ( $landing_id ? sprintf( __( 'Landing page #%d', 'html-landing-page-builder-for-woocommerce' ), $landing_id ) : '' ),
+			'landing_title' => $landing_title ? sanitize_text_field( $landing_title ) : $fallback_landing_title,
 		);
 		self::$coupon_cache[ $coupon_id ] = $data;
 		return $data;
@@ -435,16 +430,26 @@ final class HLPB_Offer_Analytics {
 				continue;
 			}
 			$landing_title = get_the_title( $landing_id );
+			$fallback_landing_title = self::fallback_landing_title( $landing_id );
 			return array(
 				'coupon_id'     => $item_coupon_id,
 				'code'          => $item_coupon_code ? $item_coupon_code : $code,
 				'campaign_name' => sanitize_text_field( $item->get_meta( '_hlpb_campaign_name', true ) ),
 				'mode'          => sanitize_key( $item->get_meta( '_hlpb_offer_mode', true ) ),
 				'landing_id'    => $landing_id,
-				'landing_title' => $landing_title ? sanitize_text_field( $landing_title ) : sprintf( __( 'Landing page #%d', 'html-landing-page-builder-for-woocommerce' ), $landing_id ),
+				'landing_title' => $landing_title ? sanitize_text_field( $landing_title ) : $fallback_landing_title,
 			);
 		}
 		return false;
+	}
+
+	/** Provide a translated fallback title when the landing page no longer exists. */
+	private static function fallback_landing_title( $landing_id ) {
+		return sprintf(
+			// translators: %d: ID of a landing page that is unavailable.
+			__( 'Landing page #%d', 'html-landing-page-builder-for-woocommerce' ),
+			absint( $landing_id )
+		);
 	}
 
 	/** Keep variation labels readable in reports and spreadsheet exports. */
@@ -567,8 +572,8 @@ final class HLPB_Offer_Analytics {
 				'posts_per_page' => 1000,
 				'fields'         => 'ids',
 				'no_found_rows'  => true,
-				'meta_key'       => HLPB_Cart_Section::COUPON_FLAG_META,
-				'meta_value'     => 'yes',
+				'meta_key'       => HLPB_Cart_Section::COUPON_FLAG_META, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Filters the bounded coupon selector to plugin-owned coupons.
+				'meta_value'     => 'yes', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Filters the bounded coupon selector to plugin-owned coupons.
 			)
 		);
 		$options = array();
@@ -683,7 +688,7 @@ final class HLPB_Offer_Analytics {
 		}
 		echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Coupon', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Offer', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Landing page', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Mode', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Uses', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Orders', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Coupon discount', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Currency', 'html-landing-page-builder-for-woocommerce' ) . '</th></tr></thead><tbody>';
 		foreach ( $rows as $row ) {
-			echo '<tr><td>' . esc_html( $row['code'] ) . '</td><td>' . esc_html( $row['campaign_name'] ) . '</td><td>' . esc_html( $row['landing_title'] ) . ( $row['landing_id'] ? ' (#' . esc_html( $row['landing_id'] ) . ')' : '' ) . '</td><td>' . esc_html( self::mode_label( $row['mode'] ) ) . '</td><td>' . esc_html( number_format_i18n( $row['uses'] ) ) . '</td><td>' . esc_html( number_format_i18n( $row['order_count'] ) ) . '</td><td>' . self::money( $row['discount_total'], $row['currency'] ) . '</td><td>' . esc_html( $row['currency'] ) . '</td></tr>';
+			echo '<tr><td>' . esc_html( $row['code'] ) . '</td><td>' . esc_html( $row['campaign_name'] ) . '</td><td>' . esc_html( $row['landing_title'] ) . ( $row['landing_id'] ? ' (#' . esc_html( $row['landing_id'] ) . ')' : '' ) . '</td><td>' . esc_html( self::mode_label( $row['mode'] ) ) . '</td><td>' . esc_html( number_format_i18n( $row['uses'] ) ) . '</td><td>' . esc_html( number_format_i18n( $row['order_count'] ) ) . '</td><td>' . wp_kses_post( self::money( $row['discount_total'], $row['currency'] ) ) . '</td><td>' . esc_html( $row['currency'] ) . '</td></tr>';
 		}
 		echo '</tbody></table>';
 	}
@@ -699,7 +704,7 @@ final class HLPB_Offer_Analytics {
 		foreach ( $rows as $row ) {
 			$landing_mode = $row['landing_title'] . ( $row['landing_id'] ? ' (#' . $row['landing_id'] . ')' : '' ) . ' · ' . self::mode_label( $row['mode'] );
 			$product = $row['product_name'] . ( $row['is_gift'] ? ' · ' . __( 'Gift', 'html-landing-page-builder-for-woocommerce' ) : '' ) . ( $row['is_addon'] ? ' · ' . __( 'Add-on', 'html-landing-page-builder-for-woocommerce' ) : '' );
-			echo '<tr><td>' . esc_html( $product ) . '</td><td>' . esc_html( $row['sku'] ) . '</td><td>' . esc_html( $row['variation'] ? $row['variation'] : '—' ) . '</td><td>' . esc_html( $landing_mode ) . '</td><td>' . esc_html( $row['coupon_code'] ? $row['coupon_code'] : '—' ) . '</td><td>' . esc_html( number_format_i18n( $row['quantity_total'] ) ) . ( $row['refunded_quantity_total'] ? ' <small>(' . esc_html__( 'refunded', 'html-landing-page-builder-for-woocommerce' ) . ': ' . esc_html( number_format_i18n( $row['refunded_quantity_total'] ) ) . ')</small>' : '' ) . '</td><td>' . esc_html( number_format_i18n( $row['order_count'] ) ) . '</td><td>' . self::money( $row['subtotal_total'], $row['currency'] ) . '</td><td>' . self::money( $row['discount_total'], $row['currency'] ) . '</td><td>' . self::money( $row['refund_total'], $row['currency'] ) . '</td><td><strong>' . self::money( $row['net_sales_total'], $row['currency'] ) . '</strong></td><td>' . esc_html( $row['currency'] ) . '</td></tr>';
+			echo '<tr><td>' . esc_html( $product ) . '</td><td>' . esc_html( $row['sku'] ) . '</td><td>' . esc_html( $row['variation'] ? $row['variation'] : '—' ) . '</td><td>' . esc_html( $landing_mode ) . '</td><td>' . esc_html( $row['coupon_code'] ? $row['coupon_code'] : '—' ) . '</td><td>' . esc_html( number_format_i18n( $row['quantity_total'] ) ) . ( $row['refunded_quantity_total'] ? ' <small>(' . esc_html__( 'refunded', 'html-landing-page-builder-for-woocommerce' ) . ': ' . esc_html( number_format_i18n( $row['refunded_quantity_total'] ) ) . ')</small>' : '' ) . '</td><td>' . esc_html( number_format_i18n( $row['order_count'] ) ) . '</td><td>' . wp_kses_post( self::money( $row['subtotal_total'], $row['currency'] ) ) . '</td><td>' . wp_kses_post( self::money( $row['discount_total'], $row['currency'] ) ) . '</td><td>' . wp_kses_post( self::money( $row['refund_total'], $row['currency'] ) ) . '</td><td><strong>' . wp_kses_post( self::money( $row['net_sales_total'], $row['currency'] ) ) . '</strong></td><td>' . esc_html( $row['currency'] ) . '</td></tr>';
 		}
 		echo '</tbody></table>';
 	}
@@ -712,14 +717,20 @@ final class HLPB_Offer_Analytics {
 			return;
 		}
 		if ( $total_count > count( $rows ) ) {
-			echo '<p class="description">' . esc_html( sprintf( __( 'Showing the latest %1$d of %2$d matching product lines. Export the CSV for the complete detail.', 'html-landing-page-builder-for-woocommerce' ), count( $rows ), $total_count ) ) . '</p>';
+			$summary = sprintf(
+				// translators: 1: number of displayed product lines, 2: total number of matching product lines.
+				__( 'Showing the latest %1$d of %2$d matching product lines. Export the CSV for the complete detail.', 'html-landing-page-builder-for-woocommerce' ),
+				count( $rows ),
+				$total_count
+			);
+			echo '<p class="description">' . esc_html( $summary ) . '</p>';
 		}
 		echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Order / date', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Landing / mode', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Coupon / offer group', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Product / variation', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Qty', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Subtotal', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Discount', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Refund', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Net sales', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Status', 'html-landing-page-builder-for-woocommerce' ) . '</th></tr></thead><tbody>';
 		foreach ( $rows as $row ) {
 			$landing = $row['landing_title'] . ( $row['landing_id'] ? ' (#' . $row['landing_id'] . ')' : '' ) . ' · ' . self::mode_label( $row['mode'] );
 			$bundle = ( $row['coupon_code'] ? $row['coupon_code'] : '—' ) . ( $row['bundle_id'] ? ' · ' . $row['bundle_id'] : '' );
 			$product = $row['product_name'] . ( $row['variation'] ? ' · ' . $row['variation'] : '' ) . ( $row['is_gift'] ? ' · ' . __( 'Gift', 'html-landing-page-builder-for-woocommerce' ) : '' );
-			echo '<tr><td>#' . esc_html( $row['order_id'] ) . '<br><small>' . esc_html( $row['order_date'] ) . '</small></td><td>' . esc_html( $landing ) . '</td><td>' . esc_html( $bundle ) . '</td><td>' . esc_html( $product ) . '</td><td>' . esc_html( number_format_i18n( $row['quantity'] ) ) . '</td><td>' . self::money( $row['subtotal'], $row['currency'] ) . '</td><td>' . self::money( $row['discount'], $row['currency'] ) . '</td><td>' . self::money( $row['refund'], $row['currency'] ) . '</td><td><strong>' . self::money( $row['net_sales'], $row['currency'] ) . '</strong></td><td>' . esc_html( self::status_label( $row['order_status'] ) ) . '</td></tr>';
+			echo '<tr><td>#' . esc_html( $row['order_id'] ) . '<br><small>' . esc_html( $row['order_date'] ) . '</small></td><td>' . esc_html( $landing ) . '</td><td>' . esc_html( $bundle ) . '</td><td>' . esc_html( $product ) . '</td><td>' . esc_html( number_format_i18n( $row['quantity'] ) ) . '</td><td>' . wp_kses_post( self::money( $row['subtotal'], $row['currency'] ) ) . '</td><td>' . wp_kses_post( self::money( $row['discount'], $row['currency'] ) ) . '</td><td>' . wp_kses_post( self::money( $row['refund'], $row['currency'] ) ) . '</td><td><strong>' . wp_kses_post( self::money( $row['net_sales'], $row['currency'] ) ) . '</strong></td><td>' . esc_html( self::status_label( $row['order_status'] ) ) . '</td></tr>';
 		}
 		echo '</tbody></table>';
 	}
@@ -736,17 +747,18 @@ final class HLPB_Offer_Analytics {
 	}
 
 	/** Write one formula-safe CSV record. */
-	private static function write_csv_row( $output, $values ) {
+	private static function write_csv_row( $values ) {
 		$values = array_map(
 			static function ( $value ) {
-				if ( ! is_string( $value ) ) {
-					return $value;
+				$value = is_scalar( $value ) ? (string) $value : '';
+				if ( preg_match( '/^\s*[=+@-]/', $value ) ) {
+					$value = "'" . $value;
 				}
-				return preg_match( '/^\s*[=+@-]/', $value ) ? "'" . $value : $value;
+				return '"' . str_replace( '"', '""', $value ) . '"';
 			},
 			$values
 		);
-		fputcsv( $output, $values );
+		echo implode( ',', $values ) . "\r\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Values are serialized as quoted CSV fields with quotes escaped; HTML escaping would corrupt the CSV format.
 	}
 
 	private static function money( $amount, $currency ) {

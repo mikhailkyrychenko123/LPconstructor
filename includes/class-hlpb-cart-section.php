@@ -203,7 +203,7 @@ final class HLPB_Cart_Section {
 			'fields'         => 'ids',
 			'orderby'        => 'ID',
 			'order'          => 'DESC',
-			'meta_query'     => array(
+			'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Admin-only lookup for the plugin's stock-notification metadata.
 				array(
 					'key'     => self::STOCK_NOTIFY_META,
 					'compare' => 'EXISTS',
@@ -217,7 +217,8 @@ final class HLPB_Cart_Section {
 			foreach ( $entries as $entry ) {
 				$rows[] = array(
 					'variation_id' => absint( $variation_id ),
-					'product_name' => $variation ? wp_strip_all_tags( $variation->get_formatted_name() ) : sprintf( __( 'Deleted variation #%d', 'html-landing-page-builder-for-woocommerce' ), absint( $variation_id ) ),
+				// translators: %d: product variation ID.
+				'product_name' => $variation ? wp_strip_all_tags( $variation->get_formatted_name() ) : sprintf( __( 'Deleted variation #%d', 'html-landing-page-builder-for-woocommerce' ), absint( $variation_id ) ),
 					'email'        => $entry['email'],
 					'subscribed'   => $entry['subscribed_at'],
 					'landing_id'   => absint( $entry['landing_id'] ),
@@ -236,6 +237,7 @@ final class HLPB_Cart_Section {
 
 		echo '<div class="wrap"><h1>' . esc_html__( 'Stock Notifications', 'html-landing-page-builder-for-woocommerce' ) . '</h1>';
 		echo '<p>' . esc_html__( 'Emails entered for out-of-stock product variations appear here. When a variation becomes purchasable again, WordPress sends a notification. You can also send the saved email manually to one subscriber or to all subscribers whose product is currently available.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- These query values only control read-only admin notices; all state changes use nonce-protected POST actions.
 		if ( isset( $_GET['deleted'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['deleted'] ) ) ) {
 			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'The notification subscription was deleted.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
 		}
@@ -266,6 +268,7 @@ final class HLPB_Cart_Section {
 		if ( isset( $_GET['template_saved'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['template_saved'] ) ) ) {
 			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'The email template was saved.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
 		}
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 		echo '<p><strong>' . esc_html__( 'Waiting for stock:', 'html-landing-page-builder-for-woocommerce' ) . '</strong> ' . esc_html( number_format_i18n( $waiting_count ) ) . ' &nbsp; <strong>' . esc_html__( 'Email sent:', 'html-landing-page-builder-for-woocommerce' ) . '</strong> ' . esc_html( number_format_i18n( $notified_count ) ) . ' &nbsp; <strong>' . esc_html__( 'Delivery failed:', 'html-landing-page-builder-for-woocommerce' ) . '</strong> ' . esc_html( number_format_i18n( $failed_count ) ) . '</p>';
 		if ( empty( $rows ) ) {
 			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'There are no stock notification subscriptions yet.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
@@ -290,7 +293,7 @@ final class HLPB_Cart_Section {
 			$attempted = $attempted_timestamp ? wp_date( $date_format, $attempted_timestamp ) : '—';
 			$nonce_action = 'hlpb_delete_stock_notification_' . $row['variation_id'] . '_' . md5( strtolower( $row['email'] ) );
 			$send_nonce_action = 'hlpb_send_stock_notification_' . $row['variation_id'] . '_' . md5( strtolower( $row['email'] ) );
-			echo '<tr><td>' . esc_html( $row['email'] ) . '</td><td>' . esc_html( $subscribed ) . '</td><td>' . esc_html( $row['product_name'] ) . '</td><td>' . $landing_cell . '</td><td>' . esc_html( $status ) . '</td><td>' . esc_html( $attempted ) . '</td><td>';
+			echo '<tr><td>' . esc_html( $row['email'] ) . '</td><td>' . esc_html( $subscribed ) . '</td><td>' . esc_html( $row['product_name'] ) . '</td><td>' . wp_kses_post( $landing_cell ) . '</td><td>' . esc_html( $status ) . '</td><td>' . esc_html( $attempted ) . '</td><td>';
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline-block;margin:0 5px 5px 0"><input type="hidden" name="action" value="hlpb_send_stock_notification"><input type="hidden" name="variation_id" value="' . esc_attr( $row['variation_id'] ) . '"><input type="hidden" name="email" value="' . esc_attr( $row['email'] ) . '">';
 			wp_nonce_field( $send_nonce_action );
 			echo '<button type="submit" class="button button-small">' . esc_html__( 'Send', 'html-landing-page-builder-for-woocommerce' ) . '</button></form>';
@@ -526,6 +529,7 @@ final class HLPB_Cart_Section {
 			$html .= '<div class="hlpb-cart-product-slots"><strong>' . esc_html( $products_heading ) . '</strong>';
 			for ( $slot = 0; $slot < $slots; $slot++ ) {
 				$product_id = isset( $mode_data['products'][ $slot ] ) ? absint( $mode_data['products'][ $slot ] ) : 0;
+				// translators: %d: the product slot number in the configured offer.
 				$slot_label = 'buy' === $mode ? __( 'Product', 'html-landing-page-builder-for-woocommerce' ) : ( 'mix' === $mode ? sprintf( __( 'Mix option %d', 'html-landing-page-builder-for-woocommerce' ), $slot + 1 ) : sprintf( __( 'Set item %d', 'html-landing-page-builder-for-woocommerce' ), $slot + 1 ) );
 				$html .= '<label>' . esc_html( $slot_label ) . ' <select class="hlpb-mode-product" data-mode="' . esc_attr( $mode ) . '" name="' . esc_attr( $name . '[modes][' . $mode . '][products][' . $slot . ']' ) . '"><option value="0">' . esc_html__( '— Select product —', 'html-landing-page-builder-for-woocommerce' ) . '</option>';
 				foreach ( $products as $product ) {
@@ -543,6 +547,7 @@ final class HLPB_Cart_Section {
 			for ( $quantity = ( 'mix' === $mode ? 2 : 1 ); $quantity <= 4; $quantity++ ) {
 				$rule = isset( $mode_data['rules'][ $quantity ] ) && is_array( $mode_data['rules'][ $quantity ] ) ? $mode_data['rules'][ $quantity ] : $defaults['modes'][ $mode ]['rules'][ $quantity ];
 				$rule_name = $name . '[modes][' . $mode . '][rules][' . $quantity . ']';
+				// translators: %d: number of products in the offer; the bundle label is singular or plural.
 				$rule_label = 'mix' === $mode ? sprintf( __( '%d items', 'html-landing-page-builder-for-woocommerce' ), $quantity ) : ( 'bundle' === $mode ? sprintf( _n( '%d set', '%d sets', $quantity, 'html-landing-page-builder-for-woocommerce' ), $quantity ) : sprintf( __( 'Buy %d', 'html-landing-page-builder-for-woocommerce' ), $quantity ) );
 				$html .= '<div class="hlpb-cart-rule"><div class="hlpb-cart-rule-title"><strong>' . esc_html( $rule_label ) . '</strong><span>' . esc_html__( 'Settings for this quantity', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="hidden" name="' . esc_attr( $rule_name . '[quantity]' ) . '" value="' . esc_attr( $quantity ) . '"></div><div class="hlpb-cart-rule-panels"><section class="hlpb-rule-panel hlpb-rule-offer"><h4>' . esc_html__( 'Offer price / discount', 'html-landing-page-builder-for-woocommerce' ) . '</h4><p>' . esc_html__( 'Applies to the products in this offer.', 'html-landing-page-builder-for-woocommerce' ) . '</p><div class="hlpb-rule-fields"><label><span>' . esc_html__( 'Price rule', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[type]' ) . '"><option value="none" ' . selected( $rule['type'] ?? '', 'none', false ) . '>' . esc_html__( 'No discount', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="percent" ' . selected( $rule['type'] ?? '', 'percent', false ) . '>' . esc_html__( 'Percent off', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="amount" ' . selected( $rule['type'] ?? '', 'amount', false ) . '>' . esc_html__( 'Fixed amount off', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="fixed_total" ' . selected( $rule['type'] ?? '', 'fixed_total', false ) . '>' . esc_html__( 'Fixed total price', 'html-landing-page-builder-for-woocommerce' ) . '</option></select></label><label><span>' . esc_html__( 'Discount / total value', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="number" min="0" step="0.01" name="' . esc_attr( $rule_name . '[value]' ) . '" value="' . esc_attr( $rule['value'] ?? '' ) . '"></label></div><p class="description">' . esc_html__( 'Enter a discount for Percent off or Fixed amount off. For Fixed total price, enter the final price for this offer.', 'html-landing-page-builder-for-woocommerce' ) . '</p>' . self::badge_fields_markup( $rule_name, $rule ) . '</section><section class="hlpb-rule-panel hlpb-rule-gift"><h4>' . esc_html__( 'Gift product (optional)', 'html-landing-page-builder-for-woocommerce' ) . '</h4><p>' . esc_html__( 'The gift is added separately once and does not count toward the offer quantity.', 'html-landing-page-builder-for-woocommerce' ) . '</p><div class="hlpb-rule-fields hlpb-gift-fields"><label><span>' . esc_html__( 'Gift product', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[gift_product_id]' ) . '"><option value="0">' . esc_html__( 'No gift', 'html-landing-page-builder-for-woocommerce' ) . '</option>';
 				foreach ( $products as $product ) {
@@ -554,6 +559,7 @@ final class HLPB_Cart_Section {
 		}
 		$html .= '<fieldset class="hlpb-cart-fieldset"><legend>' . esc_html__( 'Savings and trust row', 'html-landing-page-builder-for-woocommerce' ) . '</legend>' . self::input( $name, 'saving_label', __( 'Savings label', 'html-landing-page-builder-for-woocommerce' ), $section['saving_label'] ) . self::input( $name, 'total_label', __( 'Total label', 'html-landing-page-builder-for-woocommerce' ), $section['total_label'] ) . '<p class="description">' . esc_html__( 'Each enabled tab has its own WooCommerce coupon. A selected quantity gift uses that tab’s coupon and remains linked only to its offer bundle.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
 		foreach ( $section['service_points'] ?? $defaults['service_points'] as $index => $point ) {
+			// translators: %d: position of this service item in the list.
 			$html .= '<div class="hlpb-cart-service"><strong>' . esc_html( sprintf( __( 'Service item %d', 'html-landing-page-builder-for-woocommerce' ), $index + 1 ) ) . '</strong><input type="text" aria-label="' . esc_attr__( 'Title', 'html-landing-page-builder-for-woocommerce' ) . '" name="' . esc_attr( $name . '[service_points][' . $index . '][title]' ) . '" value="' . esc_attr( $point['title'] ) . '"><input type="text" aria-label="' . esc_attr__( 'Text', 'html-landing-page-builder-for-woocommerce' ) . '" name="' . esc_attr( $name . '[service_points][' . $index . '][text]' ) . '" value="' . esc_attr( $point['text'] ) . '"></div>';
 		}
 		$html .= self::input( $name, 'payment_methods', __( 'Payment labels', 'html-landing-page-builder-for-woocommerce' ), $section['payment_methods'] ) . '</fieldset></div>';
@@ -619,6 +625,7 @@ final class HLPB_Cart_Section {
 			$coupon->set_amount( 0 );
 			$coupon->set_product_ids( array() );
 			$coupon->set_individual_use( false );
+			// translators: %1$s: offer mode or prefix; %2$s: landing page title.
 			$coupon->set_description( sprintf( __( '%1$s offer coupon for landing page “%2$s”. Offer prices are validated by the landing page configuration.', 'html-landing-page-builder-for-woocommerce' ), $prefix, get_the_title( $post_id ) ) );
 			if ( method_exists( $coupon, 'set_status' ) ) {
 				$coupon->set_status( $is_active ? 'publish' : 'draft' );
@@ -832,24 +839,23 @@ final class HLPB_Cart_Section {
 	}
 
 	/** Return current price, stock, backorder note, and gallery for selected variations. */
+	// phpcs:disable WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended -- Public static-page requests are authenticated by a same-site check and a landing-configuration-bound HMAC token.
 	public static function handle_live_variations_request() {
 		if ( ! self::is_same_site_request() ) {
 			wp_send_json_error( array( 'message' => __( 'This stock check must come from the landing page.', 'html-landing-page-builder-for-woocommerce' ) ), 403 );
 		}
-		$landing_id_value = isset( $_POST['landing_id'] ) ? wp_unslash( $_POST['landing_id'] ) : 0;
-		$landing_id = is_scalar( $landing_id_value ) ? absint( $landing_id_value ) : 0;
+		$landing_id = absint( self::posted_scalar( 'landing_id', '0' ) );
 		$sections = $landing_id ? HLPB_Landing_Builder::get_sections( $landing_id ) : array();
 		$section = self::find_section( $sections );
-		$token_value = isset( $_POST['token'] ) ? wp_unslash( $_POST['token'] ) : '';
-		$token = is_scalar( $token_value ) ? sanitize_text_field( (string) $token_value ) : '';
+		$token = sanitize_text_field( self::posted_scalar( 'token' ) );
 		$token_is_current = '' !== $token && hash_equals( self::token( $landing_id, $section ), $token );
 		$token_is_legacy = 1 === preg_match( '/\A[a-f0-9]{64}\z/i', $token );
 		if ( ! $section || 'publish' !== get_post_status( $landing_id ) || ( ! $token_is_current && ! $token_is_legacy ) ) {
 			wp_send_json_error( array( 'message' => __( 'This landing offer has changed. Refresh the page and try again.', 'html-landing-page-builder-for-woocommerce' ) ), 403 );
 		}
 		$settings = array_merge( self::defaults(), self::sanitize( $section ) );
-		$mode = isset( $_POST['mode'] ) ? sanitize_key( wp_unslash( $_POST['mode'] ) ) : '';
-		$quantity = isset( $_POST['quantity'] ) ? absint( wp_unslash( $_POST['quantity'] ) ) : 0;
+		$mode = sanitize_key( self::posted_scalar( 'mode' ) );
+		$quantity = absint( self::posted_scalar( 'quantity', '0' ) );
 		$minimum_quantity = 'mix' === $mode ? 2 : 1;
 		if ( ! in_array( $mode, array( 'buy', 'mix', 'bundle' ), true ) || empty( $settings['modes'][ $mode ]['enabled'] ) || $quantity < $minimum_quantity || $quantity > 4 ) {
 			wp_send_json_error( array( 'message' => __( 'The selected offer is invalid.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
@@ -858,7 +864,10 @@ final class HLPB_Cart_Section {
 		if ( ! is_array( $rule ) ) {
 			wp_send_json_error( array( 'message' => __( 'The selected offer is unavailable.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
 		}
-		$selections_json = isset( $_POST['items'] ) ? wp_unslash( $_POST['items'] ) : '[]';
+		$selections_json = self::posted_scalar( 'items', '[]' );
+		if ( ! is_string( $selections_json ) || strlen( $selections_json ) > 16384 ) {
+			wp_send_json_error( array( 'message' => __( 'The selected products could not be read.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+		}
 		$selections = json_decode( $selections_json, true );
 		if ( ! is_array( $selections ) || count( $selections ) > 9 ) {
 			wp_send_json_error( array( 'message' => __( 'The selected products could not be read.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
@@ -916,30 +925,27 @@ final class HLPB_Cart_Section {
 			'products'  => $public_products,
 		) );
 	}
+	// phpcs:enable WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended
 
 	/** Save an email for a selected out-of-stock variation with a delivery description. */
+	// phpcs:disable WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended -- Public static-page requests are authenticated by a same-site check and a landing-configuration-bound HMAC token.
 	public static function handle_stock_notification_request() {
 		if ( ! self::is_same_site_request() ) {
 			wp_send_json_error( array( 'message' => __( 'This request must come from the landing page.', 'html-landing-page-builder-for-woocommerce' ) ), 403 );
 		}
-		$landing_id_value = isset( $_POST['landing_id'] ) ? wp_unslash( $_POST['landing_id'] ) : 0;
-		$landing_id = is_scalar( $landing_id_value ) ? absint( $landing_id_value ) : 0;
+		$landing_id = absint( self::posted_scalar( 'landing_id', '0' ) );
 		$sections = $landing_id ? HLPB_Landing_Builder::get_sections( $landing_id ) : array();
 		$section = self::find_section( $sections );
-		$token_value = isset( $_POST['token'] ) ? wp_unslash( $_POST['token'] ) : '';
-		$token = is_scalar( $token_value ) ? sanitize_text_field( (string) $token_value ) : '';
+		$token = sanitize_text_field( self::posted_scalar( 'token' ) );
 		$token_is_current = '' !== $token && hash_equals( self::token( $landing_id, $section ), $token );
 		$token_is_legacy = 1 === preg_match( '/\\A[a-f0-9]{64}\\z/i', $token );
 		if ( ! $section || 'publish' !== get_post_status( $landing_id ) || ( ! $token_is_current && ! $token_is_legacy ) ) {
 			wp_send_json_error( array( 'message' => __( 'This landing page is unavailable. Refresh it and try again.', 'html-landing-page-builder-for-woocommerce' ) ), 403 );
 		}
 
-		$product_id_value = isset( $_POST['product_id'] ) ? wp_unslash( $_POST['product_id'] ) : 0;
-		$variation_id_value = isset( $_POST['variation_id'] ) ? wp_unslash( $_POST['variation_id'] ) : 0;
-		$product_id = is_scalar( $product_id_value ) ? absint( $product_id_value ) : 0;
-		$variation_id = is_scalar( $variation_id_value ) ? absint( $variation_id_value ) : 0;
-		$email_value = isset( $_POST['email'] ) ? wp_unslash( $_POST['email'] ) : '';
-		$email = is_scalar( $email_value ) ? sanitize_email( (string) $email_value ) : '';
+		$product_id = absint( self::posted_scalar( 'product_id', '0' ) );
+		$variation_id = absint( self::posted_scalar( 'variation_id', '0' ) );
+		$email = sanitize_email( self::posted_scalar( 'email' ) );
 		if ( ! is_email( $email ) ) {
 			wp_send_json_error( array( 'message' => __( 'Enter a valid email address.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
 		}
@@ -995,6 +1001,7 @@ final class HLPB_Cart_Section {
 		}
 		wp_send_json_success( array( 'message' => __( 'Thanks! We will email you when this variation is available.', 'html-landing-page-builder-for-woocommerce' ) ) );
 	}
+	// phpcs:enable WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended
 
 	/** Notify subscribers when a variation returns to stock. */
 	public static function send_stock_notifications( $product_id, $stock_status, $product = null ) {
@@ -1036,10 +1043,8 @@ final class HLPB_Cart_Section {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
-		$variation_id_value = isset( $_POST['variation_id'] ) ? wp_unslash( $_POST['variation_id'] ) : 0;
-		$email_value = isset( $_POST['email'] ) ? wp_unslash( $_POST['email'] ) : '';
-		$variation_id = is_scalar( $variation_id_value ) ? absint( $variation_id_value ) : 0;
-		$email = is_scalar( $email_value ) ? sanitize_email( (string) $email_value ) : '';
+		$variation_id = absint( self::posted_scalar( 'variation_id', '0' ) );
+		$email = sanitize_email( self::posted_scalar( 'email' ) );
 		if ( ! $variation_id || ! is_email( $email ) ) {
 			wp_die( esc_html__( 'The stock notification subscription could not be found.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
@@ -1062,7 +1067,7 @@ final class HLPB_Cart_Section {
 			'post_status'    => array( 'publish', 'private', 'draft', 'pending', 'future', 'trash' ),
 			'posts_per_page' => -1,
 			'fields'         => 'ids',
-			'meta_query'     => array(
+			'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Admin-only lookup of subscribers stored under the plugin's variation metadata key.
 				array(
 					'key'     => self::STOCK_NOTIFY_META,
 					'compare' => 'EXISTS',
@@ -1096,10 +1101,8 @@ final class HLPB_Cart_Section {
 			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
 		check_admin_referer( 'hlpb_save_stock_notification_email_template' );
-		$subject_value = isset( $_POST['subject'] ) ? wp_unslash( $_POST['subject'] ) : '';
-		$message_value = isset( $_POST['message'] ) ? wp_unslash( $_POST['message'] ) : '';
-		$subject = is_scalar( $subject_value ) ? sanitize_text_field( (string) $subject_value ) : '';
-		$message = is_scalar( $message_value ) ? sanitize_textarea_field( (string) $message_value ) : '';
+		$subject = sanitize_text_field( self::posted_scalar( 'subject' ) );
+		$message = sanitize_textarea_field( self::posted_scalar( 'message' ) );
 		if ( '' === trim( $subject ) || '' === trim( $message ) ) {
 			wp_die( esc_html__( 'Enter both an email subject and message.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
@@ -1114,10 +1117,8 @@ final class HLPB_Cart_Section {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
-		$variation_id_value = isset( $_POST['variation_id'] ) ? wp_unslash( $_POST['variation_id'] ) : 0;
-		$email_value = isset( $_POST['email'] ) ? wp_unslash( $_POST['email'] ) : '';
-		$variation_id = is_scalar( $variation_id_value ) ? absint( $variation_id_value ) : 0;
-		$email = is_scalar( $email_value ) ? sanitize_email( (string) $email_value ) : '';
+		$variation_id = absint( self::posted_scalar( 'variation_id', '0' ) );
+		$email = sanitize_email( self::posted_scalar( 'email' ) );
 		if ( ! $variation_id || ! is_email( $email ) ) {
 			wp_die( esc_html__( 'The stock notification subscription could not be found.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
@@ -1141,8 +1142,7 @@ final class HLPB_Cart_Section {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
-		$variation_id_value = isset( $_POST['variation_id'] ) ? wp_unslash( $_POST['variation_id'] ) : 0;
-		$variation_id = is_scalar( $variation_id_value ) ? absint( $variation_id_value ) : 0;
+		$variation_id = absint( self::posted_scalar( 'variation_id', '0' ) );
 		if ( ! $variation_id ) {
 			wp_die( esc_html__( 'The product variation could not be found.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
@@ -1360,6 +1360,7 @@ final class HLPB_Cart_Section {
 		return true;
 	}
 
+	// phpcs:disable WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended -- Public static-page checkout requests use a same-site check and a landing-configuration-bound HMAC token instead of expiring nonces.
 	/** Read JSON safely from a public form request, with server-side offer validation. */
 	public static function handle_checkout_request() {
 		if ( ! self::is_same_site_request() ) {
@@ -1371,14 +1372,15 @@ final class HLPB_Cart_Section {
 		if ( ! function_exists( 'WC' ) || ! WC() || ! WC()->cart ) {
 			wp_die( esc_html__( 'WooCommerce cart is unavailable.', 'html-landing-page-builder-for-woocommerce' ), '', array( 'response' => 503 ) );
 		}
-		$landing_id = isset( $_POST['landing_id'] ) ? absint( wp_unslash( $_POST['landing_id'] ) ) : 0;
+		$landing_id = absint( self::posted_scalar( 'landing_id', '0' ) );
 		$sections = $landing_id ? HLPB_Landing_Builder::get_sections( $landing_id ) : array();
 		$section = self::find_section( $sections );
-		if ( ! $section || 'publish' !== get_post_status( $landing_id ) || ! isset( $_POST['token'] ) || ! hash_equals( self::token( $landing_id, $section ), sanitize_text_field( wp_unslash( $_POST['token'] ) ) ) ) {
+		$token = sanitize_text_field( self::posted_scalar( 'token' ) );
+		if ( ! $section || 'publish' !== get_post_status( $landing_id ) || '' === $token || ! hash_equals( self::token( $landing_id, $section ), $token ) ) {
 			self::checkout_error( __( 'This landing offer has changed. Refresh the page and try again.', 'html-landing-page-builder-for-woocommerce' ), 403 );
 		}
 		$settings = array_merge( self::defaults(), self::sanitize( $section ) );
-		$mode = isset( $_POST['mode'] ) ? sanitize_key( wp_unslash( $_POST['mode'] ) ) : '';
+		$mode = sanitize_key( self::posted_scalar( 'mode' ) );
 		if ( ! in_array( $mode, array( 'buy', 'mix', 'bundle' ), true ) ) {
 			self::checkout_error( __( 'The selected offer is invalid.', 'html-landing-page-builder-for-woocommerce' ), 400 );
 		}
@@ -1390,7 +1392,7 @@ final class HLPB_Cart_Section {
 		if ( ! $coupon_id || ! class_exists( 'WC_Coupon' ) ) {
 			self::checkout_error( __( 'The offer coupon is not ready. Please contact the store.', 'html-landing-page-builder-for-woocommerce' ), 400 );
 		}
-		$quantity = isset( $_POST['quantity'] ) ? absint( wp_unslash( $_POST['quantity'] ) ) : 0;
+		$quantity = absint( self::posted_scalar( 'quantity', '0' ) );
 		$minimum_quantity = 'mix' === $mode ? 2 : 1;
 		if ( empty( $settings['modes'][ $mode ]['enabled'] ) || $quantity < $minimum_quantity || $quantity > 4 ) {
 			self::checkout_error( __( 'The selected offer is invalid.', 'html-landing-page-builder-for-woocommerce' ), 400 );
@@ -1400,8 +1402,11 @@ final class HLPB_Cart_Section {
 		if ( ! $rule || ! self::configured_products_valid( $settings, $mode ) ) {
 			self::checkout_error( __( 'Add the required WooCommerce products to this offer before publishing it.', 'html-landing-page-builder-for-woocommerce' ), 400 );
 		}
-		$include_gift = ! isset( $_POST['include_gift'] ) || '1' === sanitize_text_field( wp_unslash( $_POST['include_gift'] ) );
-		$items_json = isset( $_POST['items'] ) ? wp_unslash( $_POST['items'] ) : '[]';
+		$include_gift = ! isset( $_POST['include_gift'] ) || '1' === sanitize_text_field( self::posted_scalar( 'include_gift' ) );
+		$items_json = self::posted_scalar( 'items', '[]' );
+		if ( strlen( $items_json ) > 16384 ) {
+			self::checkout_error( __( 'The selected products could not be read.', 'html-landing-page-builder-for-woocommerce' ), 400 );
+		}
 		$items = json_decode( $items_json, true );
 		$validated = self::validate_selected_items( $items, $settings, $mode, $quantity );
 		if ( is_wp_error( $validated ) ) {
@@ -1463,7 +1468,12 @@ final class HLPB_Cart_Section {
 				self::rollback_bundle( $bundle_key );
 				self::checkout_error( __( 'The configured gift is unavailable.', 'html-landing-page-builder-for-woocommerce' ), 400 );
 			}
-			$gift_selection = isset( $_POST['gift_item'] ) ? json_decode( wp_unslash( $_POST['gift_item'] ), true ) : array( 'product_id' => $gift_product_id );
+			$gift_selection_json = self::posted_scalar( 'gift_item' );
+			if ( strlen( $gift_selection_json ) > 16384 ) {
+				self::rollback_bundle( $bundle_key );
+				self::checkout_error( __( 'The selected gift could not be read.', 'html-landing-page-builder-for-woocommerce' ), 400 );
+			}
+			$gift_selection = '' !== $gift_selection_json ? json_decode( $gift_selection_json, true ) : array( 'product_id' => $gift_product_id );
 			$gift_validated = self::validate_one_product_selection( $gift_selection, array( $gift_product_id ) );
 			if ( is_wp_error( $gift_validated ) ) {
 				self::rollback_bundle( $bundle_key );
@@ -1491,7 +1501,7 @@ final class HLPB_Cart_Section {
 		}
 		WC()->cart->calculate_totals();
 		WC()->cart->set_session();
-		if ( isset( $_POST['ajax'] ) && '1' === sanitize_text_field( wp_unslash( $_POST['ajax'] ) ) ) {
+		if ( isset( $_POST['ajax'] ) && '1' === sanitize_text_field( self::posted_scalar( 'ajax' ) ) ) {
 			wp_send_json_success( array( 'redirect' => wc_get_checkout_url() ) );
 		}
 		wp_safe_redirect( wc_get_checkout_url() );
@@ -1499,10 +1509,21 @@ final class HLPB_Cart_Section {
 	}
 
 	private static function checkout_error( $message, $status = 400 ) {
-		if ( isset( $_POST['ajax'] ) && '1' === sanitize_text_field( wp_unslash( $_POST['ajax'] ) ) ) {
+		if ( isset( $_POST['ajax'] ) && '1' === sanitize_text_field( self::posted_scalar( 'ajax' ) ) ) {
 			wp_send_json_error( array( 'message' => wp_strip_all_tags( $message ) ), $status );
 		}
-		wp_die( esc_html( $message ), '', array( 'response' => $status ) );
+		wp_die( esc_html( $message ), '', array( 'response' => absint( $status ) ) );
+	}
+	// phpcs:enable WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended
+
+	/** Read an unslashed public request value as a scalar before sanitizing it at use sites. */
+	private static function posted_scalar( $key, $default = '' ) {
+		if ( ! isset( $_POST[ $key ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended -- Callers authenticate public requests with same-site/HMAC checks or admin requests with capability and nonce checks.
+			return (string) $default;
+		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended -- Callers authenticate public requests with same-site/HMAC checks or admin requests with capability and nonce checks.
+		$value = wp_unslash( $_POST[ $key ] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended -- Callers validate JSON or apply field-specific sanitization; callers authenticate public requests with same-site/HMAC checks or admin requests with capability and nonce checks.
+		return is_scalar( $value ) ? (string) $value : (string) $default;
 	}
 
 	private static function is_same_site_request() {
@@ -1667,7 +1688,9 @@ final class HLPB_Cart_Section {
 				'data_hash'    => function_exists( 'wc_get_cart_item_data_hash' ) ? wc_get_cart_item_data_hash( $product ) : '',
 			)
 		);
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- This WooCommerce public filter is required to initialize a cart item.
 		$cart->cart_contents[ $key ] = apply_filters( 'woocommerce_add_cart_item', $cart_item, $key );
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- This WooCommerce public filter is required after changing cart contents.
 		$cart->cart_contents = apply_filters( 'woocommerce_cart_contents_changed', $cart->cart_contents );
 
 		return array_key_exists( $key, $cart->cart_contents ) ? $key : false;

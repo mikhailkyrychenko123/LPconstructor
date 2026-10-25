@@ -148,9 +148,15 @@ final class HLPB_Landing_Builder {
 
 		$source    = get_post( $source_id );
 		$template  = self::get_template_slug( $source_id );
-		$title     = self::is_russian_admin_locale()
-			? sprintf( 'Копия — %s', get_the_title( $source_id ) )
-			: sprintf( __( 'Copy of %s', 'html-landing-page-builder-for-woocommerce' ), get_the_title( $source_id ) );
+		if ( self::is_russian_admin_locale() ) {
+			$title = sprintf( 'Копия — %s', get_the_title( $source_id ) );
+		} else {
+			$title = sprintf(
+			// translators: %s: title of the landing page being copied.
+				__( 'Copy of %s', 'html-landing-page-builder-for-woocommerce' ),
+				get_the_title( $source_id )
+			);
+		}
 		$clone_id  = wp_insert_post(
 			array(
 				'post_type'    => self::POST_TYPE,
@@ -201,10 +207,10 @@ final class HLPB_Landing_Builder {
 
 	/** Show a short confirmation after opening a newly cloned draft. */
 	public static function show_clone_notice() {
-		if ( empty( $_GET['hlpb_cloned'] ) || '1' !== sanitize_text_field( wp_unslash( $_GET['hlpb_cloned'] ) ) ) {
+		if ( empty( $_GET['hlpb_cloned'] ) || '1' !== sanitize_text_field( wp_unslash( $_GET['hlpb_cloned'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only notice flag; post capability is checked before output.
 			return;
 		}
-		$post_id = isset( $_GET['post'] ) ? absint( wp_unslash( $_GET['post'] ) ) : 0;
+		$post_id = isset( $_GET['post'] ) ? absint( wp_unslash( $_GET['post'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only notice target; edit_post capability is checked before output.
 		if ( ! $post_id || self::POST_TYPE !== get_post_type( $post_id ) || ! current_user_can( 'edit_post', $post_id ) ) {
 			return;
 		}
@@ -1509,6 +1515,7 @@ final class HLPB_Landing_Builder {
 		$question = isset( $faq['question'] ) ? $faq['question'] : '';
 		$answer = isset( $faq['answer'] ) ? $faq['answer'] : '';
 		$name = 'hlpb_sections[' . $section_id . '][faqs][' . absint( $index ) . ']';
+		// translators: %d: position of the FAQ question in the editor.
 		return '<fieldset class="hlpb-faq-item"><div class="hlpb-faq-item-heading"><strong>' . esc_html( sprintf( __( 'Question %d', 'html-landing-page-builder-for-woocommerce' ), $index + 1 ) ) . '</strong><button type="button" class="button-link-delete hlpb-remove-faq">' . esc_html__( 'Remove question', 'html-landing-page-builder-for-woocommerce' ) . '</button></div><label><span>' . esc_html__( 'Question', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[question]' ) . '" value="' . esc_attr( $question ) . '"></label><label><span>' . esc_html__( 'Answer', 'html-landing-page-builder-for-woocommerce' ) . '</span><textarea rows="3" name="' . esc_attr( $name . '[answer]' ) . '">' . esc_textarea( $answer ) . '</textarea></label></fieldset>';
 	}
 
@@ -1556,6 +1563,7 @@ final class HLPB_Landing_Builder {
 	/** Render one primary or legal footer link editor row. */
 	private static function render_footer_link_row( $section_id, $group, $index, $item ) {
 		$name = 'hlpb_sections[' . $section_id . '][' . $group . '][' . absint( $index ) . ']';
+		// translators: %d: position of the footer link in the editor.
 		return '<div class="hlpb-footer-row"><strong>' . esc_html( sprintf( __( 'Link %d', 'html-landing-page-builder-for-woocommerce' ), $index + 1 ) ) . '</strong><label><span>' . esc_html__( 'Label', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[label]' ) . '" value="' . esc_attr( isset( $item['label'] ) ? $item['label'] : '' ) . '"></label><label><span>' . esc_html__( 'Link URL', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[url]' ) . '" value="' . esc_attr( isset( $item['url'] ) ? $item['url'] : '' ) . '"></label><button type="button" class="button-link-delete hlpb-remove-footer-row">' . esc_html__( 'Remove', 'html-landing-page-builder-for-woocommerce' ) . '</button></div>';
 	}
 
@@ -1564,6 +1572,7 @@ final class HLPB_Landing_Builder {
 		$name = 'hlpb_sections[' . $section_id . '][social_links][' . absint( $index ) . ']';
 		$icons = self::get_footer_social_icons();
 		$icon = isset( $item['icon'] ) && isset( $icons[ $item['icon'] ] ) ? $item['icon'] : 'instagram';
+		// translators: %d: position of the social link in the editor.
 		$html = '<div class="hlpb-footer-row hlpb-footer-social-row"><strong>' . esc_html( sprintf( __( 'Social link %d', 'html-landing-page-builder-for-woocommerce' ), $index + 1 ) ) . '</strong><label><span>' . esc_html__( 'Icon', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $name . '[icon]' ) . '">';
 		foreach ( $icons as $value => $label ) {
 			$html .= '<option value="' . esc_attr( $value ) . '" ' . selected( $icon, $value, false ) . '>' . esc_html( $label ) . '</option>';
@@ -1581,7 +1590,12 @@ final class HLPB_Landing_Builder {
 		$image_url = $image_id ? wp_get_attachment_image_url( $image_id, 'thumbnail' ) : false;
 		$image_url = $image_url ? $image_url : self::get_template_asset_url( $template_slug ) . 'images/' . $demo_image;
 		$name = 'hlpb_sections[' . $section_id . '][reviews][' . absint( $index ) . ']';
-		$html = '<article class="hlpb-review-item"><div class="hlpb-review-item-heading"><strong>' . esc_html( sprintf( __( 'Review %d', 'html-landing-page-builder-for-woocommerce' ), $index + 1 ) ) . '</strong><button type="button" class="button-link-delete hlpb-remove-review">' . esc_html__( 'Remove review', 'html-landing-page-builder-for-woocommerce' ) . '</button></div><div class="hlpb-review-item-fields"><div class="hlpb-image-control"><img class="hlpb-image-preview hlpb-review-image-preview" src="' . esc_url( $image_url ) . '" alt=""><input type="hidden" class="hlpb-image-id hlpb-review-image-id" name="' . esc_attr( $name . '[image_id]' ) . '" value="' . esc_attr( $image_id ) . '"><input type="hidden" class="hlpb-demo-image" name="' . esc_attr( $name . '[demo_image]' ) . '" value="' . esc_attr( $demo_image ) . '"><button type="button" class="button hlpb-select-image">' . esc_html__( 'Choose photo', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button-link hlpb-clear-image">' . esc_html__( 'Use demo photo', 'html-landing-page-builder-for-woocommerce' ) . '</button></div><div class="hlpb-review-text-fields">' . self::text_field( $name . '[image_alt]', __( 'Photo description (alt text)', 'html-landing-page-builder-for-woocommerce' ), $review['image_alt'] ) . '<div class="hlpb-field"><label>' . esc_html__( 'Stars', 'html-landing-page-builder-for-woocommerce' ) . '</label>' . self::render_star_select( $name . '[stars]', $review['stars'] ) . '</div>' . self::text_field( $name . '[title]', __( 'Review title', 'html-landing-page-builder-for-woocommerce' ), $review['title'] ) . '<div class="hlpb-field"><label>' . esc_html__( 'Review text', 'html-landing-page-builder-for-woocommerce' ) . '</label><textarea rows="4" name="' . esc_attr( $name . '[text]' ) . '">' . esc_textarea( $review['text'] ) . '</textarea></div>' . self::text_field( $name . '[reviewer]', __( 'Reviewer name', 'html-landing-page-builder-for-woocommerce' ), $review['reviewer'] ) . '<label class="hlpb-checkbox"><input type="checkbox" name="' . esc_attr( $name . '[verified]' ) . '" value="1" ' . checked( ! empty( $review['verified'] ), true, false ) . '> ' . esc_html__( 'Show verified buyer label', 'html-landing-page-builder-for-woocommerce' ) . '</label>' . self::text_field( $name . '[verified_text]', __( 'Verified buyer label', 'html-landing-page-builder-for-woocommerce' ), $review['verified_text'] ) . '</div></div></article>';
+		$review_label = sprintf(
+			// translators: %d: position of the review in the editor.
+			__( 'Review %d', 'html-landing-page-builder-for-woocommerce' ),
+			$index + 1
+		);
+		$html = '<article class="hlpb-review-item"><div class="hlpb-review-item-heading"><strong>' . esc_html( $review_label ) . '</strong><button type="button" class="button-link-delete hlpb-remove-review">' . esc_html__( 'Remove review', 'html-landing-page-builder-for-woocommerce' ) . '</button></div><div class="hlpb-review-item-fields"><div class="hlpb-image-control"><img class="hlpb-image-preview hlpb-review-image-preview" src="' . esc_url( $image_url ) . '" alt=""><input type="hidden" class="hlpb-image-id hlpb-review-image-id" name="' . esc_attr( $name . '[image_id]' ) . '" value="' . esc_attr( $image_id ) . '"><input type="hidden" class="hlpb-demo-image" name="' . esc_attr( $name . '[demo_image]' ) . '" value="' . esc_attr( $demo_image ) . '"><button type="button" class="button hlpb-select-image">' . esc_html__( 'Choose photo', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button-link hlpb-clear-image">' . esc_html__( 'Use demo photo', 'html-landing-page-builder-for-woocommerce' ) . '</button></div><div class="hlpb-review-text-fields">' . self::text_field( $name . '[image_alt]', __( 'Photo description (alt text)', 'html-landing-page-builder-for-woocommerce' ), $review['image_alt'] ) . '<div class="hlpb-field"><label>' . esc_html__( 'Stars', 'html-landing-page-builder-for-woocommerce' ) . '</label>' . self::render_star_select( $name . '[stars]', $review['stars'] ) . '</div>' . self::text_field( $name . '[title]', __( 'Review title', 'html-landing-page-builder-for-woocommerce' ), $review['title'] ) . '<div class="hlpb-field"><label>' . esc_html__( 'Review text', 'html-landing-page-builder-for-woocommerce' ) . '</label><textarea rows="4" name="' . esc_attr( $name . '[text]' ) . '">' . esc_textarea( $review['text'] ) . '</textarea></div>' . self::text_field( $name . '[reviewer]', __( 'Reviewer name', 'html-landing-page-builder-for-woocommerce' ), $review['reviewer'] ) . '<label class="hlpb-checkbox"><input type="checkbox" name="' . esc_attr( $name . '[verified]' ) . '" value="1" ' . checked( ! empty( $review['verified'] ), true, false ) . '> ' . esc_html__( 'Show verified buyer label', 'html-landing-page-builder-for-woocommerce' ) . '</label>' . self::text_field( $name . '[verified_text]', __( 'Verified buyer label', 'html-landing-page-builder-for-woocommerce' ), $review['verified_text'] ) . '</div></div></article>';
 		return $html;
 	}
 
@@ -1846,7 +1860,7 @@ final class HLPB_Landing_Builder {
 
 		$templates      = self::get_templates();
 		$template_slug  = isset( $_POST['hlpb_template'] ) ? sanitize_key( wp_unslash( $_POST['hlpb_template'] ) ) : self::get_template_slug( $post_id );
-		$input          = isset( $_POST['hlpb_sections'] ) ? wp_unslash( $_POST['hlpb_sections'] ) : array();
+		$input          = isset( $_POST['hlpb_sections'] ) ? wp_unslash( $_POST['hlpb_sections'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- The nested section data is validated by sanitize_sections() before persistence.
 		$previous_template_slug = self::get_template_slug( $post_id );
 		if ( isset( $templates[ $template_slug ] ) && $template_slug !== $previous_template_slug ) {
 			$sections    = self::get_default_sections( $template_slug );
@@ -1877,7 +1891,7 @@ final class HLPB_Landing_Builder {
 		}
 		update_post_meta( $post_id, self::META_KEY, $sections );
 		if ( isset( $_POST['hlpb_custom_css'] ) && is_scalar( $_POST['hlpb_custom_css'] ) ) {
-			$custom_css = wp_check_invalid_utf8( str_replace( "\0", '', (string) wp_unslash( $_POST['hlpb_custom_css'] ) ), true );
+			$custom_css = wp_check_invalid_utf8( str_replace( "\0", '', (string) wp_unslash( $_POST['hlpb_custom_css'] ) ), true ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- CSS is normalized here and filtered before it is emitted in the landing page.
 			update_post_meta( $post_id, self::CUSTOM_CSS_META_KEY, $custom_css );
 		}
 		if ( 'cozy-mix' === $template_slug ) {
@@ -1914,7 +1928,7 @@ final class HLPB_Landing_Builder {
 		if ( isset( $templates[ $template_slug ] ) ) {
 			update_post_meta( $post_id, self::TEMPLATE_KEY, $template_slug );
 		}
-		$seo_input = isset( $_POST['hlpb_seo'] ) && is_array( $_POST['hlpb_seo'] ) ? wp_unslash( $_POST['hlpb_seo'] ) : array();
+		$seo_input = isset( $_POST['hlpb_seo'] ) && is_array( $_POST['hlpb_seo'] ) ? wp_unslash( $_POST['hlpb_seo'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Each SEO field is sanitized with its field-specific sanitizer below.
 		$seo_defaults = self::get_default_seo_settings( $post_id, $template_slug );
 		$seo_title = isset( $seo_input['title'] ) ? sanitize_text_field( $seo_input['title'] ) : $seo_defaults['title'];
 		$seo_description = isset( $seo_input['description'] ) ? sanitize_textarea_field( $seo_input['description'] ) : $seo_defaults['description'];
@@ -2184,11 +2198,13 @@ final class HLPB_Landing_Builder {
 			}
 			$html .= ' fetchpriority="high">' . "\n";
 		}
+		// phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- This markup is the standalone static export, not a WordPress page template.
 		$html .= '<link rel="stylesheet" href="' . esc_url( $styles_url ) . '">' . "\n";
 		if ( $script_config ) {
 			$html .= '<script>window.HLPBDemo=' . $script_config . ";</script>\n";
 		}
 		if ( $script_path && is_file( self::resolve_template_file( $template_slug, $template['script'] ) ) ) {
+			// phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- This markup is the standalone static export, not a WordPress page template.
 			$html .= '<script defer src="' . esc_url( $asset_url . $script_path ) . '"></script>' . "\n";
 		}
 		if ( $has_cart ) {
@@ -2197,11 +2213,13 @@ final class HLPB_Landing_Builder {
 			if ( false !== $cart_css ) {
 				$html .= '<style id="hlpb-cart-inline-css">' . $cart_css . '</style>' . "\n";
 			} else {
+				// phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- Fallback asset reference for the standalone static export.
 				$html .= '<link rel="stylesheet" href="' . esc_url( $asset_url . 'hlpb-cart.css' ) . '?v=' . esc_attr( HLPB_LANDING_PAGE_BUILDER_VERSION ) . '">' . "\n";
 			}
 			if ( $cart_config_json ) {
 				$html .= '<script>window.HLPBCartData=' . $cart_config_json . ';</script>' . "\n";
 			}
+			// phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Cart behavior is loaded by the standalone static export.
 			$html .= '<script defer src="' . esc_url( $asset_url . 'hlpb-cart.js' ) . '?v=' . esc_attr( HLPB_LANDING_PAGE_BUILDER_VERSION ) . '"></script>' . "\n";
 		}
 		$custom_css = self::get_custom_css( $post_id );
@@ -2232,9 +2250,10 @@ final class HLPB_Landing_Builder {
 		if ( is_link( $index_path ) || is_link( $temp_path ) ) {
 			return new WP_Error( 'hlpb_export_html_link', __( 'The export HTML path cannot be a symbolic link.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
-		if ( false === file_put_contents( $temp_path, $html ) || ! rename( $temp_path, $index_path ) ) {
-			if ( file_exists( $temp_path ) ) {
-				wp_delete_file( $temp_path );
+		$filesystem = self::get_filesystem();
+		if ( ! $filesystem || ! $filesystem->put_contents( $temp_path, $html, FS_CHMOD_FILE ) || ! $filesystem->move( $temp_path, $index_path, true ) ) {
+			if ( $filesystem && $filesystem->exists( $temp_path ) ) {
+				$filesystem->delete( $temp_path );
 			}
 			return new WP_Error( 'hlpb_export_html', __( 'WordPress could not write index.html to the export folder.', 'html-landing-page-builder-for-woocommerce' ) );
 		}
@@ -2626,27 +2645,42 @@ final class HLPB_Landing_Builder {
 	 * @return void
 	 */
 	private static function remove_export_directory_contents( $directory ) {
-		if ( is_link( $directory ) || ! is_dir( $directory ) || ! self::path_is_inside_root( $directory ) ) {
+		$filesystem = self::get_filesystem();
+		if ( ! $filesystem || is_link( $directory ) || ! $filesystem->is_dir( $directory ) || ! self::path_is_inside_root( $directory ) ) {
 			return;
 		}
-		$entries = scandir( $directory );
+		$entries = $filesystem->dirlist( $directory, true, false );
 		if ( ! is_array( $entries ) ) {
 			return;
 		}
-		foreach ( $entries as $entry ) {
-			if ( '.' === $entry || '..' === $entry ) {
+		foreach ( $entries as $entry_name => $entry ) {
+			$name = isset( $entry['name'] ) ? $entry['name'] : $entry_name;
+			if ( '.' === $name || '..' === $name ) {
 				continue;
 			}
-			$path = trailingslashit( $directory ) . $entry;
-			if ( is_link( $path ) || is_file( $path ) ) {
-				wp_delete_file( $path );
-			} elseif ( is_dir( $path ) && self::path_is_inside_root( $path ) ) {
+			$path = trailingslashit( $directory ) . $name;
+			if ( is_link( $path ) || ( isset( $entry['type'] ) && 'f' === $entry['type'] ) || $filesystem->is_file( $path ) ) {
+				$filesystem->delete( $path );
+			} elseif ( ( ( isset( $entry['type'] ) && 'd' === $entry['type'] ) || $filesystem->is_dir( $path ) ) && self::path_is_inside_root( $path ) ) {
 				self::remove_export_directory_contents( $path );
 			}
 		}
-		if ( is_dir( $directory ) && ! is_link( $directory ) ) {
-			rmdir( $directory );
+		if ( $filesystem->is_dir( $directory ) && ! is_link( $directory ) ) {
+			$filesystem->rmdir( $directory );
 		}
+	}
+
+	/** Initialize the WordPress filesystem API for generated landing assets. */
+	private static function get_filesystem() {
+		global $wp_filesystem;
+
+		if ( ! function_exists( 'WP_Filesystem' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+		if ( ! $wp_filesystem && ! WP_Filesystem() ) {
+			return false;
+		}
+		return $wp_filesystem instanceof WP_Filesystem_Base ? $wp_filesystem : false;
 	}
 
 	/**
@@ -2718,7 +2752,14 @@ final class HLPB_Landing_Builder {
 
 		status_header( 200 );
 		header( 'Content-Type: text/html; charset=' . get_bloginfo( 'charset' ) );
-		readfile( $index_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_readfile -- Serve generated static HTML from the WordPress root.
+		$filesystem = self::get_filesystem();
+		$html = $filesystem ? $filesystem->get_contents( $index_path ) : false;
+		if ( false === $html ) {
+			status_header( 404 );
+			nocache_headers();
+			exit;
+		}
+		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- This is the plugin-generated standalone HTML export.
 		exit;
 	}
 
@@ -3431,7 +3472,12 @@ final class HLPB_Landing_Builder {
 			$popular_class = 4 === $card[0] ? ' popular-bundle' : '';
 			$badge = '' !== $card[3] ? '<span class="best-label">' . esc_html( $card[3] ) . '</span>' : '';
 			$saving = '' !== $card[2] ? '<em>' . esc_html( $card[2] ) . '</em>' : '';
-			$cards_markup .= '<button class="bundle-card' . esc_attr( $popular_class ) . '" data-bundle="' . absint( $card[0] ) . '" data-why-qty="' . absint( $card[0] ) . '" type="button">' . $badge . '<b>' . esc_html( sprintf( __( 'BUY %d', 'html-landing-page-builder-for-woocommerce' ), $card[0] ) ) . '</b><strong>' . esc_html( $card[1] ) . '</strong><small>' . esc_html__( 'per bundle', 'html-landing-page-builder-for-woocommerce' ) . '</small>' . $saving . '</button>';
+			$buy_label = sprintf(
+				// translators: %d: number of products in the displayed offer.
+				__( 'BUY %d', 'html-landing-page-builder-for-woocommerce' ),
+				$card[0]
+			);
+			$cards_markup .= '<button class="bundle-card' . esc_attr( $popular_class ) . '" data-bundle="' . absint( $card[0] ) . '" data-why-qty="' . absint( $card[0] ) . '" type="button">' . $badge . '<b>' . esc_html( $buy_label ) . '</b><strong>' . esc_html( $card[1] ) . '</strong><small>' . esc_html__( 'per bundle', 'html-landing-page-builder-for-woocommerce' ) . '</small>' . $saving . '</button>';
 		}
 		$stock_icons = self::get_icon_labels();
 		$stock_icons['fire'] = __( 'Fire', 'html-landing-page-builder-for-woocommerce' );
@@ -3469,12 +3515,22 @@ final class HLPB_Landing_Builder {
 				$image_url = $asset_url . 'images/' . self::safe_demo_image( $review['demo_image'], $template_slug );
 			}
 			$stars = min( 5, max( 1, absint( $review['stars'] ) ) );
+			$stars_label = sprintf(
+				// translators: %d: review rating on a five-star scale.
+				__( '%d out of 5 stars', 'html-landing-page-builder-for-woocommerce' ),
+				$stars
+			);
 			$avatar_class = 'avatar-' . ( ( $index % 3 ) + 1 );
 			$verified = ! empty( $review['verified'] ) && '' !== trim( $review['verified_text'] );
 			$verified_markup = $verified ? '<span style="color:' . esc_attr( $colors['verified_color'] ) . '">' . esc_html( $review['verified_text'] ) . '</span>' : '';
-			$cards .= '<article class="review-card" style="background-color:' . esc_attr( $colors['card_background'] ) . ';border-color:' . esc_attr( $colors['card_border_color'] ) . '"><img class="avatar ' . esc_attr( $avatar_class ) . '" src="' . esc_url( $image_url ) . '" width="184" height="152" alt="' . esc_attr( $review['image_alt'] ) . '" loading="lazy"><div><span class="stars" style="color:' . esc_attr( $colors['star_color'] ) . '" aria-label="' . esc_attr( sprintf( __( '%d out of 5 stars', 'html-landing-page-builder-for-woocommerce' ), $stars ) ) . '">' . esc_html( str_repeat( '★', $stars ) ) . '</span><b style="color:' . esc_attr( $colors['review_title_color'] ) . '">' . esc_html( $review['title'] ) . '</b><p style="color:' . esc_attr( $colors['review_text_color'] ) . '">' . nl2br( esc_html( $review['text'] ) ) . '</p><footer style="color:' . esc_attr( $colors['reviewer_color'] ) . '">' . esc_html( $review['reviewer'] ) . $verified_markup . '</footer></div></article>';
+			$cards .= '<article class="review-card" style="background-color:' . esc_attr( $colors['card_background'] ) . ';border-color:' . esc_attr( $colors['card_border_color'] ) . '"><img class="avatar ' . esc_attr( $avatar_class ) . '" src="' . esc_url( $image_url ) . '" width="184" height="152" alt="' . esc_attr( $review['image_alt'] ) . '" loading="lazy"><div><span class="stars" style="color:' . esc_attr( $colors['star_color'] ) . '" aria-label="' . esc_attr( $stars_label ) . '">' . esc_html( str_repeat( '★', $stars ) ) . '</span><b style="color:' . esc_attr( $colors['review_title_color'] ) . '">' . esc_html( $review['title'] ) . '</b><p style="color:' . esc_attr( $colors['review_text_color'] ) . '">' . nl2br( esc_html( $review['text'] ) ) . '</p><footer style="color:' . esc_attr( $colors['reviewer_color'] ) . '">' . esc_html( $review['reviewer'] ) . $verified_markup . '</footer></div></article>';
 		}
-		return '<section class="reviews-section" id="reviews" style="background-color:' . esc_attr( $colors['background'] ) . '"><div class="container"><div class="reviews-heading"><div><h2 style="color:' . esc_attr( $colors['heading_color'] ) . '">' . esc_html( $section['title'] ) . '</h2><p style="color:' . esc_attr( $colors['subtitle_color'] ) . '">' . esc_html( $section['subtitle'] ) . '</p></div><div class="review-score"><span class="stars" style="color:' . esc_attr( $colors['star_color'] ) . '" aria-label="' . esc_attr( sprintf( __( '%d out of 5 stars', 'html-landing-page-builder-for-woocommerce' ), $overall_stars ) ) . '">' . esc_html( $score_stars ) . '</span><b style="color:' . esc_attr( $colors['score_color'] ) . '">' . esc_html( $section['overall_score'] ) . '</b><small style="color:' . esc_attr( $colors['count_color'] ) . '">' . esc_html( $section['overall_count'] ) . '</small></div></div><div class="review-grid">' . $cards . '</div></div></section>';
+		$overall_stars_label = sprintf(
+			// translators: %d: overall rating on a five-star scale.
+			__( '%d out of 5 stars', 'html-landing-page-builder-for-woocommerce' ),
+			$overall_stars
+		);
+		return '<section class="reviews-section" id="reviews" style="background-color:' . esc_attr( $colors['background'] ) . '"><div class="container"><div class="reviews-heading"><div><h2 style="color:' . esc_attr( $colors['heading_color'] ) . '">' . esc_html( $section['title'] ) . '</h2><p style="color:' . esc_attr( $colors['subtitle_color'] ) . '">' . esc_html( $section['subtitle'] ) . '</p></div><div class="review-score"><span class="stars" style="color:' . esc_attr( $colors['star_color'] ) . '" aria-label="' . esc_attr( $overall_stars_label ) . '">' . esc_html( $score_stars ) . '</span><b style="color:' . esc_attr( $colors['score_color'] ) . '">' . esc_html( $section['overall_score'] ) . '</b><small style="color:' . esc_attr( $colors['count_color'] ) . '">' . esc_html( $section['overall_count'] ) . '</small></div></div><div class="review-grid">' . $cards . '</div></div></section>';
 	}
 
 	/** Render the editable FAQ section. */

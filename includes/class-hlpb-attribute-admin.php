@@ -72,6 +72,7 @@ final class HLPB_Attribute_Admin {
 				continue;
 			}
 
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce defines this public filter name.
 			$name        = apply_filters( 'woocommerce_variation_option_name', $term->name, $term, $attribute, $product );
 			$is_active   = $selected === $term->slug;
 			$button_class = 'hlpb-variation-option' . ( $is_active ? ' is-selected' : '' );
@@ -152,7 +153,7 @@ final class HLPB_Attribute_Admin {
 	 * @return array<string, string>
 	 */
 	public static function add_attribute_types( $types ) {
-		$attribute_editor = isset( $_GET['page'] ) && is_string( $_GET['page'] ) && 'product_attributes' === sanitize_key( wp_unslash( $_GET['page'] ) );
+		$attribute_editor = isset( $_GET['page'] ) && is_string( $_GET['page'] ) && 'product_attributes' === sanitize_key( wp_unslash( $_GET['page'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only admin-screen routing condition.
 		if ( ! $attribute_editor ) {
 			return $types;
 		}
@@ -281,7 +282,7 @@ final class HLPB_Attribute_Admin {
 	 */
 	public static function enqueue_admin_assets( $hook ) {
 		$screen       = get_current_screen();
-		$attribute_ui = isset( $_GET['page'] ) && 'product_attributes' === sanitize_key( wp_unslash( $_GET['page'] ) );
+		$attribute_ui = isset( $_GET['page'] ) && 'product_attributes' === sanitize_key( wp_unslash( $_GET['page'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only admin-screen asset routing condition.
 		$taxonomy_ui  = $screen && ! empty( $screen->taxonomy ) && 0 === strpos( $screen->taxonomy, 'pa_' );
 		if ( ! $attribute_ui && ! $taxonomy_ui ) {
 			return;

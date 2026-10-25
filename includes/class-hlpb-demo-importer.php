@@ -84,6 +84,7 @@ final class HLPB_Demo_Importer {
 				'importing'     => __( 'Importing product images and variations…', 'html-landing-page-builder-for-woocommerce' ),
 				'finishing'     => __( 'WooCommerce is still preparing product images and galleries…', 'html-landing-page-builder-for-woocommerce' ),
 				'longWait'      => __( 'This is taking longer than usual. Keep this window open and wait for the result before starting another import.', 'html-landing-page-builder-for-woocommerce' ),
+				// translators: %d: HTTP response status code returned by WordPress.
 				'invalidResponse' => __( 'The server returned an unexpected response (%d). Check the PHP error log for details.', 'html-landing-page-builder-for-woocommerce' ),
 				'openLanding'   => __( 'Open demo landing page', 'html-landing-page-builder-for-woocommerce' ),
 				'openFieldNotes' => __( 'Open Field Notes apparel demo', 'html-landing-page-builder-for-woocommerce' ),
@@ -272,7 +273,7 @@ final class HLPB_Demo_Importer {
 			wp_raise_memory_limit( 'admin' );
 		}
 		if ( function_exists( 'set_time_limit' ) ) {
-			@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, Squiz.PHP.DiscouragedFunctions.Discouraged -- Keep long demo imports from timing out on hosts with a configurable PHP execution limit.
 		}
 	}
 
@@ -281,7 +282,7 @@ final class HLPB_Demo_Importer {
 		try {
 			return self::import_package();
 		} catch ( Throwable $error ) {
-			error_log( 'HLPB demo import failed: ' . $error->getMessage() );
+		wc_get_logger()->error( $error->getMessage(), array( 'source' => 'html-landing-page-builder' ) );
 			return new WP_Error(
 				'hlpb_demo_import_exception',
 				__( 'The demo import stopped unexpectedly. Check the PHP error log before retrying.', 'html-landing-page-builder-for-woocommerce' )
@@ -378,13 +379,19 @@ final class HLPB_Demo_Importer {
 	private static function format_import_report( $counts ) {
 		$counts = wp_parse_args( $counts, self::empty_counts() );
 		return array(
+			/* translators: 1: number of products created; 2: number of existing products updated. */
 			sprintf( __( 'Products: %1$d created, %2$d updated.', 'html-landing-page-builder-for-woocommerce' ), absint( $counts['products_created'] ), absint( $counts['products_updated'] ) ),
+			/* translators: 1: number of variations created; 2: number of existing variations updated. */
 			sprintf( __( 'Variations: %1$d created, %2$d updated.', 'html-landing-page-builder-for-woocommerce' ), absint( $counts['variations_created'] ), absint( $counts['variations_updated'] ) ),
+			/* translators: 1: number of attributes created; 2: number of existing attributes refreshed. */
 			sprintf( __( 'Attributes: %1$d created, %2$d refreshed.', 'html-landing-page-builder-for-woocommerce' ), absint( $counts['attributes_created'] ), absint( $counts['attributes_updated'] ) ),
+			/* translators: 1: number of attribute terms created; 2: number of existing attribute terms refreshed. */
 			sprintf( __( 'Attribute terms: %1$d created, %2$d refreshed.', 'html-landing-page-builder-for-woocommerce' ), absint( $counts['terms_created'] ), absint( $counts['terms_updated'] ) ),
+			/* translators: 1: number of media files copied; 2: number of existing media files reused. */
 			sprintf( __( 'Media: %1$d copied, %2$d reused.', 'html-landing-page-builder-for-woocommerce' ), absint( $counts['media_created'] ), absint( $counts['media_reused'] ) ),
 		);
 		if ( ! empty( $counts['terms_protected'] ) ) {
+			// translators: %d: number of demo terms retained because other products use them.
 			$report[] = sprintf( __( 'Terms used by other products were left unchanged: %d.', 'html-landing-page-builder-for-woocommerce' ), absint( $counts['terms_protected'] ) );
 		}
 	}
@@ -415,7 +422,7 @@ final class HLPB_Demo_Importer {
 				'no_found_rows'          => true,
 				'update_post_meta_cache'  => false,
 				'update_post_term_cache'  => false,
-				'meta_key'               => $meta_key,
+				'meta_key'               => $meta_key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Looks up only demo records marked as owned by this importer.
 				'meta_compare'           => 'EXISTS',
 			)
 		);
@@ -598,13 +605,19 @@ final class HLPB_Demo_Importer {
 			}
 		}
 		$report = array(
+			// translators: %d: number of demo products deleted.
 			sprintf( __( 'Products deleted: %d.', 'html-landing-page-builder-for-woocommerce' ), absint( $counts['products'] ) ),
+			// translators: %d: number of product variations deleted.
 			sprintf( __( 'Variations deleted: %d.', 'html-landing-page-builder-for-woocommerce' ), absint( $counts['variations'] ) ),
+			// translators: %d: number of attribute terms deleted.
 			sprintf( __( 'Attribute terms deleted: %d.', 'html-landing-page-builder-for-woocommerce' ), absint( $counts['terms'] ) ),
+			// translators: %d: number of product attributes deleted.
 			sprintf( __( 'Attributes deleted: %d.', 'html-landing-page-builder-for-woocommerce' ), absint( $counts['attributes'] ) ),
+			// translators: %d: number of unused imported media files deleted.
 			sprintf( __( 'Unused imported media deleted: %d.', 'html-landing-page-builder-for-woocommerce' ), absint( $counts['media'] ) ),
 		);
 		if ( $counts['skipped'] ) {
+			// translators: %d: number of imported records kept or not deleted.
 			$report[] = sprintf( __( 'Items kept for safety or because deletion failed: %d. This includes media referenced elsewhere and attributes or terms that still have content assigned.', 'html-landing-page-builder-for-woocommerce' ), absint( $counts['skipped'] ) );
 		} elseif ( ! $counts['products'] && ! $counts['attributes'] && ! $counts['media'] ) {
 			$report[] = __( 'No marked demo data was found.', 'html-landing-page-builder-for-woocommerce' );
@@ -620,6 +633,7 @@ final class HLPB_Demo_Importer {
 			return true;
 		}
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Read-only safety check prevents deleting media referenced by arbitrary metadata.
 		$exact_meta = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT meta_id FROM {$wpdb->postmeta} WHERE meta_value = %s LIMIT 1",
@@ -629,6 +643,7 @@ final class HLPB_Demo_Importer {
 		if ( $exact_meta ) {
 			return true;
 		}
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Read-only safety check checks product gallery references before deleting an attachment.
 		$gallery_meta = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT meta_id FROM {$wpdb->postmeta} WHERE meta_key = '_product_image_gallery' AND FIND_IN_SET(%s, meta_value) > 0 LIMIT 1",
@@ -638,6 +653,7 @@ final class HLPB_Demo_Importer {
 		if ( $gallery_meta ) {
 			return true;
 		}
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Read-only safety check prevents deleting media referenced by term metadata.
 		$term_meta = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT meta_id FROM {$wpdb->termmeta} WHERE meta_value = %s LIMIT 1",
@@ -650,6 +666,7 @@ final class HLPB_Demo_Importer {
 
 		$image_url = wp_get_attachment_url( $media_id );
 		if ( $image_url ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Read-only safety check prevents deleting media referenced in store content.
 			$content_match = $wpdb->get_var(
 				$wpdb->prepare(
 					"SELECT ID FROM {$wpdb->posts} WHERE post_content LIKE %s AND post_type <> 'attachment' LIMIT 1",
@@ -707,8 +724,8 @@ final class HLPB_Demo_Importer {
 						'taxonomy'   => $taxonomy,
 						'hide_empty' => false,
 						'number'     => 1,
-						'meta_key'   => self::TERM_META,
-						'meta_value' => $term_key,
+				'meta_key'   => self::TERM_META, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Import lookup is narrowly scoped to this plugin-owned term marker.
+				'meta_value' => $term_key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Import lookup is narrowly scoped to this plugin-owned term marker.
 					)
 				);
 				if ( is_wp_error( $owned_terms ) ) {
@@ -1276,14 +1293,21 @@ final class HLPB_Demo_Importer {
 				'hierarchical'          => false,
 				'update_count_callback' => '_update_post_term_count',
 				'labels'                => array(
-					'name'              => sprintf( __( 'Product %s', 'woocommerce' ), $label ),
+				// translators: %s: product attribute label, such as Color or Size.
+				'name'              => sprintf( __( 'Product %s', 'html-landing-page-builder-for-woocommerce' ), $label ),
 					'singular_name'     => $label,
-					'search_items'      => sprintf( __( 'Search %s', 'woocommerce' ), $label ),
-					'all_items'         => sprintf( __( 'All %s', 'woocommerce' ), $label ),
-					'edit_item'         => sprintf( __( 'Edit %s', 'woocommerce' ), $label ),
-					'update_item'       => sprintf( __( 'Update %s', 'woocommerce' ), $label ),
-					'add_new_item'      => sprintf( __( 'Add new %s', 'woocommerce' ), $label ),
-					'new_item_name'     => sprintf( __( 'New %s', 'woocommerce' ), $label ),
+					// translators: %s: product attribute label, such as Color or Size.
+					'search_items'      => sprintf( __( 'Search %s', 'html-landing-page-builder-for-woocommerce' ), $label ),
+					// translators: %s: product attribute label, such as Color or Size.
+					'all_items'         => sprintf( __( 'All %s', 'html-landing-page-builder-for-woocommerce' ), $label ),
+					// translators: %s: product attribute label, such as Color or Size.
+					'edit_item'         => sprintf( __( 'Edit %s', 'html-landing-page-builder-for-woocommerce' ), $label ),
+					// translators: %s: product attribute label, such as Color or Size.
+					'update_item'       => sprintf( __( 'Update %s', 'html-landing-page-builder-for-woocommerce' ), $label ),
+					// translators: %s: product attribute label, such as Color or Size.
+					'add_new_item'      => sprintf( __( 'Add new %s', 'html-landing-page-builder-for-woocommerce' ), $label ),
+					// translators: %s: product attribute label, such as Color or Size.
+					'new_item_name'     => sprintf( __( 'New %s', 'html-landing-page-builder-for-woocommerce' ), $label ),
 					'menu_name'         => $label,
 				),
 				'show_ui'               => true,
@@ -1301,13 +1325,13 @@ final class HLPB_Demo_Importer {
 					'assign_terms' => 'assign_product_terms',
 				),
 			);
-			$taxonomy_data = apply_filters( "woocommerce_taxonomy_args_{$taxonomy}", $taxonomy_data );
-			register_taxonomy( $taxonomy, apply_filters( "woocommerce_taxonomy_objects_{$taxonomy}", array( 'product' ) ), $taxonomy_data );
-			global $wc_product_attributes;
+			$taxonomy_data = apply_filters( "woocommerce_taxonomy_args_{$taxonomy}", $taxonomy_data ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce requires this dynamic taxonomy filter.
+			register_taxonomy( $taxonomy, apply_filters( "woocommerce_taxonomy_objects_{$taxonomy}", array( 'product' ) ), $taxonomy_data ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce requires this dynamic taxonomy filter.
+			global $wc_product_attributes; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- WooCommerce reads this legacy global for product attributes.
 			if ( ! is_array( $wc_product_attributes ) ) {
-				$wc_product_attributes = array();
+				$wc_product_attributes = array(); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- WooCommerce requires this legacy global name.
 			}
-			$wc_product_attributes[ $taxonomy ] = $attribute_data;
+			$wc_product_attributes[ $taxonomy ] = $attribute_data; // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- WooCommerce requires this legacy global name.
 		}
 		return array(
 			'id'       => absint( $result ),
@@ -1329,8 +1353,8 @@ final class HLPB_Demo_Importer {
 				'post_status'    => 'inherit',
 				'posts_per_page' => 1,
 				'fields'         => 'ids',
-				'meta_key'       => self::MEDIA_META,
-				'meta_value'     => $media_key,
+				'meta_key'       => self::MEDIA_META, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Reuses media attachments imported by this plugin.
+				'meta_value'     => $media_key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Reuses media attachments imported by this plugin.
 			)
 		);
 		if ( ! empty( $existing[0] ) && wp_attachment_is_image( $existing[0] ) ) {
@@ -1412,8 +1436,8 @@ final class HLPB_Demo_Importer {
 				'post_status'    => array( 'publish', 'draft', 'pending', 'private', 'future' ),
 				'posts_per_page' => 1,
 				'fields'         => 'ids',
-				'meta_key'       => self::PRODUCT_META,
-				'meta_value'     => $source_slug,
+				'meta_key'       => self::PRODUCT_META, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Finds only product records owned by this demo importer.
+				'meta_value'     => $source_slug, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Finds only product records owned by this demo importer.
 			)
 		);
 		$is_new = empty( $existing_ids[0] );

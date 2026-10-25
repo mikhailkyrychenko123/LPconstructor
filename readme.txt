@@ -3,7 +3,7 @@ Contributors: mikhailkyrychenko
 Donate link: https://www.privat24.ua/send/k4hk0
 Tags: woocommerce, landing page, product bundles, mix and match, page builder
 Requires at least: 6.2
-Tested up to: 7.1.3
+Tested up to: 7.1
 Requires PHP: 7.4
 Stable tag: 0.6.8
 License: GPLv2 or later
