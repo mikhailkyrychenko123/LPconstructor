@@ -404,6 +404,21 @@ final class HLPB_Landing_Builder {
 	}
 
 	/**
+	 * Read the stylesheet belonging to a registered landing page template.
+	 *
+	 * @param string $slug Template slug.
+	 * @return string
+	 */
+	public static function get_template_stylesheet_content( $slug ) {
+		$template = self::get_template_info( $slug );
+		if ( ! $template || empty( $template['styles_path'] ) || ! is_file( $template['styles_path'] ) || ! is_readable( $template['styles_path'] ) ) {
+			return '';
+		}
+		$content = file_get_contents( $template['styles_path'] );
+		return is_string( $content ) ? $content : '';
+	}
+
+	/**
 	 * Select the saved template for a landing page.
 	 *
 	 * @param int $post_id Landing page ID.
