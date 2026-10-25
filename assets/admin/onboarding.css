@@ -3,9 +3,9 @@
 
 /* Responsive activation welcome artwork and clearer performance/compatibility details. */
 .hlpb-onboarding-modal{grid-template-columns:minmax(0,.84fr) minmax(0,1fr);width:min(1040px,100%)}
-.hlpb-onboarding-brand{min-height:600px;padding:0;background:#0b2a43}
+.hlpb-onboarding-brand{min-height:600px;padding:0;background:#fff}
 .hlpb-onboarding-brand:before,.hlpb-onboarding-brand:after{display:none}
-.hlpb-onboarding-brand .hlpb-onboarding-brand-desktop{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:none}
+.hlpb-onboarding-brand .hlpb-onboarding-brand-desktop{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;filter:none}
 .hlpb-onboarding-brand-mobile{display:none}
 .hlpb-onboarding-content{padding:34px 38px 22px}
 .hlpb-onboarding-points{gap:8px;margin-bottom:12px}
@@ -25,3 +25,4 @@
 	.hlpb-onboarding-points li{font-size:12px}
 	.hlpb-onboarding-footnote{margin-bottom:14px}
 }
+.hlpb-onboarding-landing{display:block;width:fit-content;max-width:100%;margin-top:8px}

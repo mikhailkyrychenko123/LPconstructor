@@ -3055,16 +3055,12 @@ final class HLPB_Landing_Builder {
 	private static function migrate_template_sections( $sections, $template_slug, $post_id = 0 ) {
 		if ( 'cozy-mix' === $template_slug ) {
 			$has_text_image = false;
-			$has_calculator = false;
 			foreach ( $sections as $section ) {
 				if ( ! is_array( $section ) || ! isset( $section['type'] ) ) {
 					continue;
 				}
 				if ( 'text_image' === $section['type'] ) {
 					$has_text_image = true;
-				}
-				if ( 'cozy_calculator' === $section['type'] ) {
-					$has_calculator = true;
 				}
 			}
 			if ( ! $has_text_image && $post_id && ! get_post_meta( $post_id, self::COZY_TEXT_IMAGE_MIGRATION_META, true ) ) {
@@ -3084,22 +3080,6 @@ final class HLPB_Landing_Builder {
 				}
 				unset( $text_image );
 				array_splice( $sections, $insert_at, 0, $text_images );
-			}
-			if ( ! $has_calculator ) {
-				foreach ( self::get_default_sections( 'cozy-mix' ) as $default_section ) {
-					if ( isset( $default_section['type'] ) && 'cozy_calculator' === $default_section['type'] ) {
-						$default_section['id'] = 'cozy_calculator_migrated';
-						$insert_at = count( $sections );
-						foreach ( $sections as $index => $existing_section ) {
-							if ( is_array( $existing_section ) && isset( $existing_section['type'] ) && 'reviews' === $existing_section['type'] ) {
-								$insert_at = $index;
-								break;
-							}
-						}
-						array_splice( $sections, $insert_at, 0, array( $default_section ) );
-						break;
-					}
-				}
 			}
 			foreach ( $sections as $index => &$section ) {
 				if ( is_array( $section ) ) {

@@ -106,7 +106,7 @@ final class HLPB_Demo_Importer {
 		$promo_image_url   = HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/onboarding-promo.webp';
 		echo '<div class="hlpb-onboarding-overlay" role="presentation"><section class="hlpb-onboarding-modal" role="dialog" aria-modal="true" aria-labelledby="hlpb-onboarding-title" aria-describedby="hlpb-onboarding-copy">';
 		echo '<div class="hlpb-onboarding-brand"><img class="hlpb-onboarding-brand-desktop" src="' . esc_url( $promo_image_url ) . '" width="876" height="1080" alt="' . esc_attr__( 'BuyGet landing page builder sales toolkit', 'html-landing-page-builder-for-woocommerce' ) . '"><div class="hlpb-onboarding-brand-mobile"><img src="' . esc_url( $logo_url ) . '" width="72" height="72" alt="' . esc_attr__( 'BuyGet logo', 'html-landing-page-builder-for-woocommerce' ) . '"><span>' . esc_html__( 'HTML Landing Page Builder for WooCommerce', 'html-landing-page-builder-for-woocommerce' ) . '</span></div></div>';
-		echo '<div class="hlpb-onboarding-content"><p class="hlpb-onboarding-eyebrow">' . esc_html__( 'WELCOME TO BUYGET', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		echo '<div class="hlpb-onboarding-content"><p class="hlpb-onboarding-eyebrow">' . esc_html__( 'HTML Landing Page Builder for WooCommerce', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
 		echo '<h1 id="hlpb-onboarding-title">' . esc_html__( 'Turn your WooCommerce products into a landing page that sells.', 'html-landing-page-builder-for-woocommerce' ) . '</h1>';
 		echo '<p id="hlpb-onboarding-copy" class="hlpb-onboarding-intro">' . esc_html__( 'Start with a ready-made shop: sample products, colour and size options, bundle offers, and two published demo landing pages.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
 		echo '<ul class="hlpb-onboarding-points"><li>' . esc_html__( 'Three isolated demo products with variations and galleries', 'html-landing-page-builder-for-woocommerce' ) . '</li><li>' . esc_html__( 'Buy More, Mix & Match, and Cozy Bundle examples', 'html-landing-page-builder-for-woocommerce' ) . '</li><li>' . esc_html__( 'Two ready-to-use demo pages: /promo/lp-demo/ and /promo/field-notes-demo/', 'html-landing-page-builder-for-woocommerce' ) . '</li><li>' . esc_html__( 'Static landing pages built to target a 100/100 Google PageSpeed score*', 'html-landing-page-builder-for-woocommerce' ) . '</li><li>' . esc_html__( 'Recommended with Caddy and CheckoutWC — fully compatible with both', 'html-landing-page-builder-for-woocommerce' ) . '</li></ul>';
@@ -905,38 +905,23 @@ final class HLPB_Demo_Importer {
 			array_filter(
 				$sections,
 				static function ( $section ) {
-					return ! is_array( $section ) || ! isset( $section['type'] ) || 'limited_stock' !== $section['type'];
+					if ( ! is_array( $section ) || ! isset( $section['type'] ) ) {
+						return true;
+					}
+
+					if ( 'limited_stock' === $section['type'] ) {
+						return false;
+					}
+
+					// Remove only calculator sections seeded by older demo layouts/imports.
+					$section_id = isset( $section['id'] ) ? sanitize_key( $section['id'] ) : '';
+					return ! ( 'cozy_calculator' === $section['type'] && in_array( $section_id, array( 'section_8', 'cozy_calculator_demo', 'cozy_calculator_migrated' ), true ) );
 				}
 			)
 		);
 		$sections_changed = count( $filtered_sections ) !== count( $sections );
 		if ( $sections_changed ) {
 			$sections = $filtered_sections;
-		}
-		$has_cozy_calculator = false;
-		foreach ( $sections as $section ) {
-			if ( isset( $section['type'] ) && 'cozy_calculator' === $section['type'] ) {
-				$has_cozy_calculator = true;
-				break;
-			}
-		}
-		if ( ! $has_cozy_calculator ) {
-			$defaults = HLPB_Landing_Builder::get_default_sections( 'cozy-mix' );
-			foreach ( $defaults as $default_section ) {
-				if ( isset( $default_section['type'] ) && 'cozy_calculator' === $default_section['type'] ) {
-					$default_section['id'] = 'cozy_calculator_demo';
-					$insert_at = count( $sections );
-					foreach ( $sections as $index => $existing_section ) {
-						if ( isset( $existing_section['type'] ) && 'reviews' === $existing_section['type'] ) {
-							$insert_at = $index;
-							break;
-						}
-					}
-					array_splice( $sections, $insert_at, 0, array( $default_section ) );
-					$sections_changed = true;
-					break;
-				}
-			}
 		}
 		foreach ( $sections as $index => &$section ) {
 			if ( ! is_array( $section ) ) {
@@ -1040,6 +1025,32 @@ final class HLPB_Demo_Importer {
 			if ( empty( $sections ) ) {
 				return new WP_Error( 'hlpb_field_notes_sections_missing', __( 'The Field Notes template does not contain a usable set of editable sections.', 'html-landing-page-builder-for-woocommerce' ) );
 			}
+			update_post_meta( $landing_id, HLPB_Landing_Builder::META_KEY, $sections );
+		}
+
+		// Remove the calculator that shipped in the original Field Notes demo layout,
+		// while preserving calculator sections a site owner added later in the editor.
+		$without_seeded_calculator = array_values(
+			array_filter(
+				$sections,
+				static function ( $section ) {
+					if ( ! is_array( $section ) || 'fn_calculator' !== ( $section['type'] ?? '' ) ) {
+						return true;
+					}
+
+					$section_id = isset( $section['id'] ) ? sanitize_key( $section['id'] ) : '';
+					return 'section_8' !== $section_id;
+				}
+			)
+		);
+		if ( count( $without_seeded_calculator ) !== count( $sections ) ) {
+			$sections = $without_seeded_calculator;
+			foreach ( $sections as $index => &$section ) {
+				if ( is_array( $section ) ) {
+					$section['order'] = $index + 1;
+				}
+			}
+			unset( $section );
 			update_post_meta( $landing_id, HLPB_Landing_Builder::META_KEY, $sections );
 		}
 
