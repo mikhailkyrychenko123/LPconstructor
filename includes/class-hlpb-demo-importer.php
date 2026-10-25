@@ -103,7 +103,7 @@ final class HLPB_Demo_Importer {
 
 		$woocommerce_ready = function_exists( 'wc_create_attribute' ) && class_exists( 'WC_Product' );
 		$logo_url          = HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/buyget-icon.png';
-		$promo_image_url   = HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/onboarding-promo.png';
+		$promo_image_url   = HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/onboarding-promo.webp';
 		echo '<div class="hlpb-onboarding-overlay" role="presentation"><section class="hlpb-onboarding-modal" role="dialog" aria-modal="true" aria-labelledby="hlpb-onboarding-title" aria-describedby="hlpb-onboarding-copy">';
 		echo '<div class="hlpb-onboarding-brand"><img class="hlpb-onboarding-brand-desktop" src="' . esc_url( $promo_image_url ) . '" width="876" height="1080" alt="' . esc_attr__( 'BuyGet landing page builder sales toolkit', 'html-landing-page-builder-for-woocommerce' ) . '"><div class="hlpb-onboarding-brand-mobile"><img src="' . esc_url( $logo_url ) . '" width="72" height="72" alt="' . esc_attr__( 'BuyGet logo', 'html-landing-page-builder-for-woocommerce' ) . '"><span>' . esc_html__( 'HTML Landing Page Builder for WooCommerce', 'html-landing-page-builder-for-woocommerce' ) . '</span></div></div>';
 		echo '<div class="hlpb-onboarding-content"><p class="hlpb-onboarding-eyebrow">' . esc_html__( 'WELCOME TO BUYGET', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
