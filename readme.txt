@@ -49,13 +49,13 @@ The published page keeps its offer and cart interactions connected to WooCommerc
 == Screenshots ==
 
 1. Landing page editor showing template selection, URL folder settings, and section controls.
-1. Edit a Text + Image section, including its copy, image position, text colour, and feature captions.
-1. Configure the WooCommerce cart section with product offers, variation choices, and display settings.
-1. Manage back-in-stock subscribers, review delivery status, and edit the notification email template.
-1. Product landing page showing variation gallery, live stock status, and the back-in-stock signup form.
-1. Set quantity-specific offer prices, badge text, gifts, and gift discounts.
-1. Field Notes landing page with product gallery, bundle choices, gift options, and variation selectors.
-1. WooCommerce checkout order summary showing offer badges and discounted item prices.
+2. Edit a Text + Image section, including its copy, image position, text colour, and feature captions.
+3. Configure the WooCommerce cart section with product offers, variation choices, and display settings.
+4. Manage back-in-stock subscribers, review delivery status, and edit the notification email template.
+5. Product landing page showing variation gallery, live stock status, and the back-in-stock signup form.
+6. Set quantity-specific offer prices, badge text, gifts, and gift discounts.
+7. Field Notes landing page with product gallery, bundle choices, gift options, and variation selectors.
+8. WooCommerce checkout order summary showing offer badges and discounted item prices.
 
 == Requirements ==
 
