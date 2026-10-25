@@ -80,6 +80,15 @@
 .cart .trust-item span { font-size: 16px; line-height: 1.35; }
 .cart .paymarks { flex-wrap: wrap; gap: 8px 14px; font-size: 16px; line-height: 1.35; }
 .cart .paymarks b { font-size: 16px; }
+#shop.hlpb-cart-live .hlpb-gift-box .sock-gift{display:grid;grid-template-columns:36px minmax(0,1fr) auto minmax(64px,96px);align-items:center;gap:12px;min-height:82px;padding:10px 12px;border:1px solid #d9d6cf;background:#f7f6f2;color:#111;overflow:visible}
+#shop.hlpb-cart-live .hlpb-gift-box .sock-gift .gift-icon{display:block;flex:none;width:30px;height:30px;color:#111}
+#shop.hlpb-cart-live .hlpb-gift-box .hlpb-gift-copy{display:grid;gap:3px;min-width:0;line-height:1.35;overflow-wrap:anywhere}
+#shop.hlpb-cart-live .hlpb-gift-box .hlpb-gift-copy strong{display:block;color:#111;font-size:14px;line-height:1.3}
+#shop.hlpb-cart-live .hlpb-gift-box .hlpb-gift-copy span{display:block;color:#57534d;font-size:12px;line-height:1.4}
+#shop.hlpb-cart-live .hlpb-gift-box .hlpb-gift-toggle{max-width:none;white-space:nowrap;color:#111;font-size:12px}
+#shop.hlpb-cart-live .hlpb-gift-box .hlpb-gift-toggle input{accent-color:#111}
+#shop.hlpb-cart-live .hlpb-gift-box .sock-gift .hlpb-gift-photo{display:block;box-sizing:border-box;flex:none;width:100%;max-width:96px;height:60px;margin:0;object-fit:contain;background:#fff;border:1px solid #e4e1da;border-radius:2px}
+#shop.hlpb-cart-live .hlpb-gift-box .hlpb-gift-fields{border-color:#d9d6cf;border-radius:2px;background:#fff}
 @media (min-width: 701px) and (max-width: 950px) {
   .nav { grid-template-columns: auto minmax(0, 1fr); gap: 18px; }
   .links { justify-content: flex-end; gap: clamp(10px, 1.4vw, 16px); }
@@ -93,6 +102,12 @@
   .cart .variant-sizes .size { font-size: 12px; }
   .cart .paymarks { font-size: 14px; }
   .cart .paymarks b { font-size: 14px; }
+  #shop.hlpb-cart-live .hlpb-gift-box .sock-gift{grid-template-columns:30px minmax(0,1fr) auto;gap:8px;min-height:68px;padding:8px}
+  #shop.hlpb-cart-live .hlpb-gift-box .sock-gift .gift-icon{width:26px;height:26px}
+  #shop.hlpb-cart-live .hlpb-gift-box .hlpb-gift-copy strong{font-size:12px}
+  #shop.hlpb-cart-live .hlpb-gift-box .hlpb-gift-copy span{font-size:11px}
+  #shop.hlpb-cart-live .hlpb-gift-box .hlpb-gift-toggle{font-size:11px}
+  #shop.hlpb-cart-live .hlpb-gift-box .sock-gift .hlpb-gift-photo{grid-column:2/4;grid-row:2;justify-self:end;width:72px;max-width:100%;height:46px}
 }
 
 
