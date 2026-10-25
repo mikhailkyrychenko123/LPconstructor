@@ -909,8 +909,44 @@ final class HLPB_Demo_Importer {
 				}
 			)
 		);
-		if ( count( $filtered_sections ) !== count( $sections ) ) {
+		$sections_changed = count( $filtered_sections ) !== count( $sections );
+		if ( $sections_changed ) {
 			$sections = $filtered_sections;
+		}
+		$has_cozy_calculator = false;
+		foreach ( $sections as $section ) {
+			if ( isset( $section['type'] ) && 'cozy_calculator' === $section['type'] ) {
+				$has_cozy_calculator = true;
+				break;
+			}
+		}
+		if ( ! $has_cozy_calculator ) {
+			$defaults = HLPB_Landing_Builder::get_default_sections( 'cozy-mix' );
+			foreach ( $defaults as $default_section ) {
+				if ( isset( $default_section['type'] ) && 'cozy_calculator' === $default_section['type'] ) {
+					$default_section['id'] = 'cozy_calculator_demo';
+					$insert_at = count( $sections );
+					foreach ( $sections as $index => $existing_section ) {
+						if ( isset( $existing_section['type'] ) && 'reviews' === $existing_section['type'] ) {
+							$insert_at = $index;
+							break;
+						}
+					}
+					array_splice( $sections, $insert_at, 0, array( $default_section ) );
+					$sections_changed = true;
+					break;
+				}
+			}
+		}
+		foreach ( $sections as $index => &$section ) {
+			if ( ! is_array( $section ) ) {
+				continue;
+			}
+			$section['order'] = $index + 1;
+		}
+		unset( $section );
+		$stored_sections = get_post_meta( $landing_id, HLPB_Landing_Builder::META_KEY, true );
+		if ( $sections_changed || $sections !== $stored_sections ) {
 			update_post_meta( $landing_id, HLPB_Landing_Builder::META_KEY, $sections );
 		}
 		foreach ( $sections as $section ) {
@@ -1411,6 +1447,9 @@ final class HLPB_Demo_Importer {
 		$variation->set_parent_id( absint( $product_id ) );
 		$variation->set_status( 'publish' );
 		$variation->set_attributes( $variation_attributes );
+		if ( isset( $data['description'] ) ) {
+			$variation->set_description( wp_kses_post( $data['description'] ) );
+		}
 		$base_sku = isset( $product_data['sku'] ) ? $product_data['sku'] : $source_slug;
 		$variation->set_sku( self::make_unique_sku( $base_sku, 'landing-demo-' . implode( '-', array_values( $data['attributes'] ) ), $variation->get_id() ) );
 		$price = wc_format_decimal( isset( $data['price'] ) ? $data['price'] : ( isset( $product_data['price'] ) ? $product_data['price'] : '' ) );

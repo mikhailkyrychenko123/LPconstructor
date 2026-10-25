@@ -6,6 +6,7 @@
   "script": "assets/js/site.js",
   "assets": "assets",
   "default_image": "texture-closeup-480.webp",
+  "single_instance_sections": ["cozy_calculator"],
   "text_image_template": "partials/text-image.html",
   "default_layout": [
     "header",
@@ -15,6 +16,7 @@
     "text_image",
     "text_image",
     "text_image",
+    "cozy_calculator",
     "reviews",
     "faq",
     "why",
@@ -25,6 +27,7 @@
     "offer_line": "~<div class=\"announcement\">.*?</div>~s",
     "cart_section": "~<section class=\"hero container\" id=\"shop\">.*?</section>~s",
     "mix_it": "~<section class=\"mix-band\">.*?</section>~s",
+    "cozy_calculator": "~<section class=\"cozy-calculator-section\" id=\"cozy-calculator\".*?</section>~s",
     "reviews": "~<section class=\"reviews-section container\" id=\"reviews\">.*?</section>~s",
     "faq": "~<section class=\"faq-section container\" id=\"faqs\">.*?</section>~s",
     "why": "~<section class=\"bundle-section\" id=\"bundles\">.*?</section>~s",
@@ -32,5 +35,46 @@
     "footer": "~<footer class=\"site-footer\">.*?</footer>~s",
     "sprite": "~<svg class=\"svg-sprite\".*?</svg>~s",
     "buybar": "~<div class=\"mobile-buybar\">.*?</div>\\s*<div class=\"toast\".*?</div>~s"
+  },
+  "editable_fields": {
+    "cozy_calculator": {
+      "eyebrow": {"label": "Eyebrow", "type": "text", "default": "A LITTLE COZY PLANNING"},
+      "title": {"label": "Title", "type": "textarea", "default": "Make a plan.\nMore cozy days ahead."},
+      "intro": {"label": "Introduction", "type": "textarea", "default": "Use a little fun planning to make room for more hoodie-and-blanket moments in your week."},
+      "photo": {"label": "Photo", "type": "image", "default": "family-evening-760.webp"},
+      "photo_alt": {"label": "Photo description", "type": "text", "default": "A family relaxing together in cosy hoodies and blankets"},
+      "photo_caption": {"label": "Photo caption", "type": "text", "default": "A little more comfort, every day"},
+      "calculators": {
+        "label": "Calculators shown in the menu",
+        "type": "checklist",
+        "default": ["carry", "inbox", "meeting", "plant", "sock", "snack", "chat", "tools", "mug", "paw", "calendar", "coins", "hanger", "clock", "dumbbell", "book", "bolt", "plate", "leaf", "film"],
+        "groups": [
+          {"label": "Useful tools", "items": [
+            {"id": "carry", "label": "The carry-on calculator"},
+            {"id": "calendar", "label": "Week, with breathing room"},
+            {"id": "coins", "label": "Split-the-bill helper"},
+            {"id": "hanger", "label": "Cost-per-wear reality check"},
+            {"id": "clock", "label": "Leave-on-time buffer"},
+            {"id": "dumbbell", "label": "Gentle movement planner"},
+            {"id": "book", "label": "Reading finish-line"},
+            {"id": "bolt", "label": "Home energy nudge"},
+            {"id": "plate", "label": "Dinner portions, minus guesswork"},
+            {"id": "leaf", "label": "Garden watering rhythm"}
+          ]},
+          {"label": "Funny science", "items": [
+            {"id": "inbox", "label": "Inbox triage, with optimism"},
+            {"id": "meeting", "label": "Meeting escape velocity"},
+            {"id": "plant", "label": "Plant parent panic"},
+            {"id": "sock", "label": "The laundry sock mystery"},
+            {"id": "snack", "label": "Snack logistics office"},
+            {"id": "chat", "label": "Group chat vacation"},
+            {"id": "tools", "label": "DIY confidence meter"},
+            {"id": "mug", "label": "Coffee runway"},
+            {"id": "paw", "label": "Pet patience index"},
+            {"id": "film", "label": "What-to-watch summit"}
+          ]}
+        ]
+      }
+    }
   }
 }

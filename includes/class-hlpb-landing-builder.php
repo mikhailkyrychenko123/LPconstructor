@@ -12,6 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class HLPB_Landing_Builder {
 	const POST_TYPE    = 'hlpb_landing';
 	const META_KEY     = '_hlpb_sections';
+	const COZY_TEXT_IMAGE_MIGRATION_META = '_hlpb_cozy_text_image_sections_migrated';
 	const SEO_META_KEY = '_hlpb_seo';
 	const TEMPLATE_KEY = '_hlpb_template';
 	const EXPORT_KEY   = '_hlpb_export_path';
@@ -269,6 +270,7 @@ final class HLPB_Landing_Builder {
 			'offer_line'   => __( 'Offer Line', 'html-landing-page-builder-for-woocommerce' ),
 			'cart_section' => __( 'Cart Section', 'html-landing-page-builder-for-woocommerce' ),
 			'mix_it'       => __( 'Mix it your way', 'html-landing-page-builder-for-woocommerce' ),
+			'cozy_calculator' => __( 'Cozy Calculator', 'html-landing-page-builder-for-woocommerce' ),
 			'text_image'   => __( 'Text + Image', 'html-landing-page-builder-for-woocommerce' ),
 			'reviews'      => __( 'Reviews', 'html-landing-page-builder-for-woocommerce' ),
 			'faq'          => __( 'FAQ', 'html-landing-page-builder-for-woocommerce' ),
@@ -315,6 +317,7 @@ final class HLPB_Landing_Builder {
 			'offer_line'    => '<rect class="hlpb-preview-soft" x="4" y="15" width="112" height="42" rx="6"/><circle class="hlpb-preview-accent" cx="21" cy="36" r="9"/><path class="hlpb-preview-line" d="m21 29 2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/><path class="hlpb-preview-line" d="M39 31h60m-60 10h45"/>',
 			'cart_section'  => '<rect class="hlpb-preview-bg" x="4" y="6" width="112" height="60" rx="5"/><rect class="hlpb-preview-soft" x="9" y="11" width="46" height="50" rx="3"/><circle class="hlpb-preview-accent" cx="32" cy="30" r="10"/><path class="hlpb-preview-line" d="M63 17h38m-38 8h29m-29 9h33"/><rect class="hlpb-preview-soft" x="63" y="42" width="21" height="14" rx="3"/><rect class="hlpb-preview-accent" x="88" y="42" width="20" height="14" rx="3"/>',
 			'mix_it'        => '<path class="hlpb-preview-line" d="M42 10h36m-31 5h26"/><rect class="hlpb-preview-soft" x="8" y="23" width="31" height="39" rx="4"/><rect class="hlpb-preview-bg" x="44" y="23" width="31" height="39" rx="4"/><rect class="hlpb-preview-soft" x="80" y="23" width="31" height="39" rx="4"/><circle class="hlpb-preview-accent" cx="23" cy="37" r="6"/><circle class="hlpb-preview-accent" cx="59" cy="37" r="6"/><circle class="hlpb-preview-accent" cx="95" cy="37" r="6"/><path class="hlpb-preview-line" d="M16 50h14m-14 5h9m36-5h14m-14 5h9m27-5h14m-14 5h9"/>',
+			'cozy_calculator' => '<rect class="hlpb-preview-soft" x="5" y="8" width="39" height="56" rx="4"/><circle class="hlpb-preview-accent" cx="24" cy="28" r="9"/><path class="hlpb-preview-line" d="m10 58 12-15 8 8 7-10 7 17"/><rect class="hlpb-preview-bg" x="52" y="8" width="62" height="56" rx="4"/><path class="hlpb-preview-line" d="M59 19h47m-47 9h28m-28 9h47m-47 9h47m-47 9h30"/><circle class="hlpb-preview-accent" cx="78" cy="37" r="3"/><circle class="hlpb-preview-accent" cx="91" cy="46" r="3"/>',
 			'text_image'    => '<rect class="hlpb-preview-soft" x="5" y="8" width="48" height="56" rx="4"/><circle class="hlpb-preview-accent" cx="29" cy="28" r="9"/><path class="hlpb-preview-line" d="m12 55 13-15 8 8 7-9 8 16"/><path class="hlpb-preview-line" d="M62 18h46m-46 8h37m-37 8h42m-42 8h31"/><circle class="hlpb-preview-accent" cx="67" cy="55" r="4"/><circle class="hlpb-preview-accent" cx="83" cy="55" r="4"/><circle class="hlpb-preview-accent" cx="99" cy="55" r="4"/>',
 			'reviews'       => '<rect class="hlpb-preview-bg" x="5" y="15" width="32" height="48" rx="4"/><rect class="hlpb-preview-bg" x="44" y="15" width="32" height="48" rx="4"/><rect class="hlpb-preview-bg" x="83" y="15" width="32" height="48" rx="4"/><circle class="hlpb-preview-accent" cx="21" cy="27" r="6"/><circle class="hlpb-preview-accent" cx="60" cy="27" r="6"/><circle class="hlpb-preview-accent" cx="99" cy="27" r="6"/><path class="hlpb-preview-line" d="M13 40h16m-16 6h12m27-6h16m-16 6h12m27-6h16m-16 6h12"/><path class="hlpb-preview-accent-stroke" d="m13 55 2 2 2-2 2 2 2-2 2 2 2-2 2 2 2-2"/>',
 			'faq'           => '<path class="hlpb-preview-line" d="M11 17h40m-40 7h31"/><rect class="hlpb-preview-soft" x="61" y="11" width="49" height="12" rx="3"/><rect class="hlpb-preview-bg" x="61" y="28" width="49" height="12" rx="3"/><rect class="hlpb-preview-bg" x="61" y="45" width="49" height="12" rx="3"/><path class="hlpb-preview-line" d="M68 17h27m-27 17h30m-30 17h24"/><path class="hlpb-preview-accent-stroke" d="m102 15 3 2-3 2m0 15 3 2-3 2m0 15 3 2-3 2"/>',
@@ -1022,7 +1025,7 @@ final class HLPB_Landing_Builder {
 		if ( ! metadata_exists( 'post', $post->ID, self::META_KEY ) || ! is_array( $sections ) ) {
 			$sections = self::get_default_sections( $selected_template );
 		}
-		$sections = self::migrate_template_sections( $sections, $selected_template );
+		$sections = self::migrate_template_sections( $sections, $selected_template, $post->ID );
 		$types             = self::get_section_types( $selected_template );
 		$post_slug         = get_post_field( 'post_name', $post->ID );
 		$post_slug         = $post_slug && 'auto-draft' !== $post_slug ? $post_slug : sanitize_title( $post->post_title );
@@ -1843,6 +1846,9 @@ final class HLPB_Landing_Builder {
 			self::add_export_history( $post_id, $previous_directory );
 		}
 		update_post_meta( $post_id, self::META_KEY, $sections );
+		if ( 'cozy-mix' === $template_slug ) {
+			update_post_meta( $post_id, self::COZY_TEXT_IMAGE_MIGRATION_META, '1' );
+		}
 		$has_cart_section = false;
 		foreach ( $sections as $section ) {
 			if ( isset( $section['type'] ) && 'cart_section' === $section['type'] ) {
@@ -3040,13 +3046,69 @@ final class HLPB_Landing_Builder {
 	public static function get_sections( $post_id ) {
 		$sections = get_post_meta( $post_id, self::META_KEY, true );
 		if ( metadata_exists( 'post', $post_id, self::META_KEY ) && is_array( $sections ) ) {
-			return self::migrate_template_sections( $sections, self::get_template_slug( $post_id ) );
+			return self::migrate_template_sections( $sections, self::get_template_slug( $post_id ), $post_id );
 		}
 		return self::get_default_sections( self::get_template_slug( $post_id ) );
 	}
 
 	/** Migrate legacy Field Notes story cards to the shared, configurable story section. */
-	private static function migrate_template_sections( $sections, $template_slug ) {
+	private static function migrate_template_sections( $sections, $template_slug, $post_id = 0 ) {
+		if ( 'cozy-mix' === $template_slug ) {
+			$has_text_image = false;
+			$has_calculator = false;
+			foreach ( $sections as $section ) {
+				if ( ! is_array( $section ) || ! isset( $section['type'] ) ) {
+					continue;
+				}
+				if ( 'text_image' === $section['type'] ) {
+					$has_text_image = true;
+				}
+				if ( 'cozy_calculator' === $section['type'] ) {
+					$has_calculator = true;
+				}
+			}
+			if ( ! $has_text_image && $post_id && ! get_post_meta( $post_id, self::COZY_TEXT_IMAGE_MIGRATION_META, true ) ) {
+				$defaults = self::get_default_sections( 'cozy-mix' );
+				$text_images = array_values( array_filter( $defaults, static function ( $section ) {
+					return isset( $section['type'] ) && 'text_image' === $section['type'];
+				} ) );
+				$insert_at = count( $sections );
+				foreach ( $sections as $index => $existing_section ) {
+					if ( is_array( $existing_section ) && isset( $existing_section['type'] ) && in_array( $existing_section['type'], array( 'cozy_calculator', 'reviews' ), true ) ) {
+						$insert_at = $index;
+						break;
+					}
+				}
+				foreach ( $text_images as $offset => &$text_image ) {
+					$text_image['id'] = 'text_image_migrated_' . ( $offset + 1 );
+				}
+				unset( $text_image );
+				array_splice( $sections, $insert_at, 0, $text_images );
+			}
+			if ( ! $has_calculator ) {
+				foreach ( self::get_default_sections( 'cozy-mix' ) as $default_section ) {
+					if ( isset( $default_section['type'] ) && 'cozy_calculator' === $default_section['type'] ) {
+						$default_section['id'] = 'cozy_calculator_migrated';
+						$insert_at = count( $sections );
+						foreach ( $sections as $index => $existing_section ) {
+							if ( is_array( $existing_section ) && isset( $existing_section['type'] ) && 'reviews' === $existing_section['type'] ) {
+								$insert_at = $index;
+								break;
+							}
+						}
+						array_splice( $sections, $insert_at, 0, array( $default_section ) );
+						break;
+					}
+				}
+			}
+			foreach ( $sections as $index => &$section ) {
+				if ( is_array( $section ) ) {
+					$section['order'] = $index + 1;
+				}
+			}
+			unset( $section );
+			return $sections;
+		}
 		if ( 'field-notes' !== $template_slug ) {
 			return $sections;
 		}
@@ -3201,7 +3263,8 @@ final class HLPB_Landing_Builder {
 			if ( 'checklist' === $kind && 'calculators' === $key ) {
 				$enabled = isset( $section[ $key ] ) && is_array( $section[ $key ] ) ? array_values( array_map( 'sanitize_key', $section[ $key ] ) ) : array();
 				$encoded = esc_attr( wp_json_encode( $enabled ) );
-				$pattern = '~<section\b(?=[^>]*\bid=["\']calculator["\'])[^>]*>~i';
+				$calculator_id = 'cozy_calculator' === $section['type'] ? 'cozy-calculator' : 'calculator';
+				$pattern = '~<section\b(?=[^>]*\bid=["\']' . preg_quote( $calculator_id, '~' ) . '["\'])[^>]*>~i';
 				$fragment = preg_replace_callback(
 					$pattern,
 					static function ( $matches ) use ( $encoded ) {

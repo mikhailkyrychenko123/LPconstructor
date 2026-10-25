@@ -26,6 +26,7 @@ require_once HLPB_LANDING_PAGE_BUILDER_PATH . 'includes/class-hlpb-offer-analyti
 require_once HLPB_LANDING_PAGE_BUILDER_PATH . 'includes/class-hlpb-attribute-admin.php';
 require_once HLPB_LANDING_PAGE_BUILDER_PATH . 'includes/class-hlpb-demo-importer.php';
 require_once HLPB_LANDING_PAGE_BUILDER_PATH . 'includes/class-hlpb-shortcodes.php';
+require_once HLPB_LANDING_PAGE_BUILDER_PATH . 'includes/class-hlpb-instructions.php';
 
 add_action(
 	'before_woocommerce_init',
@@ -42,6 +43,7 @@ add_action( 'plugins_loaded', array( 'HLPB_Offer_Analytics', 'init' ) );
 add_action( 'plugins_loaded', array( 'HLPB_Attribute_Admin', 'init' ) );
 add_action( 'plugins_loaded', array( 'HLPB_Demo_Importer', 'init' ) );
 add_action( 'plugins_loaded', array( 'HLPB_Shortcodes', 'init' ) );
+add_action( 'plugins_loaded', array( 'HLPB_Instructions', 'init' ) );
 
 register_activation_hook(
 	__FILE__,

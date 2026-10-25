@@ -128,7 +128,7 @@
       "variations": [
         { "attributes": { "color": "black" }, "price": "189", "manage_stock": false, "stock_status": "instock", "backorders": "no", "image": 133, "gallery": [134, 135, 136, 137, 138] },
         { "attributes": { "color": "bone" }, "price": "189", "manage_stock": true, "stock_quantity": 100, "stock_status": "instock", "backorders": "yes", "image": 139, "gallery": [118, 119, 121] },
-        { "attributes": { "color": "clay" }, "price": "189", "manage_stock": true, "stock_quantity": 0, "stock_status": "outofstock", "backorders": "no", "image": 145, "gallery": [146, 147, 148, 149, 150] },
+        { "attributes": { "color": "clay" }, "price": "189", "manage_stock": true, "stock_quantity": 0, "stock_status": "outofstock", "backorders": "no", "description": "This item will be back in stock on 11/12/26.", "image": 145, "gallery": [146, 147, 148, 149, 150] },
         { "attributes": { "color": "flower" }, "price": "189", "manage_stock": true, "stock_quantity": 999, "stock_status": "instock", "backorders": "no", "image": 140, "gallery": [141, 142, 143, 144] },
         { "attributes": { "color": "graphite-black" }, "price": "189", "manage_stock": true, "stock_quantity": 0, "stock_status": "onbackorder", "backorders": "notify", "image": 151, "gallery": [152, 153, 154, 155, 156] },
         { "attributes": { "color": "light-olive" }, "price": "189", "manage_stock": false, "stock_status": "instock", "backorders": "no", "image": 157, "gallery": [158, 159, 160, 161, 162] },
