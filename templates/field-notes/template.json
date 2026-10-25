@@ -55,12 +55,12 @@
       "brand_name": {
         "label": "Brand name",
         "type": "text",
-        "default": "FIELD NOTES"
+        "default": "DEMO LP"
       },
       "brand_tagline": {
         "label": "Brand tagline",
         "type": "text",
-        "default": "APPAREL / 01"
+        "default": "LP DEMO / 01"
       },
       "brand_url": {
         "label": "Brand link",
@@ -664,12 +664,12 @@
       "brand_name": {
         "label": "Footer brand name",
         "type": "text",
-        "default": "FIELD NOTES"
+        "default": "DEMO LP"
       },
       "brand_tagline": {
         "label": "Footer tagline",
         "type": "text",
-        "default": "APPAREL / 01"
+        "default": "LP DEMO / 01"
       },
       "brand_url": {
         "label": "Brand link",
@@ -754,7 +754,7 @@
       "copyright": {
         "label": "Copyright line",
         "type": "text",
-        "default": "© 2026 FIELD NOTES. Demo concept page."
+        "default": "© 2026 DEMO LP. Demo concept page."
       },
       "legal1": {
         "label": "Legal link 1",

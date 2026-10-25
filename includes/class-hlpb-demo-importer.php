@@ -899,6 +899,9 @@ final class HLPB_Demo_Importer {
 			update_post_meta( $landing_id, HLPB_Landing_Builder::EXPORT_SLUG_KEY, 'lp-demo' );
 		}
 		self::sync_demo_seo_settings( $landing_id, 'cozy-mix' );
+		if ( ! metadata_exists( 'post', $landing_id, HLPB_Landing_Builder::CUSTOM_CSS_META_KEY ) ) {
+			update_post_meta( $landing_id, HLPB_Landing_Builder::CUSTOM_CSS_META_KEY, '' );
+		}
 
 		$sections = HLPB_Landing_Builder::get_sections( $landing_id );
 		$filtered_sections = array_values(
@@ -942,6 +945,9 @@ final class HLPB_Demo_Importer {
 			}
 		}
 		unset( $section );
+		$branding_migration = self::migrate_demo_branding( $sections, 'cozy-mix' );
+		$sections           = $branding_migration['sections'];
+		$sections_changed   = $sections_changed || $branding_migration['changed'];
 		foreach ( $sections as $index => &$section ) {
 			if ( ! is_array( $section ) ) {
 				continue;
@@ -1072,10 +1078,18 @@ final class HLPB_Demo_Importer {
 			unset( $section );
 			update_post_meta( $landing_id, HLPB_Landing_Builder::META_KEY, $sections );
 		}
+		$branding_migration = self::migrate_demo_branding( $sections, 'field-notes' );
+		if ( $branding_migration['changed'] ) {
+			$sections = $branding_migration['sections'];
+			update_post_meta( $landing_id, HLPB_Landing_Builder::META_KEY, $sections );
+		}
 
 		// Correct legacy demo records as well as newly created ones so the editor exposes this template's sections.
 		update_post_meta( $landing_id, self::LANDING_META, 'field-notes' );
 		update_post_meta( $landing_id, HLPB_Landing_Builder::TEMPLATE_KEY, 'field-notes' );
+		if ( ! metadata_exists( 'post', $landing_id, HLPB_Landing_Builder::CUSTOM_CSS_META_KEY ) ) {
+			update_post_meta( $landing_id, HLPB_Landing_Builder::CUSTOM_CSS_META_KEY, '' );
+		}
 		self::sync_demo_seo_settings( $landing_id, 'field-notes' );
 		update_post_meta( $landing_id, HLPB_Landing_Builder::EXPORT_PROMO_KEY, 'promo' );
 		update_post_meta( $landing_id, HLPB_Landing_Builder::EXPORT_SLUG_KEY, 'field-notes-demo' );
@@ -1089,6 +1103,63 @@ final class HLPB_Demo_Importer {
 		}
 
 		return HLPB_Landing_Builder::publish_static_export( $landing_id );
+	}
+
+	/** Replace only the shipped default brand copy on demo pages, preserving merchant edits. */
+	private static function migrate_demo_branding( $sections, $template_slug ) {
+		$changed = false;
+		$fields  = array();
+		if ( 'cozy-mix' === $template_slug ) {
+			$fields = array(
+				'header' => array(
+					'brand_name'    => array( 'NEST & NOOK' => 'DEMO LP' ),
+					'brand_tagline' => array( 'COMFORT GOODS' => 'LP DEMO' ),
+				),
+				'footer' => array(
+					'brand_name'    => array( 'NEST & NOOK' => 'DEMO LP' ),
+					'brand_tagline' => array( 'COMFORT GOODS' => 'LP DEMO' ),
+					'copyright'     => array( '© 2024 Nest & Nook. All rights reserved.' => '© 2024 DEMO LP. All rights reserved.' ),
+				),
+			);
+		} elseif ( 'field-notes' === $template_slug ) {
+			$fields = array(
+				'fn_header' => array(
+					'brand_name'    => array( 'FIELD NOTES' => 'DEMO LP' ),
+					'brand_tagline' => array( 'APPAREL / 01' => 'LP DEMO / 01' ),
+				),
+				'fn_footer' => array(
+					'brand_name'    => array( 'FIELD NOTES' => 'DEMO LP' ),
+					'brand_tagline' => array( 'APPAREL / 01' => 'LP DEMO / 01' ),
+					'copyright'     => array(
+						'© 2026 FIELD NOTES. Demo concept page.' => '© 2026 DEMO LP. Demo concept page.',
+						'© 2026 FIELD NOTE. Demo concept page.'  => '© 2026 DEMO LP. Demo concept page.',
+					),
+				),
+			);
+		}
+
+		foreach ( $sections as &$section ) {
+			if ( ! is_array( $section ) || empty( $section['type'] ) ) {
+				continue;
+			}
+			$type = sanitize_key( $section['type'] );
+			if ( empty( $fields[ $type ] ) ) {
+				continue;
+			}
+			foreach ( $fields[ $type ] as $key => $replacements ) {
+				if ( ! isset( $section[ $key ] ) || ! is_string( $section[ $key ] ) || ! isset( $replacements[ $section[ $key ] ] ) ) {
+					continue;
+				}
+				$section[ $key ] = $replacements[ $section[ $key ] ];
+				$changed         = true;
+			}
+		}
+		unset( $section );
+
+		return array(
+			'sections' => $sections,
+			'changed'  => $changed,
+		);
 	}
 
 	/** Refresh shipped SEO copy on demo landings while preserving deliberate edits. */

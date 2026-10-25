@@ -14,6 +14,7 @@ final class HLPB_Landing_Builder {
 	const META_KEY     = '_hlpb_sections';
 	const COZY_TEXT_IMAGE_MIGRATION_META = '_hlpb_cozy_text_image_sections_migrated';
 	const SEO_META_KEY = '_hlpb_seo';
+	const CUSTOM_CSS_META_KEY = '_hlpb_custom_css';
 	const TEMPLATE_KEY = '_hlpb_template';
 	const EXPORT_KEY   = '_hlpb_export_path';
 	const EXPORT_SLUG_KEY = '_hlpb_export_slug';
@@ -172,6 +173,7 @@ final class HLPB_Landing_Builder {
 		}
 		update_post_meta( $clone_id, self::META_KEY, $sections );
 		update_post_meta( $clone_id, self::TEMPLATE_KEY, $template );
+		update_post_meta( $clone_id, self::CUSTOM_CSS_META_KEY, self::get_custom_css( $source_id ) );
 		$seo = self::get_seo_settings( $source_id );
 		$seo['canonical'] = '';
 		update_post_meta( $clone_id, self::SEO_META_KEY, $seo );
@@ -796,8 +798,8 @@ final class HLPB_Landing_Builder {
 	private static function get_default_header_settings() {
 		return array(
 			'logo_id' => 0,
-			'brand_name' => 'NEST & NOOK',
-			'brand_tagline' => 'COMFORT GOODS',
+			'brand_name' => 'DEMO LP',
+			'brand_tagline' => 'LP DEMO',
 			'left_menu_mode' => 'custom',
 			'left_menu_id' => 0,
 			'left_menu_items' => array( array( 'label' => __( 'Home', 'html-landing-page-builder-for-woocommerce' ), 'url' => home_url( '/' ) ) ),
@@ -951,8 +953,8 @@ final class HLPB_Landing_Builder {
 	private static function get_default_footer_settings() {
 		return array(
 			'logo_id' => 0,
-			'brand_name' => 'NEST & NOOK',
-			'brand_tagline' => 'COMFORT GOODS',
+			'brand_name' => 'DEMO LP',
+			'brand_tagline' => 'LP DEMO',
 			'brand_url' => '#top',
 			'primary_links' => array(
 				array( 'label' => 'Shop', 'url' => '#shop' ),
@@ -968,7 +970,7 @@ final class HLPB_Landing_Builder {
 				array( 'icon' => 'tiktok', 'label' => 'TikTok', 'url' => '#tiktok' ),
 				array( 'icon' => 'youtube', 'label' => 'YouTube', 'url' => '#youtube' ),
 			),
-			'copyright' => '© 2024 Nest & Nook. All rights reserved.',
+			'copyright' => '© 2024 DEMO LP. All rights reserved.',
 			'legal_links' => array(
 				array( 'label' => 'Privacy Policy', 'url' => '#privacy' ),
 				array( 'label' => 'Terms of Service', 'url' => '#terms' ),
@@ -1083,6 +1085,7 @@ final class HLPB_Landing_Builder {
 			</div>
 			<p class="description"><?php if ( 'field-notes' === $selected_template ) : ?><?php esc_html_e( 'All Field Notes sections can be edited here. The calculator section lets you edit its introduction and choose which built-in calculators appear; its calculator logic stays intact.', 'html-landing-page-builder-for-woocommerce' ); ?><?php else : ?><?php esc_html_e( 'Header, Offer Line, Cart Section, Mix it your way, Why?, Text + Image, Reviews, FAQ, and Footer sections can be edited here. Other sections use their template demo content.', 'html-landing-page-builder-for-woocommerce' ); ?><?php endif; ?></p>
 			<?php echo self::render_seo_fields( $post->ID ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Generated SEO controls are individually escaped. ?>
+			<?php echo self::render_custom_css_fields( $post->ID ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The editor value is escaped as textarea content. ?>
 		</div>
 		<?php
 	}
@@ -1152,6 +1155,28 @@ final class HLPB_Landing_Builder {
 		$html .= '<fieldset class="hlpb-seo-social"><legend>' . esc_html__( 'Social preview', 'html-landing-page-builder-for-woocommerce' ) . '</legend><div class="hlpb-seo-grid"><div class="hlpb-field"><label for="hlpb-seo-social-title">' . esc_html__( 'Social title', 'html-landing-page-builder-for-woocommerce' ) . '</label><input id="hlpb-seo-social-title" type="text" name="hlpb_seo[social_title]" value="' . esc_attr( $seo['social_title'] ) . '" maxlength="100"></div><div class="hlpb-field"><label for="hlpb-seo-social-description">' . esc_html__( 'Social description', 'html-landing-page-builder-for-woocommerce' ) . '</label><textarea id="hlpb-seo-social-description" name="hlpb_seo[social_description]" rows="3" maxlength="200">' . esc_textarea( $seo['social_description'] ) . '</textarea></div></div></fieldset>';
 		$html .= '<fieldset class="hlpb-seo-robots"><legend>' . esc_html__( 'Search visibility', 'html-landing-page-builder-for-woocommerce' ) . '</legend><input type="hidden" name="hlpb_seo[index]" value="0"><label class="hlpb-checkbox"><input type="checkbox" name="hlpb_seo[index]" value="1" ' . checked( $seo['index'], 1, false ) . '> ' . esc_html__( 'Allow search engines to index this page', 'html-landing-page-builder-for-woocommerce' ) . '</label><input type="hidden" name="hlpb_seo[follow]" value="0"><label class="hlpb-checkbox"><input type="checkbox" name="hlpb_seo[follow]" value="1" ' . checked( $seo['follow'], 1, false ) . '> ' . esc_html__( 'Allow search engines to follow links on this page', 'html-landing-page-builder-for-woocommerce' ) . '</label><p class="description">' . esc_html__( 'Both options are enabled by default for the demo landing pages.', 'html-landing-page-builder-for-woocommerce' ) . '</p></fieldset></section>';
 		return $html;
+	}
+
+	/** Render custom styles that are exported with this landing page only. */
+	private static function render_custom_css_fields( $post_id ) {
+		$css  = self::get_custom_css( $post_id );
+		$html = '<section class="hlpb-custom-css-settings"><h3>' . esc_html__( 'Custom CSS', 'html-landing-page-builder-for-woocommerce' ) . '</h3><p class="description">' . esc_html__( 'CSS entered here is included only in this landing page’s published static copy. It does not change other landing pages or your store theme.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		$html .= '<div class="hlpb-field"><label for="hlpb-custom-css">' . esc_html__( 'Page-specific CSS', 'html-landing-page-builder-for-woocommerce' ) . '</label><textarea id="hlpb-custom-css" class="code" name="hlpb_custom_css" rows="12" spellcheck="false" placeholder="/* Add CSS for this landing page */">' . esc_textarea( $css ) . '</textarea><p class="description">' . esc_html__( 'Use CSS selectors for this page’s template. Save or update the landing page to publish your changes.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div></section>';
+		return $html;
+	}
+
+	/** Read the per-landing custom stylesheet as plain text. */
+	private static function get_custom_css( $post_id ) {
+		$css = get_post_meta( absint( $post_id ), self::CUSTOM_CSS_META_KEY, true );
+		if ( ! is_string( $css ) ) {
+			return '';
+		}
+		return wp_check_invalid_utf8( str_replace( "\0", '', $css ), true );
+	}
+
+	/** Prevent an admin-entered closing style tag from terminating the generated style element. */
+	private static function make_custom_css_style_safe( $css ) {
+		return str_ireplace( '</style', '<\\/style', (string) $css );
 	}
 
 	/** Inline eye icons for the section visibility control. */
@@ -1851,6 +1876,10 @@ final class HLPB_Landing_Builder {
 			self::add_export_history( $post_id, $previous_directory );
 		}
 		update_post_meta( $post_id, self::META_KEY, $sections );
+		if ( isset( $_POST['hlpb_custom_css'] ) && is_scalar( $_POST['hlpb_custom_css'] ) ) {
+			$custom_css = wp_check_invalid_utf8( str_replace( "\0", '', (string) wp_unslash( $_POST['hlpb_custom_css'] ) ), true );
+			update_post_meta( $post_id, self::CUSTOM_CSS_META_KEY, $custom_css );
+		}
 		if ( 'cozy-mix' === $template_slug ) {
 			update_post_meta( $post_id, self::COZY_TEXT_IMAGE_MIGRATION_META, '1' );
 		}
@@ -2174,6 +2203,10 @@ final class HLPB_Landing_Builder {
 				$html .= '<script>window.HLPBCartData=' . $cart_config_json . ';</script>' . "\n";
 			}
 			$html .= '<script defer src="' . esc_url( $asset_url . 'hlpb-cart.js' ) . '?v=' . esc_attr( HLPB_LANDING_PAGE_BUILDER_VERSION ) . '"></script>' . "\n";
+		}
+		$custom_css = self::get_custom_css( $post_id );
+		if ( '' !== trim( $custom_css ) ) {
+			$html .= '<style id="hlpb-custom-css">' . self::make_custom_css_style_safe( $custom_css ) . '</style>' . "\n";
 		}
 		$html .= "</head>\n<body class=\"hlpb-landing-page\">\n<div class=\"hlpb-page\">\n";
 		$html .= self::get_demo_fragment( 'sprite', $template_slug, $asset_url ) . "\n<main id=\"top\">\n";
@@ -3292,8 +3325,8 @@ final class HLPB_Landing_Builder {
 			$logo_url = wp_get_attachment_image_url( $logo_id, 'medium' );
 		}
 		$site_name = get_bloginfo( 'name' );
-		$brand_name = isset( $section['brand_name'] ) ? sanitize_text_field( $section['brand_name'] ) : 'NEST & NOOK';
-		$brand_tagline = isset( $section['brand_tagline'] ) ? sanitize_text_field( $section['brand_tagline'] ) : 'COMFORT GOODS';
+		$brand_name = isset( $section['brand_name'] ) ? sanitize_text_field( $section['brand_name'] ) : 'DEMO LP';
+		$brand_tagline = isset( $section['brand_tagline'] ) ? sanitize_text_field( $section['brand_tagline'] ) : 'LP DEMO';
 		$brand_text = '';
 		if ( '' !== $brand_name || '' !== $brand_tagline ) {
 			$brand_text = '<span>' . ( '' !== $brand_name ? '<b>' . esc_html( $brand_name ) . '</b>' : '' ) . ( '' !== $brand_tagline ? '<small>' . esc_html( $brand_tagline ) . '</small>' : '' ) . '</span>';
