@@ -180,7 +180,8 @@ final class HLPB_Demo_Importer {
 		$woocommerce_ready  = function_exists( 'wc_create_attribute' ) && class_exists( 'WC_Product' );
 		$owned_products     = self::get_owned_ids( 'product', self::PRODUCT_META );
 		$owned_attributes   = get_option( self::ATTRIBUTES_OPTION, array() );
-		$has_owned_data     = ! empty( $owned_products ) || ! empty( $owned_attributes ) || ! empty( self::get_owned_ids( 'product_variation', self::VARIATION_META ) ) || ! empty( self::get_owned_ids( 'attachment', self::MEDIA_META ) );
+		$owned_landings     = self::get_owned_ids( HLPB_Landing_Builder::POST_TYPE, self::LANDING_META );
+		$has_owned_data     = ! empty( $owned_landings ) || ! empty( $owned_products ) || ! empty( $owned_attributes ) || ! empty( self::get_owned_ids( 'product_variation', self::VARIATION_META ) ) || ! empty( self::get_owned_ids( 'attachment', self::MEDIA_META ) );
 
 		echo '<div class="wrap"><h1>' . esc_html__( 'Demo Import', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</h1>';
 		echo '<p>' . esc_html__( 'Import or remove the bundled WooCommerce demo catalog. Imported products and attributes are isolated with the Landing-demo suffix. Import also creates or refreshes /promo/lp-demo/ and /promo/field-notes-demo/ with ready-to-use Buy More, Mix & Match, and Cozy Bundle examples. Reimporting preserves saved sections on correctly configured pages and repairs demo pages whose saved template or section structure does not match their assigned template.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p>';
@@ -201,10 +202,10 @@ final class HLPB_Demo_Importer {
 		echo '<button type="submit" class="button button-primary" ' . disabled( ! $woocommerce_ready, true, false ) . '>' . esc_html__( 'Import demo data', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></form>';
 
 		echo '<hr><h2>' . esc_html__( 'Remove demo data', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</h2>';
-		echo '<p>' . esc_html__( 'Deletes only products, variations, terms, attributes, and media files marked as imported by this plugin. Items that have been assigned to other content or cannot be verified as plugin-owned are kept and listed in the report.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p>';
-		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" onsubmit="return confirm(\'' . esc_js( __( 'Delete all plugin-imported demo data? This cannot be undone.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ) . '\');"><input type="hidden" name="action" value="hlpb_delete_demo_products">';
+		echo '<p>' . esc_html__( 'Permanently deletes only landing pages, products, variations, terms, attributes, and media files marked as created by this importer. Other site content is kept. Imported media still used elsewhere and attributes or terms with remaining content are kept and listed in the report.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p>';
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" onsubmit="return confirm(\'' . esc_js( __( 'Delete all importer-created demo data and landing pages? This cannot be undone.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ) . '\');"><input type="hidden" name="action" value="hlpb_delete_demo_products">';
 		wp_nonce_field( 'hlpb_delete_demo_products' );
-		echo '<button type="submit" class="button button-secondary" ' . disabled( ! $woocommerce_ready || ! $has_owned_data, true, false ) . '>' . esc_html__( 'Delete all demo data', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></form></div>';
+		echo '<button type="submit" class="button button-secondary" ' . disabled( ! $woocommerce_ready || ! $has_owned_data, true, false ) . '>' . esc_html__( 'Delete all imported demo data', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></form></div>';
 	}
 
 	/** Display the most recent operation as a status line and concise report. */
@@ -543,6 +544,7 @@ final class HLPB_Demo_Importer {
 		}
 
 		$counts = array(
+			'landings'    => 0,
 			'products'    => 0,
 			'variations'  => 0,
 			'terms'       => 0,
@@ -550,9 +552,18 @@ final class HLPB_Demo_Importer {
 			'media'       => 0,
 			'skipped'     => 0,
 		);
+		$landing_ids   = self::get_owned_ids( HLPB_Landing_Builder::POST_TYPE, self::LANDING_META );
 		$product_ids   = self::get_owned_ids( 'product', self::PRODUCT_META );
 		$variation_ids = self::get_owned_ids( 'product_variation', self::VARIATION_META );
 		$demo_post_ids = array_merge( $product_ids, $variation_ids );
+
+		foreach ( $landing_ids as $landing_id ) {
+			if ( wp_delete_post( absint( $landing_id ), true ) ) {
+				++$counts['landings'];
+			} else {
+				++$counts['skipped'];
+			}
+		}
 
 		foreach ( $variation_ids as $variation_id ) {
 			if ( wp_delete_post( absint( $variation_id ), true ) ) {
@@ -651,6 +662,8 @@ final class HLPB_Demo_Importer {
 			}
 		}
 		$report = array(
+			// translators: %d: number of importer-created landing pages deleted.
+			sprintf( __( 'Landing pages deleted: %d.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), absint( $counts['landings'] ) ),
 			// translators: %d: number of demo products deleted.
 			sprintf( __( 'Products deleted: %d.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), absint( $counts['products'] ) ),
 			// translators: %d: number of product variations deleted.
@@ -665,7 +678,7 @@ final class HLPB_Demo_Importer {
 		if ( $counts['skipped'] ) {
 			// translators: %d: number of imported records kept or not deleted.
 			$report[] = sprintf( __( 'Items kept for safety or because deletion failed: %d. This includes media referenced elsewhere and attributes or terms that still have content assigned.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), absint( $counts['skipped'] ) );
-		} elseif ( ! $counts['products'] && ! $counts['attributes'] && ! $counts['media'] ) {
+		} elseif ( ! $counts['landings'] && ! $counts['products'] && ! $counts['variations'] && ! $counts['terms'] && ! $counts['attributes'] && ! $counts['media'] ) {
 			$report[] = __( 'No marked demo data was found.', 'mikhailkyrychenko-offer-builder-for-woocommerce' );
 		}
 		return array( 'skipped' => $counts['skipped'], 'report' => $report );
@@ -1083,6 +1096,7 @@ final class HLPB_Demo_Importer {
 			}
 			$landing_id = absint( $landing_id );
 			$created    = true;
+			update_post_meta( $landing_id, self::LANDING_META, 'field-notes' );
 		}
 
 		$stored_template = sanitize_key( get_post_meta( $landing_id, HLPB_Landing_Builder::TEMPLATE_KEY, true ) );
