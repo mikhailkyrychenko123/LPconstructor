@@ -104,7 +104,7 @@ The plugin's PHP, CSS, and JavaScript source is included in the distributed plug
 * `templates/cozy-mix/assets/js/site.js`
 * `templates/field-notes/assets/js/site.js`
 
-The static export copies these local assets into the landing page folder. There is no separate compiler or third-party build service required to generate them.
+The same source is available in the public [GitHub development repository](https://github.com/mikhailkyrychenko123/LPconstructor/tree/codex/wporg-review-fixes). These JavaScript files are used directly; no compiler, minifier, or third-party build service is required. The static export copies the local files into the landing page's assets folder.
 
 == Developer Notes ==
 
