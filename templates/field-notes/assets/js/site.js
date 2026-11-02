@@ -1,4 +1,5 @@
 
+/* Maintained plugin source; distributed directly without a build step. */
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 $("#burger").onclick=()=>{let open=$("#links").classList.toggle("open");$("#burger").setAttribute("aria-expanded",open?"true":"false")};$$(".links a").forEach(a=>a.onclick=()=>{$("#links").classList.remove("open");$("#burger").setAttribute("aria-expanded","false")});
 const paths={

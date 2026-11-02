@@ -1,3 +1,4 @@
+/* Maintained plugin source; distributed directly without a build step. */
 (function(){
 "use strict";
 var mobileMenus=document.querySelectorAll(".site-header .mobile-menu");

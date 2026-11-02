@@ -1,24 +1,24 @@
 <?php
 /**
- * Plugin Name: HTML Landing Page Builder for WooCommerce
+ * Plugin Name: MikhailKyrychenko Offer Builder for WooCommerce
  * Description: Create standalone WooCommerce landing pages with editable sections, bundle offers, and a live cart.
- * Version: 0.6.8
+ * Version: 0.6.9
  * Requires at least: 6.2
  * Requires PHP: 7.4
  * Requires Plugins: woocommerce
  * Author: BuyGet
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain: html-landing-page-builder-for-woocommerce
+ * Text Domain: mikhailkyrychenko-offer-builder-for-woocommerce
  *
- * @package HTMLLandingPageBuilderForWooCommerce
+ * @package MikhailKyrychenkoOfferBuilderForWooCommerce
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'HLPB_LANDING_PAGE_BUILDER_VERSION', '0.6.8' );
+define( 'HLPB_LANDING_PAGE_BUILDER_VERSION', '0.6.9' );
 define( 'HLPB_LANDING_PAGE_BUILDER_FILE', __FILE__ );
 define( 'HLPB_LANDING_PAGE_BUILDER_PATH', plugin_dir_path( __FILE__ ) );
 define( 'HLPB_LANDING_PAGE_BUILDER_URL', plugin_dir_url( __FILE__ ) );

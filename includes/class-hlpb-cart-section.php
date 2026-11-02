@@ -2,7 +2,7 @@
 /**
  * WooCommerce product, offer, and checkout integration for landing page Cart Sections.
  *
- * @package HTMLLandingPageBuilderForWooCommerce
+ * @package MikhailKyrychenkoOfferBuilderForWooCommerce
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -65,8 +65,8 @@ final class HLPB_Cart_Section {
 	public static function register_stock_notifications_menu() {
 		add_submenu_page(
 			'edit.php?post_type=' . HLPB_Landing_Builder::POST_TYPE,
-			__( 'Stock Notifications', 'html-landing-page-builder-for-woocommerce' ),
-			__( 'Stock Notifications', 'html-landing-page-builder-for-woocommerce' ),
+			__( 'Stock Notifications', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			__( 'Stock Notifications', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 			'manage_woocommerce',
 			'hlpb-stock-notifications',
 			array( __CLASS__, 'render_stock_notifications_page' )
@@ -105,8 +105,8 @@ final class HLPB_Cart_Section {
 	/** Return the saved notification email copy, falling back to a ready-to-use message. */
 	private static function get_stock_notification_email_template() {
 		$defaults = array(
-			'subject' => __( 'Good news! {product_name} is back in stock', 'html-landing-page-builder-for-woocommerce' ),
-			'message' => __( "Hello!\n\nGood news: {product_name} is back in stock.\n\nView the product and place your order here:\n{product_url}\n\nWe look forward to your order!", 'html-landing-page-builder-for-woocommerce' ),
+			'subject' => __( 'Good news! {product_name} is back in stock', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'message' => __( "Hello!\n\nGood news: {product_name} is back in stock.\n\nView the product and place your order here:\n{product_url}\n\nWe look forward to your order!", 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 		);
 		$saved = get_option( self::STOCK_NOTIFY_EMAIL_TEMPLATE_OPTION, array() );
 		if ( ! is_array( $saved ) ) {
@@ -218,7 +218,7 @@ final class HLPB_Cart_Section {
 				$rows[] = array(
 					'variation_id' => absint( $variation_id ),
 				// translators: %d: product variation ID.
-				'product_name' => $variation ? wp_strip_all_tags( $variation->get_formatted_name() ) : sprintf( __( 'Deleted variation #%d', 'html-landing-page-builder-for-woocommerce' ), absint( $variation_id ) ),
+				'product_name' => $variation ? wp_strip_all_tags( $variation->get_formatted_name() ) : sprintf( __( 'Deleted variation #%d', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), absint( $variation_id ) ),
 					'email'        => $entry['email'],
 					'subscribed'   => $entry['subscribed_at'],
 					'landing_id'   => absint( $entry['landing_id'] ),
@@ -235,21 +235,21 @@ final class HLPB_Cart_Section {
 		$failed_count = count( array_filter( $rows, static function ( $row ) { return 'mail_failed' === $row['status']; } ) );
 		$notified_count = count( $rows ) - $waiting_count - $failed_count;
 
-		echo '<div class="wrap"><h1>' . esc_html__( 'Stock Notifications', 'html-landing-page-builder-for-woocommerce' ) . '</h1>';
-		echo '<p>' . esc_html__( 'Emails entered for out-of-stock product variations appear here. When a variation becomes purchasable again, WordPress sends a notification. You can also send the saved email manually to one subscriber or to all subscribers whose product is currently available.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		echo '<div class="wrap"><h1>' . esc_html__( 'Stock Notifications', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</h1>';
+		echo '<p>' . esc_html__( 'Emails entered for out-of-stock product variations appear here. When a variation becomes purchasable again, WordPress sends a notification. You can also send the saved email manually to one subscriber or to all subscribers whose product is currently available.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p>';
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- These query values only control read-only admin notices; all state changes use nonce-protected POST actions.
 		if ( isset( $_GET['deleted'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['deleted'] ) ) ) {
-			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'The notification subscription was deleted.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'The notification subscription was deleted.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></div>';
 		}
 		if ( isset( $_GET['retried'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['retried'] ) ) ) {
-			echo '<div class="notice notice-info is-dismissible"><p>' . esc_html__( 'The email retry was processed. Check the row status for the result.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+			echo '<div class="notice notice-info is-dismissible"><p>' . esc_html__( 'The email retry was processed. Check the row status for the result.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></div>';
 		}
 		if ( isset( $_GET['sent'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['sent'] ) ) ) {
-			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'The email was sent successfully.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'The email was sent successfully.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></div>';
 		}
 		if ( isset( $_GET['send_error'] ) ) {
 			$send_error = sanitize_key( wp_unslash( $_GET['send_error'] ) );
-			$send_error_text = 'unavailable' === $send_error ? __( 'This product is not currently available, so no email was sent.', 'html-landing-page-builder-for-woocommerce' ) : ( 'mail_failed' === $send_error ? __( 'WordPress could not send the email. Check your mail configuration and try again.', 'html-landing-page-builder-for-woocommerce' ) : __( 'The subscription or product could not be found.', 'html-landing-page-builder-for-woocommerce' ) );
+			$send_error_text = 'unavailable' === $send_error ? __( 'This product is not currently available, so no email was sent.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) : ( 'mail_failed' === $send_error ? __( 'WordPress could not send the email. Check your mail configuration and try again.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) : __( 'The subscription or product could not be found.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 			echo '<div class="notice notice-error is-dismissible"><p>' . esc_html( $send_error_text ) . '</p></div>';
 		}
 		if ( isset( $_GET['bulk_sent'] ) || isset( $_GET['bulk_failed'] ) || isset( $_GET['bulk_skipped'] ) ) {
@@ -258,7 +258,7 @@ final class HLPB_Cart_Section {
 			$bulk_skipped = isset( $_GET['bulk_skipped'] ) ? absint( $_GET['bulk_skipped'] ) : 0;
 			$bulk_message = sprintf(
 				/* translators: 1: number of sent emails, 2: number of failed emails, 3: number of skipped subscribers. */
-				__( 'Bulk send finished: %1$d sent, %2$d failed, %3$d skipped because the product is unavailable.', 'html-landing-page-builder-for-woocommerce' ),
+				__( 'Bulk send finished: %1$d sent, %2$d failed, %3$d skipped because the product is unavailable.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 				$bulk_sent,
 				$bulk_failed,
 				$bulk_skipped
@@ -266,26 +266,26 @@ final class HLPB_Cart_Section {
 			echo '<div class="notice ' . ( $bulk_failed ? 'notice-warning' : 'notice-success' ) . ' is-dismissible"><p>' . esc_html( $bulk_message ) . '</p></div>';
 		}
 		if ( isset( $_GET['template_saved'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['template_saved'] ) ) ) {
-			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'The email template was saved.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'The email template was saved.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></div>';
 		}
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
-		echo '<p><strong>' . esc_html__( 'Waiting for stock:', 'html-landing-page-builder-for-woocommerce' ) . '</strong> ' . esc_html( number_format_i18n( $waiting_count ) ) . ' &nbsp; <strong>' . esc_html__( 'Email sent:', 'html-landing-page-builder-for-woocommerce' ) . '</strong> ' . esc_html( number_format_i18n( $notified_count ) ) . ' &nbsp; <strong>' . esc_html__( 'Delivery failed:', 'html-landing-page-builder-for-woocommerce' ) . '</strong> ' . esc_html( number_format_i18n( $failed_count ) ) . '</p>';
+		echo '<p><strong>' . esc_html__( 'Waiting for stock:', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</strong> ' . esc_html( number_format_i18n( $waiting_count ) ) . ' &nbsp; <strong>' . esc_html__( 'Email sent:', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</strong> ' . esc_html( number_format_i18n( $notified_count ) ) . ' &nbsp; <strong>' . esc_html__( 'Delivery failed:', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</strong> ' . esc_html( number_format_i18n( $failed_count ) ) . '</p>';
 		if ( empty( $rows ) ) {
-			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'There are no stock notification subscriptions yet.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'There are no stock notification subscriptions yet.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></div>';
 		} else {
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="margin:12px 0"><input type="hidden" name="action" value="hlpb_send_all_stock_notifications">';
 			wp_nonce_field( 'hlpb_send_all_stock_notifications' );
-			echo '<button type="submit" class="button button-primary" onclick="return confirm(\'' . esc_js( __( 'Send the email to all listed subscribers whose product is currently available?', 'html-landing-page-builder-for-woocommerce' ) ) . '\');">' . esc_html__( 'Send to everyone', 'html-landing-page-builder-for-woocommerce' ) . '</button></form>';
-			echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Email', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Subscribed', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Product and variation', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Landing page', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Status', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Last email attempt', 'html-landing-page-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Actions', 'html-landing-page-builder-for-woocommerce' ) . '</th></tr></thead><tbody>';
+			echo '<button type="submit" class="button button-primary" onclick="return confirm(\'' . esc_js( __( 'Send the email to all listed subscribers whose product is currently available?', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ) . '\');">' . esc_html__( 'Send to everyone', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></form>';
+			echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Email', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Subscribed', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Product and variation', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Landing page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Status', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Last email attempt', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</th><th>' . esc_html__( 'Actions', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</th></tr></thead><tbody>';
 		}
 		foreach ( $rows as $row ) {
 			$landing_title = $row['landing_id'] ? get_the_title( $row['landing_id'] ) : '';
 			$landing_edit = $row['landing_id'] ? get_edit_post_link( $row['landing_id'] ) : false;
-			$landing_cell = $landing_title ? esc_html( $landing_title ) . ' (#' . esc_html( $row['landing_id'] ) . ')' : esc_html__( 'Landing page unavailable', 'html-landing-page-builder-for-woocommerce' );
+			$landing_cell = $landing_title ? esc_html( $landing_title ) . ' (#' . esc_html( $row['landing_id'] ) . ')' : esc_html__( 'Landing page unavailable', 'mikhailkyrychenko-offer-builder-for-woocommerce' );
 			if ( $landing_title && $landing_edit ) {
 				$landing_cell = '<a href="' . esc_url( $landing_edit ) . '">' . esc_html( $landing_title ) . '</a> <span class="description">(#' . esc_html( $row['landing_id'] ) . ')</span>';
 			}
-			$status = 'notified' === $row['status'] ? __( 'Email sent', 'html-landing-page-builder-for-woocommerce' ) : ( 'mail_failed' === $row['status'] ? __( 'Email delivery failed', 'html-landing-page-builder-for-woocommerce' ) : __( 'Waiting for stock', 'html-landing-page-builder-for-woocommerce' ) );
+			$status = 'notified' === $row['status'] ? __( 'Email sent', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) : ( 'mail_failed' === $row['status'] ? __( 'Email delivery failed', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) : __( 'Waiting for stock', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 			$date_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
 			$subscribed_timestamp = $row['subscribed'] ? strtotime( $row['subscribed'] . ' UTC' ) : false;
 			$attempted_timestamp = $row['attempted'] ? strtotime( $row['attempted'] . ' UTC' ) : false;
@@ -296,20 +296,20 @@ final class HLPB_Cart_Section {
 			echo '<tr><td>' . esc_html( $row['email'] ) . '</td><td>' . esc_html( $subscribed ) . '</td><td>' . esc_html( $row['product_name'] ) . '</td><td>' . wp_kses_post( $landing_cell ) . '</td><td>' . esc_html( $status ) . '</td><td>' . esc_html( $attempted ) . '</td><td>';
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline-block;margin:0 5px 5px 0"><input type="hidden" name="action" value="hlpb_send_stock_notification"><input type="hidden" name="variation_id" value="' . esc_attr( $row['variation_id'] ) . '"><input type="hidden" name="email" value="' . esc_attr( $row['email'] ) . '">';
 			wp_nonce_field( $send_nonce_action );
-			echo '<button type="submit" class="button button-small">' . esc_html__( 'Send', 'html-landing-page-builder-for-woocommerce' ) . '</button></form>';
+			echo '<button type="submit" class="button button-small">' . esc_html__( 'Send', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></form>';
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="hlpb_delete_stock_notification"><input type="hidden" name="variation_id" value="' . esc_attr( $row['variation_id'] ) . '"><input type="hidden" name="email" value="' . esc_attr( $row['email'] ) . '">';
 			wp_nonce_field( $nonce_action );
-			echo '<button type="submit" class="button button-small" onclick="return confirm(\'' . esc_js( __( 'Delete this email subscription?', 'html-landing-page-builder-for-woocommerce' ) ) . '\');">' . esc_html__( 'Delete', 'html-landing-page-builder-for-woocommerce' ) . '</button></form></td></tr>';
+			echo '<button type="submit" class="button button-small" onclick="return confirm(\'' . esc_js( __( 'Delete this email subscription?', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ) . '\');">' . esc_html__( 'Delete', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></form></td></tr>';
 		}
 		if ( ! empty( $rows ) ) {
 			echo '</tbody></table>';
 		}
 		$template = self::get_stock_notification_email_template();
-		echo '<hr><h2>' . esc_html__( 'Email template', 'html-landing-page-builder-for-woocommerce' ) . '</h2><p>' . esc_html__( 'This message is used for automatic stock alerts and when you send an email manually. Use {product_name} and {product_url}; they are replaced for each subscriber.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		echo '<hr><h2>' . esc_html__( 'Email template', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</h2><p>' . esc_html__( 'This message is used for automatic stock alerts and when you send an email manually. Use {product_name} and {product_url}; they are replaced for each subscriber.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p>';
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="hlpb_save_stock_notification_email_template">';
 		wp_nonce_field( 'hlpb_save_stock_notification_email_template' );
-		echo '<table class="form-table" role="presentation"><tbody><tr><th scope="row"><label for="hlpb-stock-email-subject">' . esc_html__( 'Subject', 'html-landing-page-builder-for-woocommerce' ) . '</label></th><td><input id="hlpb-stock-email-subject" class="regular-text" type="text" name="subject" value="' . esc_attr( $template['subject'] ) . '" required></td></tr><tr><th scope="row"><label for="hlpb-stock-email-message">' . esc_html__( 'Message', 'html-landing-page-builder-for-woocommerce' ) . '</label></th><td><textarea id="hlpb-stock-email-message" class="large-text" rows="8" name="message" required>' . esc_textarea( $template['message'] ) . '</textarea><p class="description">' . esc_html__( 'Plain text email. Product name and link are inserted using the placeholders above.', 'html-landing-page-builder-for-woocommerce' ) . '</p></td></tr></tbody></table>';
-		echo '<p><button type="submit" class="button button-primary">' . esc_html__( 'Save email template', 'html-landing-page-builder-for-woocommerce' ) . '</button></p></form></div>';
+		echo '<table class="form-table" role="presentation"><tbody><tr><th scope="row"><label for="hlpb-stock-email-subject">' . esc_html__( 'Subject', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label></th><td><input id="hlpb-stock-email-subject" class="regular-text" type="text" name="subject" value="' . esc_attr( $template['subject'] ) . '" required></td></tr><tr><th scope="row"><label for="hlpb-stock-email-message">' . esc_html__( 'Message', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label></th><td><textarea id="hlpb-stock-email-message" class="large-text" rows="8" name="message" required>' . esc_textarea( $template['message'] ) . '</textarea><p class="description">' . esc_html__( 'Plain text email. Product name and link are inserted using the placeholders above.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></td></tr></tbody></table>';
+		echo '<p><button type="submit" class="button button-primary">' . esc_html__( 'Save email template', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></p></form></div>';
 	}
 
 	/** Default editable copy and offer configuration. */
@@ -490,8 +490,8 @@ final class HLPB_Cart_Section {
 		$enabled = ! empty( $rule['badge_enabled'] );
 		$badge_name = $rule_name . '[badge_enabled]';
 		$text_name = $rule_name . '[badge_text]';
-		$html = '<div class="hlpb-rule-badge-settings"><label class="hlpb-rule-badge-toggle"><input type="hidden" name="' . esc_attr( $badge_name ) . '" value="0"><input type="checkbox" name="' . esc_attr( $badge_name ) . '" value="1" ' . checked( $enabled, true, false ) . '><span>' . esc_html__( 'Show badge on this offer', 'html-landing-page-builder-for-woocommerce' ) . '</span></label>';
-		$html .= '<label class="hlpb-rule-badge-text"><span>' . esc_html__( 'Badge text', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" maxlength="60" name="' . esc_attr( $text_name ) . '" value="' . esc_attr( $rule['badge_text'] ?? '' ) . '" placeholder="' . esc_attr__( 'For example: MOST POPULAR', 'html-landing-page-builder-for-woocommerce' ) . '"></label></div>';
+		$html = '<div class="hlpb-rule-badge-settings"><label class="hlpb-rule-badge-toggle"><input type="hidden" name="' . esc_attr( $badge_name ) . '" value="0"><input type="checkbox" name="' . esc_attr( $badge_name ) . '" value="1" ' . checked( $enabled, true, false ) . '><span>' . esc_html__( 'Show badge on this offer', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span></label>';
+		$html .= '<label class="hlpb-rule-badge-text"><span>' . esc_html__( 'Badge text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><input type="text" maxlength="60" name="' . esc_attr( $text_name ) . '" value="' . esc_attr( $rule['badge_text'] ?? '' ) . '" placeholder="' . esc_attr__( 'For example: MOST POPULAR', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '"></label></div>';
 		return $html;
 	}
 
@@ -502,67 +502,67 @@ final class HLPB_Cart_Section {
 		$defaults = self::defaults();
 		$name = 'hlpb_sections[' . $id . ']';
 		$products = self::get_product_choices();
-		$html = '<div class="hlpb-cart-editor"><p class="description">' . esc_html__( 'Configure WooCommerce products, variation choices, offer tiers and the checkout coupon used by this section.', 'html-landing-page-builder-for-woocommerce' ) . '</p><p class="description">' . esc_html__( 'Product prices, available variations and variation galleries are read from WooCommerce again whenever you update or publish this landing page. The next static HTML copy will include the current product data.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
-		$html .= '<fieldset class="hlpb-cart-fieldset"><legend>' . esc_html__( 'Section content', 'html-landing-page-builder-for-woocommerce' ) . '</legend>';
-		$html .= self::input( $name, 'eyebrow', __( 'Eyebrow', 'html-landing-page-builder-for-woocommerce' ), $section['eyebrow'] );
-		$html .= self::textarea( $name, 'title', __( 'Heading', 'html-landing-page-builder-for-woocommerce' ), $section['title'] );
-		$html .= '<div class="hlpb-field"><label>' . esc_html__( 'Rating', 'html-landing-page-builder-for-woocommerce' ) . '</label><input type="number" min="0" max="5" step="0.1" name="' . esc_attr( $name . '[rating]' ) . '" value="' . esc_attr( $section['rating'] ) . '"> <label>' . esc_html__( 'Review count', 'html-landing-page-builder-for-woocommerce' ) . '</label><input type="text" name="' . esc_attr( $name . '[rating_count]' ) . '" value="' . esc_attr( $section['rating_count'] ) . '"></div>';
-		$html .= '<div class="hlpb-field"><label>' . esc_html__( 'Displayed stars', 'html-landing-page-builder-for-woocommerce' ) . '</label><input type="number" min="1" max="5" step="1" name="' . esc_attr( $name . '[rating_stars]' ) . '" value="' . esc_attr( $section['rating_stars'] ) . '"></div>';
-		$html .= '<div class="hlpb-field"><label><input type="checkbox" name="' . esc_attr( $name . '[countdown]' ) . '" value="1" ' . checked( ! empty( $section['countdown'] ), true, false ) . '> ' . esc_html__( 'Show countdown', 'html-landing-page-builder-for-woocommerce' ) . '</label></div>';
-		$html .= self::input( $name, 'countdown_text', __( 'Countdown label', 'html-landing-page-builder-for-woocommerce' ), $section['countdown_text'] );
-		$html .= self::input( $name, 'button_text', __( 'Add to cart button', 'html-landing-page-builder-for-woocommerce' ), $section['button_text'] );
-		$html .= '<div class="hlpb-field"><label>' . esc_html__( 'Accent color', 'html-landing-page-builder-for-woocommerce' ) . '</label><input type="color" name="' . esc_attr( $name . '[accent_color]' ) . '" value="' . esc_attr( $section['accent_color'] ) . '"> <label>' . esc_html__( 'Section background', 'html-landing-page-builder-for-woocommerce' ) . '</label><input type="color" name="' . esc_attr( $name . '[background]' ) . '" value="' . esc_attr( $section['background'] ) . '"></div>';
+		$html = '<div class="hlpb-cart-editor"><p class="description">' . esc_html__( 'Configure WooCommerce products, variation choices, offer tiers and the checkout coupon used by this section.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p><p class="description">' . esc_html__( 'Product prices, available variations and variation galleries are read from WooCommerce again whenever you update or publish this landing page. The next static HTML copy will include the current product data.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p>';
+		$html .= '<fieldset class="hlpb-cart-fieldset"><legend>' . esc_html__( 'Section content', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</legend>';
+		$html .= self::input( $name, 'eyebrow', __( 'Eyebrow', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['eyebrow'] );
+		$html .= self::textarea( $name, 'title', __( 'Heading', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['title'] );
+		$html .= '<div class="hlpb-field"><label>' . esc_html__( 'Rating', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><input type="number" min="0" max="5" step="0.1" name="' . esc_attr( $name . '[rating]' ) . '" value="' . esc_attr( $section['rating'] ) . '"> <label>' . esc_html__( 'Review count', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><input type="text" name="' . esc_attr( $name . '[rating_count]' ) . '" value="' . esc_attr( $section['rating_count'] ) . '"></div>';
+		$html .= '<div class="hlpb-field"><label>' . esc_html__( 'Displayed stars', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><input type="number" min="1" max="5" step="1" name="' . esc_attr( $name . '[rating_stars]' ) . '" value="' . esc_attr( $section['rating_stars'] ) . '"></div>';
+		$html .= '<div class="hlpb-field"><label><input type="checkbox" name="' . esc_attr( $name . '[countdown]' ) . '" value="1" ' . checked( ! empty( $section['countdown'] ), true, false ) . '> ' . esc_html__( 'Show countdown', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label></div>';
+		$html .= self::input( $name, 'countdown_text', __( 'Countdown label', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['countdown_text'] );
+		$html .= self::input( $name, 'button_text', __( 'Add to cart button', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['button_text'] );
+		$html .= '<div class="hlpb-field"><label>' . esc_html__( 'Accent color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><input type="color" name="' . esc_attr( $name . '[accent_color]' ) . '" value="' . esc_attr( $section['accent_color'] ) . '"> <label>' . esc_html__( 'Section background', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><input type="color" name="' . esc_attr( $name . '[background]' ) . '" value="' . esc_attr( $section['background'] ) . '"></div>';
 		$html .= '</fieldset>';
-		foreach ( array( 'buy' => __( 'Buy more', 'html-landing-page-builder-for-woocommerce' ), 'mix' => __( 'Mix & Match', 'html-landing-page-builder-for-woocommerce' ), 'bundle' => __( 'Cozy bundle', 'html-landing-page-builder-for-woocommerce' ) ) as $mode => $label ) {
+		foreach ( array( 'buy' => __( 'Buy more', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'mix' => __( 'Mix & Match', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'bundle' => __( 'Cozy bundle', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ) as $mode => $label ) {
 			$prefix = array( 'buy' => 'BuyMore', 'mix' => 'MixNMatch', 'bundle' => 'CozyBundle' )[ $mode ];
 			$mode_data = isset( $section['modes'][ $mode ] ) && is_array( $section['modes'][ $mode ] ) ? array_merge( $defaults['modes'][ $mode ], $section['modes'][ $mode ] ) : $defaults['modes'][ $mode ];
 			$mode_data['rules'] = isset( $mode_data['rules'] ) && is_array( $mode_data['rules'] ) ? $mode_data['rules'] : $defaults['modes'][ $mode ]['rules'];
-			$html .= '<fieldset class="hlpb-cart-fieldset hlpb-cart-mode"><legend>' . esc_html( $label ) . '</legend><label><input type="checkbox" name="' . esc_attr( $name . '[modes][' . $mode . '][enabled]' ) . '" value="1" ' . checked( ! empty( $mode_data['enabled'] ), true, false ) . '> ' . esc_html__( 'Enable tab', 'html-landing-page-builder-for-woocommerce' ) . '</label> ' . self::input( $name, 'mode_labels][' . $mode, __( 'Tab label', 'html-landing-page-builder-for-woocommerce' ), $section['mode_labels'][ $mode ] ?? $label );
-			$html .= '<div class="hlpb-field hlpb-coupon-name-field"><label>' . esc_html__( 'Coupon name', 'html-landing-page-builder-for-woocommerce' ) . '</label><span class="hlpb-coupon-prefix">' . esc_html( $prefix ) . '</span><input type="text" class="regular-text" name="' . esc_attr( $name . '[modes][' . $mode . '][coupon_name]' ) . '" value="' . esc_attr( $mode_data['coupon_name'] ?? $defaults['modes'][ $mode ]['coupon_name'] ) . '"><span class="description">' . esc_html__( 'This prefix is added automatically to the WooCommerce coupon name and code.', 'html-landing-page-builder-for-woocommerce' ) . '</span></div>';
+			$html .= '<fieldset class="hlpb-cart-fieldset hlpb-cart-mode"><legend>' . esc_html( $label ) . '</legend><label><input type="checkbox" name="' . esc_attr( $name . '[modes][' . $mode . '][enabled]' ) . '" value="1" ' . checked( ! empty( $mode_data['enabled'] ), true, false ) . '> ' . esc_html__( 'Enable tab', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label> ' . self::input( $name, 'mode_labels][' . $mode, __( 'Tab label', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['mode_labels'][ $mode ] ?? $label );
+			$html .= '<div class="hlpb-field hlpb-coupon-name-field"><label>' . esc_html__( 'Coupon name', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><span class="hlpb-coupon-prefix">' . esc_html( $prefix ) . '</span><input type="text" class="regular-text" name="' . esc_attr( $name . '[modes][' . $mode . '][coupon_name]' ) . '" value="' . esc_attr( $mode_data['coupon_name'] ?? $defaults['modes'][ $mode ]['coupon_name'] ) . '"><span class="description">' . esc_html__( 'This prefix is added automatically to the WooCommerce coupon name and code.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span></div>';
 			$mode_copy = isset( $section['mode_copy'][ $mode ] ) && is_array( $section['mode_copy'][ $mode ] ) ? array_merge( $defaults['mode_copy'][ $mode ], $section['mode_copy'][ $mode ] ) : $defaults['mode_copy'][ $mode ];
-			$html .= self::input( $name, 'quantity_heading', __( 'Quantity step heading', 'html-landing-page-builder-for-woocommerce' ), $mode_copy['quantity_heading'], 'mode_copy][' . $mode );
-			$html .= self::input( $name, 'items_heading', __( 'Products step heading', 'html-landing-page-builder-for-woocommerce' ), $mode_copy['items_heading'], 'mode_copy][' . $mode );
-			$html .= self::input( $name, 'hint', __( 'Products hint', 'html-landing-page-builder-for-woocommerce' ), $mode_copy['hint'], 'mode_copy][' . $mode );
-			$html .= self::input( $name, 'summary', __( 'Price summary label', 'html-landing-page-builder-for-woocommerce' ), $mode_copy['summary'], 'mode_copy][' . $mode );
+			$html .= self::input( $name, 'quantity_heading', __( 'Quantity step heading', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $mode_copy['quantity_heading'], 'mode_copy][' . $mode );
+			$html .= self::input( $name, 'items_heading', __( 'Products step heading', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $mode_copy['items_heading'], 'mode_copy][' . $mode );
+			$html .= self::input( $name, 'hint', __( 'Products hint', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $mode_copy['hint'], 'mode_copy][' . $mode );
+			$html .= self::input( $name, 'summary', __( 'Price summary label', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $mode_copy['summary'], 'mode_copy][' . $mode );
 			$slots = 'buy' === $mode ? 1 : 2;
-			$products_heading = 'buy' === $mode ? __( 'Product to repeat', 'html-landing-page-builder-for-woocommerce' ) : ( 'mix' === $mode ? __( 'Products to mix', 'html-landing-page-builder-for-woocommerce' ) : __( 'Products in each set', 'html-landing-page-builder-for-woocommerce' ) );
+			$products_heading = 'buy' === $mode ? __( 'Product to repeat', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) : ( 'mix' === $mode ? __( 'Products to mix', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) : __( 'Products in each set', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 			$html .= '<div class="hlpb-cart-product-slots"><strong>' . esc_html( $products_heading ) . '</strong>';
 			for ( $slot = 0; $slot < $slots; $slot++ ) {
 				$product_id = isset( $mode_data['products'][ $slot ] ) ? absint( $mode_data['products'][ $slot ] ) : 0;
 				// translators: %d: the product slot number in the configured offer.
-				$slot_label = 'buy' === $mode ? __( 'Product', 'html-landing-page-builder-for-woocommerce' ) : ( 'mix' === $mode ? sprintf( __( 'Mix option %d', 'html-landing-page-builder-for-woocommerce' ), $slot + 1 ) : sprintf( __( 'Set item %d', 'html-landing-page-builder-for-woocommerce' ), $slot + 1 ) );
-				$html .= '<label>' . esc_html( $slot_label ) . ' <select class="hlpb-mode-product" data-mode="' . esc_attr( $mode ) . '" name="' . esc_attr( $name . '[modes][' . $mode . '][products][' . $slot . ']' ) . '"><option value="0">' . esc_html__( '— Select product —', 'html-landing-page-builder-for-woocommerce' ) . '</option>';
+				$slot_label = 'buy' === $mode ? __( 'Product', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) : ( 'mix' === $mode ? sprintf( __( 'Mix option %d', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $slot + 1 ) : sprintf( __( 'Set item %d', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $slot + 1 ) );
+				$html .= '<label>' . esc_html( $slot_label ) . ' <select class="hlpb-mode-product" data-mode="' . esc_attr( $mode ) . '" name="' . esc_attr( $name . '[modes][' . $mode . '][products][' . $slot . ']' ) . '"><option value="0">' . esc_html__( '— Select product —', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option>';
 				foreach ( $products as $product ) {
 					$html .= '<option value="' . esc_attr( $product['id'] ) . '" ' . selected( $product_id, $product['id'], false ) . '>' . esc_html( $product['name'] ) . '</option>';
 				}
 				$html .= '</select></label>';
 			}
 			$product_help = 'buy' === $mode
-				? __( 'The same product is repeated. Shoppers can choose a different colour or size for each item.', 'html-landing-page-builder-for-woocommerce' )
+				? __( 'The same product is repeated. Shoppers can choose a different colour or size for each item.', 'mikhailkyrychenko-offer-builder-for-woocommerce' )
 				: ( 'mix' === $mode
-					? __( 'Choose two different products. Every mix includes both; extra items can repeat either.', 'html-landing-page-builder-for-woocommerce' )
-					: __( 'Choose two different products. Every set includes one of each.', 'html-landing-page-builder-for-woocommerce' ) );
+					? __( 'Choose two different products. Every mix includes both; extra items can repeat either.', 'mikhailkyrychenko-offer-builder-for-woocommerce' )
+					: __( 'Choose two different products. Every set includes one of each.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 			$html .= '</div><p class="description">' . esc_html( $product_help ) . '</p>';
-			$html .= '<div class="hlpb-cart-rules"><div class="hlpb-cart-rules-heading"><strong>' . esc_html__( 'Offer price and gift by quantity', 'html-landing-page-builder-for-woocommerce' ) . '</strong><p class="description">' . esc_html__( 'Set the price or discount for the offer products in the left panel. Configure a separate optional gift in the right panel.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+			$html .= '<div class="hlpb-cart-rules"><div class="hlpb-cart-rules-heading"><strong>' . esc_html__( 'Offer price and gift by quantity', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</strong><p class="description">' . esc_html__( 'Set the price or discount for the offer products in the left panel. Configure a separate optional gift in the right panel.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></div>';
 			for ( $quantity = ( 'mix' === $mode ? 2 : 1 ); $quantity <= 4; $quantity++ ) {
 				$rule = isset( $mode_data['rules'][ $quantity ] ) && is_array( $mode_data['rules'][ $quantity ] ) ? $mode_data['rules'][ $quantity ] : $defaults['modes'][ $mode ]['rules'][ $quantity ];
 				$rule_name = $name . '[modes][' . $mode . '][rules][' . $quantity . ']';
 				// translators: %d: number of products in the offer; the bundle label is singular or plural.
-				$rule_label = 'mix' === $mode ? sprintf( __( '%d items', 'html-landing-page-builder-for-woocommerce' ), $quantity ) : ( 'bundle' === $mode ? sprintf( _n( '%d set', '%d sets', $quantity, 'html-landing-page-builder-for-woocommerce' ), $quantity ) : sprintf( __( 'Buy %d', 'html-landing-page-builder-for-woocommerce' ), $quantity ) );
-				$html .= '<div class="hlpb-cart-rule"><div class="hlpb-cart-rule-title"><strong>' . esc_html( $rule_label ) . '</strong><span>' . esc_html__( 'Settings for this quantity', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="hidden" name="' . esc_attr( $rule_name . '[quantity]' ) . '" value="' . esc_attr( $quantity ) . '"></div><div class="hlpb-cart-rule-panels"><section class="hlpb-rule-panel hlpb-rule-offer"><h4>' . esc_html__( 'Offer price / discount', 'html-landing-page-builder-for-woocommerce' ) . '</h4><p>' . esc_html__( 'Applies to the products in this offer.', 'html-landing-page-builder-for-woocommerce' ) . '</p><div class="hlpb-rule-fields"><label><span>' . esc_html__( 'Price rule', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[type]' ) . '"><option value="none" ' . selected( $rule['type'] ?? '', 'none', false ) . '>' . esc_html__( 'No discount', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="percent" ' . selected( $rule['type'] ?? '', 'percent', false ) . '>' . esc_html__( 'Percent off', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="amount" ' . selected( $rule['type'] ?? '', 'amount', false ) . '>' . esc_html__( 'Fixed amount off', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="fixed_total" ' . selected( $rule['type'] ?? '', 'fixed_total', false ) . '>' . esc_html__( 'Fixed total price', 'html-landing-page-builder-for-woocommerce' ) . '</option></select></label><label><span>' . esc_html__( 'Discount / total value', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="number" min="0" step="0.01" name="' . esc_attr( $rule_name . '[value]' ) . '" value="' . esc_attr( $rule['value'] ?? '' ) . '"></label></div><p class="description">' . esc_html__( 'Enter a discount for Percent off or Fixed amount off. For Fixed total price, enter the final price for this offer.', 'html-landing-page-builder-for-woocommerce' ) . '</p>' . self::badge_fields_markup( $rule_name, $rule ) . '</section><section class="hlpb-rule-panel hlpb-rule-gift"><h4>' . esc_html__( 'Gift product (optional)', 'html-landing-page-builder-for-woocommerce' ) . '</h4><p>' . esc_html__( 'The gift is added separately once and does not count toward the offer quantity.', 'html-landing-page-builder-for-woocommerce' ) . '</p><div class="hlpb-rule-fields hlpb-gift-fields"><label><span>' . esc_html__( 'Gift product', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[gift_product_id]' ) . '"><option value="0">' . esc_html__( 'No gift', 'html-landing-page-builder-for-woocommerce' ) . '</option>';
+				$rule_label = 'mix' === $mode ? sprintf( __( '%d items', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $quantity ) : ( 'bundle' === $mode ? sprintf( _n( '%d set', '%d sets', $quantity, 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $quantity ) : sprintf( __( 'Buy %d', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $quantity ) );
+				$html .= '<div class="hlpb-cart-rule"><div class="hlpb-cart-rule-title"><strong>' . esc_html( $rule_label ) . '</strong><span>' . esc_html__( 'Settings for this quantity', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><input type="hidden" name="' . esc_attr( $rule_name . '[quantity]' ) . '" value="' . esc_attr( $quantity ) . '"></div><div class="hlpb-cart-rule-panels"><section class="hlpb-rule-panel hlpb-rule-offer"><h4>' . esc_html__( 'Offer price / discount', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</h4><p>' . esc_html__( 'Applies to the products in this offer.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p><div class="hlpb-rule-fields"><label><span>' . esc_html__( 'Price rule', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[type]' ) . '"><option value="none" ' . selected( $rule['type'] ?? '', 'none', false ) . '>' . esc_html__( 'No discount', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option><option value="percent" ' . selected( $rule['type'] ?? '', 'percent', false ) . '>' . esc_html__( 'Percent off', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option><option value="amount" ' . selected( $rule['type'] ?? '', 'amount', false ) . '>' . esc_html__( 'Fixed amount off', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option><option value="fixed_total" ' . selected( $rule['type'] ?? '', 'fixed_total', false ) . '>' . esc_html__( 'Fixed total price', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option></select></label><label><span>' . esc_html__( 'Discount / total value', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><input type="number" min="0" step="0.01" name="' . esc_attr( $rule_name . '[value]' ) . '" value="' . esc_attr( $rule['value'] ?? '' ) . '"></label></div><p class="description">' . esc_html__( 'Enter a discount for Percent off or Fixed amount off. For Fixed total price, enter the final price for this offer.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p>' . self::badge_fields_markup( $rule_name, $rule ) . '</section><section class="hlpb-rule-panel hlpb-rule-gift"><h4>' . esc_html__( 'Gift product (optional)', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</h4><p>' . esc_html__( 'The gift is added separately once and does not count toward the offer quantity.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p><div class="hlpb-rule-fields hlpb-gift-fields"><label><span>' . esc_html__( 'Gift product', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[gift_product_id]' ) . '"><option value="0">' . esc_html__( 'No gift', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option>';
 				foreach ( $products as $product ) {
 					$html .= '<option value="' . esc_attr( $product['id'] ) . '" ' . selected( absint( $rule['gift_product_id'] ?? 0 ), $product['id'], false ) . '>' . esc_html( $product['name'] ) . '</option>';
 				}
-				$html .= '</select></label><label><span>' . esc_html__( 'Gift treatment', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[gift_mode]' ) . '"><option value="none" ' . selected( $rule['gift_mode'] ?? 'none', 'none', false ) . '>' . esc_html__( 'Not included', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="free" ' . selected( $rule['gift_mode'] ?? 'none', 'free', false ) . '>' . esc_html__( 'Free gift', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="discounted" ' . selected( $rule['gift_mode'] ?? 'none', 'discounted', false ) . '>' . esc_html__( 'Discounted price', 'html-landing-page-builder-for-woocommerce' ) . '</option></select></label><label><span>' . esc_html__( 'Gift price rule', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[gift_discount_type]' ) . '"><option value="percent" ' . selected( $rule['gift_discount_type'] ?? 'percent', 'percent', false ) . '>' . esc_html__( 'Percent off', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="fixed_price" ' . selected( $rule['gift_discount_type'] ?? 'percent', 'fixed_price', false ) . '>' . esc_html__( 'Fixed price', 'html-landing-page-builder-for-woocommerce' ) . '</option></select></label><label><span>' . esc_html__( 'Gift discount / price', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="number" min="0" step="0.01" name="' . esc_attr( $rule_name . '[gift_discount_value]' ) . '" value="' . esc_attr( $rule['gift_discount_value'] ?? 0 ) . '"></label></div><p class="description">' . esc_html__( 'This value is used when Gift treatment is set to Discounted price.', 'html-landing-page-builder-for-woocommerce' ) . '</p></section></div></div>';
+				$html .= '</select></label><label><span>' . esc_html__( 'Gift treatment', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[gift_mode]' ) . '"><option value="none" ' . selected( $rule['gift_mode'] ?? 'none', 'none', false ) . '>' . esc_html__( 'Not included', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option><option value="free" ' . selected( $rule['gift_mode'] ?? 'none', 'free', false ) . '>' . esc_html__( 'Free gift', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option><option value="discounted" ' . selected( $rule['gift_mode'] ?? 'none', 'discounted', false ) . '>' . esc_html__( 'Discounted price', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option></select></label><label><span>' . esc_html__( 'Gift price rule', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $rule_name . '[gift_discount_type]' ) . '"><option value="percent" ' . selected( $rule['gift_discount_type'] ?? 'percent', 'percent', false ) . '>' . esc_html__( 'Percent off', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option><option value="fixed_price" ' . selected( $rule['gift_discount_type'] ?? 'percent', 'fixed_price', false ) . '>' . esc_html__( 'Fixed price', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option></select></label><label><span>' . esc_html__( 'Gift discount / price', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><input type="number" min="0" step="0.01" name="' . esc_attr( $rule_name . '[gift_discount_value]' ) . '" value="' . esc_attr( $rule['gift_discount_value'] ?? 0 ) . '"></label></div><p class="description">' . esc_html__( 'This value is used when Gift treatment is set to Discounted price.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></section></div></div>';
 			}
 			$html .= '</div></fieldset>';
 		}
-		$html .= '<fieldset class="hlpb-cart-fieldset"><legend>' . esc_html__( 'Savings and trust row', 'html-landing-page-builder-for-woocommerce' ) . '</legend>' . self::input( $name, 'saving_label', __( 'Savings label', 'html-landing-page-builder-for-woocommerce' ), $section['saving_label'] ) . self::input( $name, 'total_label', __( 'Total label', 'html-landing-page-builder-for-woocommerce' ), $section['total_label'] ) . '<p class="description">' . esc_html__( 'Each enabled tab has its own WooCommerce coupon. A selected quantity gift uses that tab’s coupon and remains linked only to its offer bundle.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		$html .= '<fieldset class="hlpb-cart-fieldset"><legend>' . esc_html__( 'Savings and trust row', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</legend>' . self::input( $name, 'saving_label', __( 'Savings label', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['saving_label'] ) . self::input( $name, 'total_label', __( 'Total label', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['total_label'] ) . '<p class="description">' . esc_html__( 'Each enabled tab has its own WooCommerce coupon. A selected quantity gift uses that tab’s coupon and remains linked only to its offer bundle.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p>';
 		foreach ( $section['service_points'] ?? $defaults['service_points'] as $index => $point ) {
 			// translators: %d: position of this service item in the list.
-			$html .= '<div class="hlpb-cart-service"><strong>' . esc_html( sprintf( __( 'Service item %d', 'html-landing-page-builder-for-woocommerce' ), $index + 1 ) ) . '</strong><input type="text" aria-label="' . esc_attr__( 'Title', 'html-landing-page-builder-for-woocommerce' ) . '" name="' . esc_attr( $name . '[service_points][' . $index . '][title]' ) . '" value="' . esc_attr( $point['title'] ) . '"><input type="text" aria-label="' . esc_attr__( 'Text', 'html-landing-page-builder-for-woocommerce' ) . '" name="' . esc_attr( $name . '[service_points][' . $index . '][text]' ) . '" value="' . esc_attr( $point['text'] ) . '"></div>';
+			$html .= '<div class="hlpb-cart-service"><strong>' . esc_html( sprintf( __( 'Service item %d', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $index + 1 ) ) . '</strong><input type="text" aria-label="' . esc_attr__( 'Title', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '" name="' . esc_attr( $name . '[service_points][' . $index . '][title]' ) . '" value="' . esc_attr( $point['title'] ) . '"><input type="text" aria-label="' . esc_attr__( 'Text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '" name="' . esc_attr( $name . '[service_points][' . $index . '][text]' ) . '" value="' . esc_attr( $point['text'] ) . '"></div>';
 		}
-		$html .= self::input( $name, 'payment_methods', __( 'Payment labels', 'html-landing-page-builder-for-woocommerce' ), $section['payment_methods'] ) . '</fieldset></div>';
+		$html .= self::input( $name, 'payment_methods', __( 'Payment labels', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['payment_methods'] ) . '</fieldset></div>';
 		return $html;
 	}
 
@@ -626,7 +626,7 @@ final class HLPB_Cart_Section {
 			$coupon->set_product_ids( array() );
 			$coupon->set_individual_use( false );
 			// translators: %1$s: offer mode or prefix; %2$s: landing page title.
-			$coupon->set_description( sprintf( __( '%1$s offer coupon for landing page “%2$s”. Offer prices are validated by the landing page configuration.', 'html-landing-page-builder-for-woocommerce' ), $prefix, get_the_title( $post_id ) ) );
+			$coupon->set_description( sprintf( __( '%1$s offer coupon for landing page “%2$s”. Offer prices are validated by the landing page configuration.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $prefix, get_the_title( $post_id ) ) );
 			if ( method_exists( $coupon, 'set_status' ) ) {
 				$coupon->set_status( $is_active ? 'publish' : 'draft' );
 			}
@@ -842,7 +842,7 @@ final class HLPB_Cart_Section {
 	// phpcs:disable WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended -- Public static-page requests are authenticated by a same-site check and a landing-configuration-bound HMAC token.
 	public static function handle_live_variations_request() {
 		if ( ! self::is_same_site_request() ) {
-			wp_send_json_error( array( 'message' => __( 'This stock check must come from the landing page.', 'html-landing-page-builder-for-woocommerce' ) ), 403 );
+			wp_send_json_error( array( 'message' => __( 'This stock check must come from the landing page.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 403 );
 		}
 		$landing_id = absint( self::posted_scalar( 'landing_id', '0' ) );
 		$sections = $landing_id ? HLPB_Landing_Builder::get_sections( $landing_id ) : array();
@@ -851,26 +851,26 @@ final class HLPB_Cart_Section {
 		$token_is_current = '' !== $token && hash_equals( self::token( $landing_id, $section ), $token );
 		$token_is_legacy = 1 === preg_match( '/\A[a-f0-9]{64}\z/i', $token );
 		if ( ! $section || 'publish' !== get_post_status( $landing_id ) || ( ! $token_is_current && ! $token_is_legacy ) ) {
-			wp_send_json_error( array( 'message' => __( 'This landing offer has changed. Refresh the page and try again.', 'html-landing-page-builder-for-woocommerce' ) ), 403 );
+			wp_send_json_error( array( 'message' => __( 'This landing offer has changed. Refresh the page and try again.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 403 );
 		}
 		$settings = array_merge( self::defaults(), self::sanitize( $section ) );
 		$mode = sanitize_key( self::posted_scalar( 'mode' ) );
 		$quantity = absint( self::posted_scalar( 'quantity', '0' ) );
 		$minimum_quantity = 'mix' === $mode ? 2 : 1;
 		if ( ! in_array( $mode, array( 'buy', 'mix', 'bundle' ), true ) || empty( $settings['modes'][ $mode ]['enabled'] ) || $quantity < $minimum_quantity || $quantity > 4 ) {
-			wp_send_json_error( array( 'message' => __( 'The selected offer is invalid.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+			wp_send_json_error( array( 'message' => __( 'The selected offer is invalid.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 400 );
 		}
 		$rule = $settings['modes'][ $mode ]['rules'][ $quantity ] ?? $settings['modes'][ $mode ]['rules'][ (string) $quantity ] ?? false;
 		if ( ! is_array( $rule ) ) {
-			wp_send_json_error( array( 'message' => __( 'The selected offer is unavailable.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+			wp_send_json_error( array( 'message' => __( 'The selected offer is unavailable.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 400 );
 		}
 		$selections_json = self::posted_scalar( 'items', '[]' );
 		if ( ! is_string( $selections_json ) || strlen( $selections_json ) > 16384 ) {
-			wp_send_json_error( array( 'message' => __( 'The selected products could not be read.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+			wp_send_json_error( array( 'message' => __( 'The selected products could not be read.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 400 );
 		}
 		$selections = json_decode( $selections_json, true );
 		if ( ! is_array( $selections ) || count( $selections ) > 9 ) {
-			wp_send_json_error( array( 'message' => __( 'The selected products could not be read.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+			wp_send_json_error( array( 'message' => __( 'The selected products could not be read.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 400 );
 		}
 		$allowed_ids = array_values( array_unique( array_filter( array_map( 'absint', $settings['modes'][ $mode ]['products'] ?? array() ) ) ) );
 		$expected_items = 'bundle' === $mode ? $quantity * 2 : $quantity;
@@ -878,7 +878,7 @@ final class HLPB_Cart_Section {
 		$results = array();
 		foreach ( $selections as $selection ) {
 			if ( ! is_array( $selection ) ) {
-				wp_send_json_error( array( 'message' => __( 'A selected product is invalid.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+				wp_send_json_error( array( 'message' => __( 'A selected product is invalid.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 400 );
 			}
 			$slot = isset( $selection['slot'] ) && 'gift' === $selection['slot'] ? 'gift' : ( isset( $selection['slot'] ) && ctype_digit( (string) $selection['slot'] ) ? (string) $selection['slot'] : '' );
 			$product_id = absint( $selection['product_id'] ?? 0 );
@@ -891,7 +891,7 @@ final class HLPB_Cart_Section {
 			} else {
 				++$core_count;
 				if ( '' === $slot || ! in_array( $product_id, $allowed_ids, true ) ) {
-					wp_send_json_error( array( 'message' => __( 'A selected product is not part of this offer.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+					wp_send_json_error( array( 'message' => __( 'A selected product is not part of this offer.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 400 );
 				}
 			}
 			$live_data = self::get_live_selection_public_data( $product_id, $selection );
@@ -902,7 +902,7 @@ final class HLPB_Cart_Section {
 			$results[] = $live_data;
 		}
 		if ( $core_count !== $expected_items ) {
-			wp_send_json_error( array( 'message' => __( 'Choose a product for each item in the offer.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+			wp_send_json_error( array( 'message' => __( 'Choose a product for each item in the offer.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 400 );
 		}
 		$mode_settings = $settings['modes'][ $mode ];
 		$refresh_product_ids = $allowed_ids;
@@ -931,7 +931,7 @@ final class HLPB_Cart_Section {
 	// phpcs:disable WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended -- Public static-page requests are authenticated by a same-site check and a landing-configuration-bound HMAC token.
 	public static function handle_stock_notification_request() {
 		if ( ! self::is_same_site_request() ) {
-			wp_send_json_error( array( 'message' => __( 'This request must come from the landing page.', 'html-landing-page-builder-for-woocommerce' ) ), 403 );
+			wp_send_json_error( array( 'message' => __( 'This request must come from the landing page.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 403 );
 		}
 		$landing_id = absint( self::posted_scalar( 'landing_id', '0' ) );
 		$sections = $landing_id ? HLPB_Landing_Builder::get_sections( $landing_id ) : array();
@@ -940,19 +940,19 @@ final class HLPB_Cart_Section {
 		$token_is_current = '' !== $token && hash_equals( self::token( $landing_id, $section ), $token );
 		$token_is_legacy = 1 === preg_match( '/\\A[a-f0-9]{64}\\z/i', $token );
 		if ( ! $section || 'publish' !== get_post_status( $landing_id ) || ( ! $token_is_current && ! $token_is_legacy ) ) {
-			wp_send_json_error( array( 'message' => __( 'This landing page is unavailable. Refresh it and try again.', 'html-landing-page-builder-for-woocommerce' ) ), 403 );
+			wp_send_json_error( array( 'message' => __( 'This landing page is unavailable. Refresh it and try again.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 403 );
 		}
 
 		$product_id = absint( self::posted_scalar( 'product_id', '0' ) );
 		$variation_id = absint( self::posted_scalar( 'variation_id', '0' ) );
 		$email = sanitize_email( self::posted_scalar( 'email' ) );
 		if ( ! is_email( $email ) ) {
-			wp_send_json_error( array( 'message' => __( 'Enter a valid email address.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+			wp_send_json_error( array( 'message' => __( 'Enter a valid email address.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 400 );
 		}
 		$parent = wc_get_product( $product_id );
 		$variation = wc_get_product( $variation_id );
 		if ( ! $parent || ! $parent->is_type( 'variable' ) || ! $variation || ! $variation->is_type( 'variation' ) || absint( $variation->get_parent_id() ) !== $product_id || 'publish' !== get_post_status( $product_id ) || 'publish' !== get_post_status( $variation_id ) ) {
-			wp_send_json_error( array( 'message' => __( 'The selected product variation could not be found.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+			wp_send_json_error( array( 'message' => __( 'The selected product variation could not be found.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 400 );
 		}
 
 		$settings = array_merge( self::defaults(), self::sanitize( $section ) );
@@ -961,15 +961,15 @@ final class HLPB_Cart_Section {
 			$landing_product_ids = array_merge( $landing_product_ids, array_map( 'absint', $mode_settings['products'] ?? array() ) );
 		}
 		if ( ! in_array( $product_id, $landing_product_ids, true ) ) {
-			wp_send_json_error( array( 'message' => __( 'This product is not part of the landing page offer.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+			wp_send_json_error( array( 'message' => __( 'This product is not part of the landing page offer.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 400 );
 		}
 
 		$availability = self::public_availability_data( $variation );
 		if ( $availability['canBuy'] ) {
-			wp_send_json_success( array( 'message' => __( 'Good news — this variation is available now. Refresh the page to choose it.', 'html-landing-page-builder-for-woocommerce' ) ) );
+			wp_send_json_success( array( 'message' => __( 'Good news — this variation is available now. Refresh the page to choose it.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ) );
 		}
 		if ( '' === trim( $availability['shippingNote'] ) ) {
-			wp_send_json_error( array( 'message' => __( 'Notifications are available only for an out-of-stock variation with a delivery note.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+			wp_send_json_error( array( 'message' => __( 'Notifications are available only for an out-of-stock variation with a delivery note.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 400 );
 		}
 
 		$entries = self::normalize_stock_notification_entries( get_post_meta( $variation_id, self::STOCK_NOTIFY_META, true ) );
@@ -987,7 +987,7 @@ final class HLPB_Cart_Section {
 		}
 		if ( ! $already_subscribed ) {
 			if ( $active_count >= 100 ) {
-				wp_send_json_error( array( 'message' => __( 'This notification list is currently full.', 'html-landing-page-builder-for-woocommerce' ) ), 429 );
+				wp_send_json_error( array( 'message' => __( 'This notification list is currently full.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 429 );
 			}
 			$entries[] = array(
 				'email'         => $email,
@@ -999,7 +999,7 @@ final class HLPB_Cart_Section {
 			);
 			update_post_meta( $variation_id, self::STOCK_NOTIFY_META, array_values( $entries ) );
 		}
-		wp_send_json_success( array( 'message' => __( 'Thanks! We will email you when this variation is available.', 'html-landing-page-builder-for-woocommerce' ) ) );
+		wp_send_json_success( array( 'message' => __( 'Thanks! We will email you when this variation is available.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ) );
 	}
 	// phpcs:enable WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended
 
@@ -1041,12 +1041,12 @@ final class HLPB_Cart_Section {
 	/** Send one notification from the saved address list. */
 	public static function handle_send_stock_notification() {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'html-landing-page-builder-for-woocommerce' ) );
+			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		$variation_id = absint( self::posted_scalar( 'variation_id', '0' ) );
 		$email = sanitize_email( self::posted_scalar( 'email' ) );
 		if ( ! $variation_id || ! is_email( $email ) ) {
-			wp_die( esc_html__( 'The stock notification subscription could not be found.', 'html-landing-page-builder-for-woocommerce' ) );
+			wp_die( esc_html__( 'The stock notification subscription could not be found.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		check_admin_referer( 'hlpb_send_stock_notification_' . $variation_id . '_' . md5( strtolower( $email ) ) );
 		$result = self::send_stock_notification_entry( $variation_id, $email );
@@ -1059,7 +1059,7 @@ final class HLPB_Cart_Section {
 	/** Send the saved email to all listed subscribers and summarize the outcome. */
 	public static function handle_send_all_stock_notifications() {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'html-landing-page-builder-for-woocommerce' ) );
+			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		check_admin_referer( 'hlpb_send_all_stock_notifications' );
 		$variation_ids = get_posts( array(
@@ -1098,13 +1098,13 @@ final class HLPB_Cart_Section {
 	/** Save the administrator's subject and message for both automatic and manual alerts. */
 	public static function handle_save_stock_notification_email_template() {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'html-landing-page-builder-for-woocommerce' ) );
+			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		check_admin_referer( 'hlpb_save_stock_notification_email_template' );
 		$subject = sanitize_text_field( self::posted_scalar( 'subject' ) );
 		$message = sanitize_textarea_field( self::posted_scalar( 'message' ) );
 		if ( '' === trim( $subject ) || '' === trim( $message ) ) {
-			wp_die( esc_html__( 'Enter both an email subject and message.', 'html-landing-page-builder-for-woocommerce' ) );
+			wp_die( esc_html__( 'Enter both an email subject and message.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		update_option( self::STOCK_NOTIFY_EMAIL_TEMPLATE_OPTION, array( 'subject' => $subject, 'message' => $message ) );
 		$menu_url = admin_url( 'edit.php?post_type=' . HLPB_Landing_Builder::POST_TYPE . '&page=hlpb-stock-notifications' );
@@ -1115,12 +1115,12 @@ final class HLPB_Cart_Section {
 	/** Delete one email subscription from the admin list. */
 	public static function handle_delete_stock_notification() {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'html-landing-page-builder-for-woocommerce' ) );
+			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		$variation_id = absint( self::posted_scalar( 'variation_id', '0' ) );
 		$email = sanitize_email( self::posted_scalar( 'email' ) );
 		if ( ! $variation_id || ! is_email( $email ) ) {
-			wp_die( esc_html__( 'The stock notification subscription could not be found.', 'html-landing-page-builder-for-woocommerce' ) );
+			wp_die( esc_html__( 'The stock notification subscription could not be found.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		check_admin_referer( 'hlpb_delete_stock_notification_' . $variation_id . '_' . md5( strtolower( $email ) ) );
 		$entries = self::normalize_stock_notification_entries( get_post_meta( $variation_id, self::STOCK_NOTIFY_META, true ) );
@@ -1140,11 +1140,11 @@ final class HLPB_Cart_Section {
 	/** Retry a notification email from the admin list if the variation is purchasable. */
 	public static function handle_retry_stock_notification() {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'html-landing-page-builder-for-woocommerce' ) );
+			wp_die( esc_html__( 'You are not allowed to manage stock notifications.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		$variation_id = absint( self::posted_scalar( 'variation_id', '0' ) );
 		if ( ! $variation_id ) {
-			wp_die( esc_html__( 'The product variation could not be found.', 'html-landing-page-builder-for-woocommerce' ) );
+			wp_die( esc_html__( 'The product variation could not be found.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		check_admin_referer( 'hlpb_retry_stock_notification_' . $variation_id );
 		$variation = wc_get_product( $variation_id );
@@ -1160,7 +1160,7 @@ final class HLPB_Cart_Section {
 	private static function get_live_selection_public_data( $product_id, $selection ) {
 		$product = wc_get_product( absint( $product_id ) );
 		if ( ! $product || 'publish' !== get_post_status( $product->get_id() ) ) {
-			return new WP_Error( 'hlpb_live_product_missing', __( 'A selected product is no longer available.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_live_product_missing', __( 'A selected product is no longer available.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		$selected = $product;
 		$variation = false;
@@ -1180,7 +1180,7 @@ final class HLPB_Cart_Section {
 					continue;
 				}
 				if ( ! empty( $options ) && ! in_array( $value, array_map( 'strval', (array) $options ), true ) ) {
-					return new WP_Error( 'hlpb_live_attribute_invalid', __( 'One of the selected product options is invalid.', 'html-landing-page-builder-for-woocommerce' ) );
+					return new WP_Error( 'hlpb_live_attribute_invalid', __( 'One of the selected product options is invalid.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 				}
 				$wanted[ 'attribute_' . $key ] = $value;
 			}
@@ -1212,7 +1212,7 @@ final class HLPB_Cart_Section {
 		if ( $selection_complete && $product->is_type( 'variable' ) && ! $variation ) {
 			$availability['canBuy'] = false;
 			$availability['stockStatus'] = 'outofstock';
-			$availability['availabilityLabel'] = __( 'This variation is unavailable.', 'html-landing-page-builder-for-woocommerce' );
+			$availability['availabilityLabel'] = __( 'This variation is unavailable.', 'mikhailkyrychenko-offer-builder-for-woocommerce' );
 			$availability['shippingNote'] = '';
 		}
 		$placeholder = function_exists( 'wc_placeholder_img_src' ) ? wc_placeholder_img_src( 'woocommerce_single' ) : '';
@@ -1364,25 +1364,25 @@ final class HLPB_Cart_Section {
 	/** Read JSON safely from a public form request, with server-side offer validation. */
 	public static function handle_checkout_request() {
 		if ( ! self::is_same_site_request() ) {
-			self::checkout_error( __( 'This checkout request must come from the landing page.', 'html-landing-page-builder-for-woocommerce' ), 403 );
+			self::checkout_error( __( 'This checkout request must come from the landing page.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 403 );
 		}
 		if ( function_exists( 'wc_load_cart' ) && function_exists( 'WC' ) && WC() && ! WC()->cart ) {
 			wc_load_cart();
 		}
 		if ( ! function_exists( 'WC' ) || ! WC() || ! WC()->cart ) {
-			wp_die( esc_html__( 'WooCommerce cart is unavailable.', 'html-landing-page-builder-for-woocommerce' ), '', array( 'response' => 503 ) );
+			wp_die( esc_html__( 'WooCommerce cart is unavailable.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), '', array( 'response' => 503 ) );
 		}
 		$landing_id = absint( self::posted_scalar( 'landing_id', '0' ) );
 		$sections = $landing_id ? HLPB_Landing_Builder::get_sections( $landing_id ) : array();
 		$section = self::find_section( $sections );
 		$token = sanitize_text_field( self::posted_scalar( 'token' ) );
 		if ( ! $section || 'publish' !== get_post_status( $landing_id ) || '' === $token || ! hash_equals( self::token( $landing_id, $section ), $token ) ) {
-			self::checkout_error( __( 'This landing offer has changed. Refresh the page and try again.', 'html-landing-page-builder-for-woocommerce' ), 403 );
+			self::checkout_error( __( 'This landing offer has changed. Refresh the page and try again.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 403 );
 		}
 		$settings = array_merge( self::defaults(), self::sanitize( $section ) );
 		$mode = sanitize_key( self::posted_scalar( 'mode' ) );
 		if ( ! in_array( $mode, array( 'buy', 'mix', 'bundle' ), true ) ) {
-			self::checkout_error( __( 'The selected offer is invalid.', 'html-landing-page-builder-for-woocommerce' ), 400 );
+			self::checkout_error( __( 'The selected offer is invalid.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 400 );
 		}
 		$coupon_id = self::coupon_id_for_mode( $landing_id, $mode );
 		if ( ! $coupon_id && class_exists( 'WC_Coupon' ) ) {
@@ -1390,22 +1390,22 @@ final class HLPB_Cart_Section {
 			$coupon_id = absint( $ids[ $mode ] ?? 0 );
 		}
 		if ( ! $coupon_id || ! class_exists( 'WC_Coupon' ) ) {
-			self::checkout_error( __( 'The offer coupon is not ready. Please contact the store.', 'html-landing-page-builder-for-woocommerce' ), 400 );
+			self::checkout_error( __( 'The offer coupon is not ready. Please contact the store.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 400 );
 		}
 		$quantity = absint( self::posted_scalar( 'quantity', '0' ) );
 		$minimum_quantity = 'mix' === $mode ? 2 : 1;
 		if ( empty( $settings['modes'][ $mode ]['enabled'] ) || $quantity < $minimum_quantity || $quantity > 4 ) {
-			self::checkout_error( __( 'The selected offer is invalid.', 'html-landing-page-builder-for-woocommerce' ), 400 );
+			self::checkout_error( __( 'The selected offer is invalid.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 400 );
 		}
 		$rules = $settings['modes'][ $mode ]['rules'] ?? array();
 		$rule = isset( $rules[ $quantity ] ) ? $rules[ $quantity ] : ( isset( $rules[ (string) $quantity ] ) ? $rules[ (string) $quantity ] : false );
 		if ( ! $rule || ! self::configured_products_valid( $settings, $mode ) ) {
-			self::checkout_error( __( 'Add the required WooCommerce products to this offer before publishing it.', 'html-landing-page-builder-for-woocommerce' ), 400 );
+			self::checkout_error( __( 'Add the required WooCommerce products to this offer before publishing it.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 400 );
 		}
 		$include_gift = ! isset( $_POST['include_gift'] ) || '1' === sanitize_text_field( self::posted_scalar( 'include_gift' ) );
 		$items_json = self::posted_scalar( 'items', '[]' );
 		if ( strlen( $items_json ) > 16384 ) {
-			self::checkout_error( __( 'The selected products could not be read.', 'html-landing-page-builder-for-woocommerce' ), 400 );
+			self::checkout_error( __( 'The selected products could not be read.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 400 );
 		}
 		$items = json_decode( $items_json, true );
 		$validated = self::validate_selected_items( $items, $settings, $mode, $quantity );
@@ -1424,7 +1424,7 @@ final class HLPB_Cart_Section {
 			$coupon = $coupon_id ? new WC_Coupon( $coupon_id ) : new WC_Coupon();
 		}
 		if ( ! $coupon->get_id() ) {
-			self::checkout_error( __( 'The offer coupon is not available.', 'html-landing-page-builder-for-woocommerce' ), 400 );
+			self::checkout_error( __( 'The offer coupon is not available.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 400 );
 		}
 		if ( self::clear_legacy_buyget_coupon_metadata( $coupon ) ) {
 			$coupon->save();
@@ -1458,7 +1458,7 @@ final class HLPB_Cart_Section {
 		}
 		if ( ! $items_added ) {
 			self::rollback_bundle( $bundle_key );
-			self::checkout_error( __( 'One of the selected variations is no longer available.', 'html-landing-page-builder-for-woocommerce' ), 400 );
+			self::checkout_error( __( 'One of the selected variations is no longer available.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 400 );
 		}
 		$gift_product_id = absint( $rule['gift_product_id'] ?? 0 );
 		$gift_mode = sanitize_key( $rule['gift_mode'] ?? 'none' );
@@ -1466,12 +1466,12 @@ final class HLPB_Cart_Section {
 			$gift_product = wc_get_product( $gift_product_id );
 			if ( ! $gift_product || ! $gift_product->is_purchasable() || ! $gift_product->is_in_stock() ) {
 				self::rollback_bundle( $bundle_key );
-				self::checkout_error( __( 'The configured gift is unavailable.', 'html-landing-page-builder-for-woocommerce' ), 400 );
+				self::checkout_error( __( 'The configured gift is unavailable.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 400 );
 			}
 			$gift_selection_json = self::posted_scalar( 'gift_item' );
 			if ( strlen( $gift_selection_json ) > 16384 ) {
 				self::rollback_bundle( $bundle_key );
-				self::checkout_error( __( 'The selected gift could not be read.', 'html-landing-page-builder-for-woocommerce' ), 400 );
+				self::checkout_error( __( 'The selected gift could not be read.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 400 );
 			}
 			$gift_selection = '' !== $gift_selection_json ? json_decode( $gift_selection_json, true ) : array( 'product_id' => $gift_product_id );
 			$gift_validated = self::validate_one_product_selection( $gift_selection, array( $gift_product_id ) );
@@ -1488,7 +1488,7 @@ final class HLPB_Cart_Section {
 			$gift_cart_key = self::add_offer_cart_item( $gift_validated['product_id'], $gift_validated['variation_id'], $gift_validated['variation'], $gift_data );
 			if ( ! $gift_cart_key ) {
 				self::rollback_bundle( $bundle_key );
-				self::checkout_error( __( 'The configured gift could not be added to your cart.', 'html-landing-page-builder-for-woocommerce' ), 400 );
+				self::checkout_error( __( 'The configured gift could not be added to your cart.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 400 );
 			}
 		}
 		$offer_coupon_applied = $coupon->get_id() && WC()->cart->has_discount( $coupon->get_code() );
@@ -1497,7 +1497,7 @@ final class HLPB_Cart_Section {
 		}
 		if ( ! $offer_coupon_applied ) {
 			self::rollback_bundle( $bundle_key );
-			self::checkout_error( __( 'WooCommerce could not apply the offer coupon. Please check the offer settings.', 'html-landing-page-builder-for-woocommerce' ), 400 );
+			self::checkout_error( __( 'WooCommerce could not apply the offer coupon. Please check the offer settings.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 400 );
 		}
 		WC()->cart->calculate_totals();
 		WC()->cart->set_session();
@@ -1546,19 +1546,19 @@ final class HLPB_Cart_Section {
 
 	private static function validate_selected_items( $items, $settings, $mode, $quantity ) {
 		if ( ! is_array( $items ) || count( $items ) > 8 ) {
-			return new WP_Error( 'hlpb_items_invalid', __( 'The selected products could not be read.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_items_invalid', __( 'The selected products could not be read.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		$product_ids = array_values( array_filter( array_map( 'absint', $settings['modes'][ $mode ]['products'] ?? array() ) ) );
 		if ( 'buy' === $mode ) {
 			if ( count( $items ) !== $quantity ) {
-				return new WP_Error( 'hlpb_quantity_invalid', __( 'Choose one variation for each item in this offer.', 'html-landing-page-builder-for-woocommerce' ) );
+				return new WP_Error( 'hlpb_quantity_invalid', __( 'Choose one variation for each item in this offer.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 			}
 		} elseif ( 'mix' === $mode ) {
 			if ( count( $items ) !== $quantity ) {
-				return new WP_Error( 'hlpb_quantity_invalid', __( 'Choose a product and variation for each item in your mix.', 'html-landing-page-builder-for-woocommerce' ) );
+				return new WP_Error( 'hlpb_quantity_invalid', __( 'Choose a product and variation for each item in your mix.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 			}
 		} elseif ( count( $items ) !== $quantity * 2 ) {
-			return new WP_Error( 'hlpb_quantity_invalid', __( 'Choose both products for each bundle.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_quantity_invalid', __( 'Choose both products for each bundle.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		$validated = array();
 		$counts = array();
@@ -1571,12 +1571,12 @@ final class HLPB_Cart_Section {
 			$counts[ $item['product_id'] ] = ( $counts[ $item['product_id'] ] ?? 0 ) + 1;
 		}
 		if ( 'mix' === $mode && count( $counts ) < 2 ) {
-			return new WP_Error( 'hlpb_mix_selection', __( 'Choose at least two different products for your mix.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_mix_selection', __( 'Choose at least two different products for your mix.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		if ( 'bundle' === $mode ) {
 			foreach ( array_slice( $product_ids, 0, 2 ) as $product_id ) {
 				if ( ( $counts[ $product_id ] ?? 0 ) !== $quantity ) {
-					return new WP_Error( 'hlpb_bundle_selection', __( 'Each Cozy bundle must contain one of both configured products.', 'html-landing-page-builder-for-woocommerce' ) );
+					return new WP_Error( 'hlpb_bundle_selection', __( 'Each Cozy bundle must contain one of both configured products.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 				}
 			}
 		}
@@ -1585,15 +1585,15 @@ final class HLPB_Cart_Section {
 
 	private static function validate_one_product_selection( $selection, $allowed_product_ids ) {
 		if ( ! is_array( $selection ) ) {
-			return new WP_Error( 'hlpb_selection_invalid', __( 'A product selection is invalid.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_selection_invalid', __( 'A product selection is invalid.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		$product_id = isset( $selection['product_id'] ) ? absint( $selection['product_id'] ) : 0;
 		if ( ! $product_id || ! in_array( $product_id, array_map( 'absint', $allowed_product_ids ), true ) ) {
-			return new WP_Error( 'hlpb_product_not_allowed', __( 'A selected product is not part of this offer.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_product_not_allowed', __( 'A selected product is not part of this offer.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		$product = wc_get_product( $product_id );
 		if ( ! $product || 'publish' !== get_post_status( $product_id ) || ! $product->is_purchasable() || ! $product->is_in_stock() ) {
-			return new WP_Error( 'hlpb_product_unavailable', __( 'A selected product is unavailable.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_product_unavailable', __( 'A selected product is unavailable.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		$variation_id = isset( $selection['variation_id'] ) ? absint( $selection['variation_id'] ) : 0;
 		$variation = array();
@@ -1601,7 +1601,7 @@ final class HLPB_Cart_Section {
 		if ( $product->is_type( 'variable' ) ) {
 			$variation_product = $variation_id ? wc_get_product( $variation_id ) : false;
 			if ( ! $variation_product || ! $variation_product->is_type( 'variation' ) || absint( $variation_product->get_parent_id() ) !== $product_id || ! $variation_product->variation_is_visible() || ! $variation_product->is_purchasable() || ! $variation_product->is_in_stock() ) {
-				return new WP_Error( 'hlpb_variation_unavailable', __( 'Select an available variation for each product.', 'html-landing-page-builder-for-woocommerce' ) );
+				return new WP_Error( 'hlpb_variation_unavailable', __( 'Select an available variation for each product.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 			}
 			$stored_attributes = $variation_product->get_variation_attributes();
 			foreach ( $product->get_variation_attributes() as $attribute_key => $options ) {
@@ -1613,13 +1613,13 @@ final class HLPB_Cart_Section {
 				$selected_value = is_scalar( $selected_raw ) ? wc_clean( (string) $selected_raw ) : '';
 				$actual = isset( $stored_attributes[ $attribute_name ] ) ? (string) $stored_attributes[ $attribute_name ] : '';
 				if ( '' === $selected_value ) {
-					return new WP_Error( 'hlpb_variation_incomplete', __( 'Select every variation option before continuing.', 'html-landing-page-builder-for-woocommerce' ) );
+					return new WP_Error( 'hlpb_variation_incomplete', __( 'Select every variation option before continuing.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 				}
 				if ( '' !== $actual && $selected_value !== $actual ) {
-					return new WP_Error( 'hlpb_variation_mismatch', __( 'The selected options do not match this variation. Refresh the page and try again.', 'html-landing-page-builder-for-woocommerce' ) );
+					return new WP_Error( 'hlpb_variation_mismatch', __( 'The selected options do not match this variation. Refresh the page and try again.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 				}
 				if ( ! empty( $options ) && ! in_array( $selected_value, array_map( 'strval', (array) $options ), true ) ) {
-					return new WP_Error( 'hlpb_variation_option_invalid', __( 'One of the selected product options is unavailable.', 'html-landing-page-builder-for-woocommerce' ) );
+					return new WP_Error( 'hlpb_variation_option_invalid', __( 'One of the selected product options is unavailable.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 				}
 				$variation[ $attribute_name ] = $selected_value;
 			}
@@ -1627,12 +1627,12 @@ final class HLPB_Cart_Section {
 			if ( $data_store && method_exists( $data_store, 'find_matching_product_variation' ) ) {
 				$matching_id = absint( $data_store->find_matching_product_variation( $product, $variation ) );
 				if ( $matching_id !== $variation_id ) {
-					return new WP_Error( 'hlpb_variation_mismatch', __( 'The selected options do not match this variation. Refresh the page and try again.', 'html-landing-page-builder-for-woocommerce' ) );
+					return new WP_Error( 'hlpb_variation_mismatch', __( 'The selected options do not match this variation. Refresh the page and try again.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 				}
 			}
 			$selected = $variation_product;
 		} elseif ( $variation_id ) {
-			return new WP_Error( 'hlpb_variation_invalid', __( 'This product does not use variations.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_variation_invalid', __( 'This product does not use variations.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		return array( 'product_id' => $product_id, 'variation_id' => $variation_id, 'variation' => $variation, 'price' => (float) $selected->get_price( 'edit' ) );
 	}
@@ -2001,13 +2001,13 @@ final class HLPB_Cart_Section {
 		}
 		$item_data[] = array(
 			'raw_key' => 'hlpb_offer',
-			'key'     => __( 'Offer', 'html-landing-page-builder-for-woocommerce' ),
+			'key'     => __( 'Offer', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 			'value'   => '<span class="hlpb-offer-badge ' . esc_attr( $presentation['group_class'] ) . '" aria-label="' . esc_attr( $presentation['label'] ) . '">' . esc_html( $presentation['label'] ) . '</span>',
 		);
 		if ( ! empty( $cart_item['_hlpb_is_gift'] ) ) {
 			$rule = $presentation['bundle']['rule'] ?? array();
-			$status = empty( $cart_item['_hlpb_gift_eligible'] ) ? __( 'Regular price — gift not included in this quantity', 'html-landing-page-builder-for-woocommerce' ) : ( 'free' === ( $rule['gift_mode'] ?? '' ) ? __( 'Free gift', 'html-landing-page-builder-for-woocommerce' ) : __( 'Discounted gift', 'html-landing-page-builder-for-woocommerce' ) );
-			$item_data[] = array( 'key' => __( 'Gift status', 'html-landing-page-builder-for-woocommerce' ), 'value' => '<span class="hlpb-gift-status">' . esc_html( $status ) . '</span>' );
+			$status = empty( $cart_item['_hlpb_gift_eligible'] ) ? __( 'Regular price — gift not included in this quantity', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) : ( 'free' === ( $rule['gift_mode'] ?? '' ) ? __( 'Free gift', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) : __( 'Discounted gift', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
+			$item_data[] = array( 'key' => __( 'Gift status', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'value' => '<span class="hlpb-gift-status">' . esc_html( $status ) . '</span>' );
 		}
 		return $item_data;
 	}
@@ -2204,7 +2204,7 @@ final class HLPB_Cart_Section {
 		}
 		return array(
 			'offer' => array(
-				'description' => __( 'Landing page offer details for this cart item.', 'html-landing-page-builder-for-woocommerce' ),
+				'description' => __( 'Landing page offer details for this cart item.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 				'type'        => 'object',
 				'readonly'    => true,
 				'properties'  => $properties,
@@ -2350,7 +2350,7 @@ final class HLPB_Cart_Section {
 		$price_type = $is_subtotal ? 'line' : 'unit';
 		$regular_html = $prices[ 'old_' . $price_type . '_html' ];
 		$discounted_html = $prices[ 'new_' . $price_type . '_html' ];
-		return '<span class="hlpb-offer-prices ' . esc_attr( $presentation['group_class'] ) . '"><del class="hlpb-offer-price-old"><span class="screen-reader-text">' . esc_html__( 'Regular price:', 'html-landing-page-builder-for-woocommerce' ) . ' </span>' . $regular_html . '</del><ins class="hlpb-offer-price-new"><span class="screen-reader-text">' . esc_html__( 'Offer price:', 'html-landing-page-builder-for-woocommerce' ) . ' </span>' . $discounted_html . '</ins></span>';
+		return '<span class="hlpb-offer-prices ' . esc_attr( $presentation['group_class'] ) . '"><del class="hlpb-offer-price-old"><span class="screen-reader-text">' . esc_html__( 'Regular price:', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . ' </span>' . $regular_html . '</del><ins class="hlpb-offer-price-new"><span class="screen-reader-text">' . esc_html__( 'Offer price:', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . ' </span>' . $discounted_html . '</ins></span>';
 	}
 
 	/** Remove an orphaned gift after its offer's final core line is removed. */
@@ -2648,12 +2648,12 @@ final class HLPB_Cart_Section {
 			return;
 		}
 		$landing_id = absint( $values['_hlpb_landing_id'] ?? 0 );
-		$item->add_meta_data( __( 'Landing offer', 'html-landing-page-builder-for-woocommerce' ), sanitize_text_field( $values['_hlpb_campaign_name'] ?? get_the_title( $landing_id ) ), true );
-		$item->add_meta_data( __( 'Offer bundle', 'html-landing-page-builder-for-woocommerce' ), strtoupper( substr( preg_replace( '/[^a-f0-9]/i', '', (string) $values['_hlpb_bundle_key'] ), 0, 8 ) ), true );
+		$item->add_meta_data( __( 'Landing offer', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), sanitize_text_field( $values['_hlpb_campaign_name'] ?? get_the_title( $landing_id ) ), true );
+		$item->add_meta_data( __( 'Offer bundle', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), strtoupper( substr( preg_replace( '/[^a-f0-9]/i', '', (string) $values['_hlpb_bundle_key'] ), 0, 8 ) ), true );
 		if ( ! empty( $values['_hlpb_is_gift'] ) ) {
 			$gift_mode = sanitize_key( $values['_hlpb_rule']['gift_mode'] ?? 'none' );
-			$gift_status = empty( $values['_hlpb_gift_eligible'] ) ? __( 'Regular price — gift not included in this quantity', 'html-landing-page-builder-for-woocommerce' ) : ( 'free' === $gift_mode ? __( 'Free gift', 'html-landing-page-builder-for-woocommerce' ) : __( 'Discounted gift', 'html-landing-page-builder-for-woocommerce' ) );
-			$item->add_meta_data( __( 'Gift status', 'html-landing-page-builder-for-woocommerce' ), $gift_status, true );
+			$gift_status = empty( $values['_hlpb_gift_eligible'] ) ? __( 'Regular price — gift not included in this quantity', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) : ( 'free' === $gift_mode ? __( 'Free gift', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) : __( 'Discounted gift', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
+			$item->add_meta_data( __( 'Gift status', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $gift_status, true );
 		}
 		$item->add_meta_data( '_hlpb_landing_id', $landing_id, true );
 		$item->add_meta_data( '_hlpb_bundle_key', sanitize_text_field( $values['_hlpb_bundle_key'] ), true );

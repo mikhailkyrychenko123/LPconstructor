@@ -2,7 +2,7 @@
 /**
  * WooCommerce attribute display types and per-term visual data.
  *
- * @package HTMLLandingPageBuilderForWooCommerce
+ * @package MikhailKyrychenkoOfferBuilderForWooCommerce
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -158,9 +158,9 @@ final class HLPB_Attribute_Admin {
 			return $types;
 		}
 
-		$types['select']             = __( 'Dropdown', 'html-landing-page-builder-for-woocommerce' );
-		$types['color-image-picker'] = __( 'Color image picker', 'html-landing-page-builder-for-woocommerce' );
-		$types['button']             = __( 'Button', 'html-landing-page-builder-for-woocommerce' );
+		$types['select']             = __( 'Dropdown', 'mikhailkyrychenko-offer-builder-for-woocommerce' );
+		$types['color-image-picker'] = __( 'Color image picker', 'mikhailkyrychenko-offer-builder-for-woocommerce' );
+		$types['button']             = __( 'Button', 'mikhailkyrychenko-offer-builder-for-woocommerce' );
 		return $types;
 	}
 
@@ -200,14 +200,14 @@ final class HLPB_Attribute_Admin {
 	public static function render_add_fields( $taxonomy ) {
 		?>
 		<div class="form-field hlpb-term-field">
-			<label for="hlpb-term-color"><?php esc_html_e( 'Swatch color', 'html-landing-page-builder-for-woocommerce' ); ?></label>
-			<div class="hlpb-term-color-row"><input type="color" id="hlpb-term-color-picker" value="#6c2034"><input type="text" id="hlpb-term-color" name="hlpb_term_color" value="#6c2034" maxlength="7" pattern="^#[0-9A-Fa-f]{6}$" aria-label="<?php esc_attr_e( 'Hex color code', 'html-landing-page-builder-for-woocommerce' ); ?>"></div>
-			<p class="description"><?php esc_html_e( 'Choose a color or enter a hex code. No image is required; this color is shown when no swatch image is set.', 'html-landing-page-builder-for-woocommerce' ); ?></p>
+			<label for="hlpb-term-color"><?php esc_html_e( 'Swatch color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></label>
+			<div class="hlpb-term-color-row"><input type="color" id="hlpb-term-color-picker" value="#6c2034"><input type="text" id="hlpb-term-color" name="hlpb_term_color" value="#6c2034" maxlength="7" pattern="^#[0-9A-Fa-f]{6}$" aria-label="<?php esc_attr_e( 'Hex color code', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?>"></div>
+			<p class="description"><?php esc_html_e( 'Choose a color or enter a hex code. No image is required; this color is shown when no swatch image is set.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></p>
 		</div>
 		<div class="form-field hlpb-term-field">
-			<label><?php esc_html_e( 'Swatch image', 'html-landing-page-builder-for-woocommerce' ); ?></label>
-			<div class="hlpb-term-image-control"><input type="hidden" name="hlpb_term_image_id" value="0"><img class="hlpb-term-image-preview" src="" alt="" hidden><button type="button" class="button hlpb-term-select-image"><?php esc_html_e( 'Choose image', 'html-landing-page-builder-for-woocommerce' ); ?></button><button type="button" class="button-link hlpb-term-remove-image" hidden><?php esc_html_e( 'Remove image', 'html-landing-page-builder-for-woocommerce' ); ?></button></div>
-			<p class="description"><?php esc_html_e( 'Optional. When set, this image is shown instead of the swatch color.', 'html-landing-page-builder-for-woocommerce' ); ?></p>
+			<label><?php esc_html_e( 'Swatch image', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></label>
+			<div class="hlpb-term-image-control"><input type="hidden" name="hlpb_term_image_id" value="0"><img class="hlpb-term-image-preview" src="" alt="" hidden><button type="button" class="button hlpb-term-select-image"><?php esc_html_e( 'Choose image', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></button><button type="button" class="button-link hlpb-term-remove-image" hidden><?php esc_html_e( 'Remove image', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></button></div>
+			<p class="description"><?php esc_html_e( 'Optional. When set, this image is shown instead of the swatch color.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></p>
 		</div>
 		<?php wp_nonce_field( 'hlpb_save_term', 'hlpb_term_nonce' ); ?>
 		<?php
@@ -227,12 +227,12 @@ final class HLPB_Attribute_Admin {
 		$image    = $image_id ? wp_get_attachment_image_url( $image_id, 'thumbnail' ) : false;
 		?>
 		<tr class="form-field hlpb-term-field">
-			<th scope="row"><label for="hlpb-term-color"><?php esc_html_e( 'Swatch color', 'html-landing-page-builder-for-woocommerce' ); ?></label></th>
-			<td><div class="hlpb-term-color-row"><input type="color" id="hlpb-term-color-picker" value="<?php echo esc_attr( $color ); ?>"><input type="text" id="hlpb-term-color" name="hlpb_term_color" value="<?php echo esc_attr( $color ); ?>" maxlength="7" pattern="^#[0-9A-Fa-f]{6}$" aria-label="<?php esc_attr_e( 'Hex color code', 'html-landing-page-builder-for-woocommerce' ); ?>"></div><p class="description"><?php esc_html_e( 'Choose a color or enter a hex code. No image is required; this color is shown when no swatch image is set.', 'html-landing-page-builder-for-woocommerce' ); ?></p></td>
+			<th scope="row"><label for="hlpb-term-color"><?php esc_html_e( 'Swatch color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></label></th>
+			<td><div class="hlpb-term-color-row"><input type="color" id="hlpb-term-color-picker" value="<?php echo esc_attr( $color ); ?>"><input type="text" id="hlpb-term-color" name="hlpb_term_color" value="<?php echo esc_attr( $color ); ?>" maxlength="7" pattern="^#[0-9A-Fa-f]{6}$" aria-label="<?php esc_attr_e( 'Hex color code', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?>"></div><p class="description"><?php esc_html_e( 'Choose a color or enter a hex code. No image is required; this color is shown when no swatch image is set.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></p></td>
 		</tr>
 		<tr class="form-field hlpb-term-field">
-			<th scope="row"><label><?php esc_html_e( 'Swatch image', 'html-landing-page-builder-for-woocommerce' ); ?></label></th>
-			<td><div class="hlpb-term-image-control"><input type="hidden" name="hlpb_term_image_id" value="<?php echo esc_attr( $image_id ); ?>"><img class="hlpb-term-image-preview" src="<?php echo esc_url( $image ? $image : '' ); ?>" alt="" <?php echo $image ? '' : 'hidden'; ?>><button type="button" class="button hlpb-term-select-image"><?php esc_html_e( 'Choose image', 'html-landing-page-builder-for-woocommerce' ); ?></button><button type="button" class="button-link hlpb-term-remove-image" <?php echo $image ? '' : 'hidden'; ?>><?php esc_html_e( 'Remove image', 'html-landing-page-builder-for-woocommerce' ); ?></button></div><p class="description"><?php esc_html_e( 'Optional. When set, this image is shown instead of the swatch color.', 'html-landing-page-builder-for-woocommerce' ); ?></p><?php wp_nonce_field( 'hlpb_save_term', 'hlpb_term_nonce' ); ?></td>
+			<th scope="row"><label><?php esc_html_e( 'Swatch image', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></label></th>
+			<td><div class="hlpb-term-image-control"><input type="hidden" name="hlpb_term_image_id" value="<?php echo esc_attr( $image_id ); ?>"><img class="hlpb-term-image-preview" src="<?php echo esc_url( $image ? $image : '' ); ?>" alt="" <?php echo $image ? '' : 'hidden'; ?>><button type="button" class="button hlpb-term-select-image"><?php esc_html_e( 'Choose image', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></button><button type="button" class="button-link hlpb-term-remove-image" <?php echo $image ? '' : 'hidden'; ?>><?php esc_html_e( 'Remove image', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></button></div><p class="description"><?php esc_html_e( 'Optional. When set, this image is shown instead of the swatch color.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></p><?php wp_nonce_field( 'hlpb_save_term', 'hlpb_term_nonce' ); ?></td>
 		</tr>
 		<?php
 	}

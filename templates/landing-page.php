@@ -2,7 +2,7 @@
 /**
  * Standalone output for a builder landing page.
  *
- * @package HTMLLandingPageBuilderForWooCommerce
+ * @package MikhailKyrychenkoOfferBuilderForWooCommerce
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

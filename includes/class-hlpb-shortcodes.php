@@ -2,7 +2,7 @@
 /**
  * Landing-page cart shortcode and shortcode builder screen.
  *
- * @package HTMLLandingPageBuilderForWooCommerce
+ * @package MikhailKyrychenkoOfferBuilderForWooCommerce
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -13,21 +13,47 @@ final class HLPB_Shortcodes {
 	const PAGE_SLUG = 'hlpb-shortcodes';
 	const TAG       = 'hlpb_cart';
 
+	/** @var string Hook suffix for the shortcode builder screen. */
+	private static $page_hook = '';
+
 	/** Register the shortcode and its admin screen. */
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
 		add_shortcode( self::TAG, array( __CLASS__, 'render_cart' ) );
 	}
 
 	/** Add the shortcode builder under Landing Pages. */
 	public static function register_menu() {
-		add_submenu_page(
+		self::$page_hook = add_submenu_page(
 			'edit.php?post_type=' . HLPB_Landing_Builder::POST_TYPE,
-			__( 'Shortcodes', 'html-landing-page-builder-for-woocommerce' ),
-			__( 'Shortcodes', 'html-landing-page-builder-for-woocommerce' ),
+			__( 'Shortcodes', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			__( 'Shortcodes', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 			'manage_woocommerce',
 			self::PAGE_SLUG,
 			array( __CLASS__, 'render_admin_page' )
+		);
+	}
+
+	/** Load the shortcode builder behavior only on its admin screen. */
+	public static function enqueue_admin_assets( $hook_suffix ) {
+		if ( ! self::$page_hook || self::$page_hook !== $hook_suffix ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			'hlpb-shortcode-admin',
+			HLPB_LANDING_PAGE_BUILDER_URL . 'assets/admin/shortcode-builder.js',
+			array(),
+			HLPB_LANDING_PAGE_BUILDER_VERSION,
+			true
+		);
+		wp_localize_script(
+			'hlpb-shortcode-admin',
+			'HLPBShortcodeBuilder',
+			array(
+				'copied' => __( 'Copied.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			)
 		);
 	}
 
@@ -57,52 +83,25 @@ final class HLPB_Shortcodes {
 			}
 		}
 
-		echo '<div class="wrap hlpb-shortcode-admin"><h1>' . esc_html__( 'Cart Section Shortcodes', 'html-landing-page-builder-for-woocommerce' ) . '</h1>';
-		echo '<p>' . esc_html__( 'Create a shortcode that displays only the Cart Section from a published landing page. Product choices, offer tabs, prices, gifts, and styling come from that landing page.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		echo '<div class="wrap hlpb-shortcode-admin"><h1>' . esc_html__( 'Cart Section Shortcodes', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</h1>';
+		echo '<p>' . esc_html__( 'Create a shortcode that displays only the Cart Section from a published landing page. Product choices, offer tabs, prices, gifts, and styling come from that landing page.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p>';
 		if ( ! $eligible ) {
-			echo '<div class="notice notice-info"><p>' . esc_html__( 'No published landing pages with a Cart Section were found. Publish a landing page first.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div></div>';
+			echo '<div class="notice notice-info"><p>' . esc_html__( 'No published landing pages with a Cart Section were found. Publish a landing page first.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></div></div>';
 			return;
 		}
 
 		echo '<div class="card" style="max-width:820px;padding:24px">';
-		echo '<h2 style="margin-top:0">' . esc_html__( 'Build your shortcode', 'html-landing-page-builder-for-woocommerce' ) . '</h2>';
-		echo '<table class="form-table"><tbody><tr><th scope="row"><label for="hlpb-shortcode-landing">' . esc_html__( 'Landing page', 'html-landing-page-builder-for-woocommerce' ) . '</label></th><td><select id="hlpb-shortcode-landing">';
+		echo '<h2 style="margin-top:0">' . esc_html__( 'Build your shortcode', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</h2>';
+		echo '<table class="form-table"><tbody><tr><th scope="row"><label for="hlpb-shortcode-landing">' . esc_html__( 'Landing page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label></th><td><select id="hlpb-shortcode-landing">';
 		foreach ( $eligible as $landing ) {
 			$label = sprintf( '%1$s (ID: %2$d)', get_the_title( $landing ), absint( $landing->ID ) );
 			echo '<option value="' . esc_attr( (string) absint( $landing->ID ) ) . '">' . esc_html( $label ) . '</option>';
 		}
-		echo '</select><p class="description">' . esc_html__( 'Only published landing pages with a Cart Section are listed.', 'html-landing-page-builder-for-woocommerce' ) . '</p></td></tr>';
-		echo '<tr><th scope="row"><label for="hlpb-shortcode-gallery">' . esc_html__( 'Left product gallery', 'html-landing-page-builder-for-woocommerce' ) . '</label></th><td><select id="hlpb-shortcode-gallery"><option value="yes">' . esc_html__( 'Show slider and thumbnails', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="no">' . esc_html__( 'Hide gallery and use full width', 'html-landing-page-builder-for-woocommerce' ) . '</option></select><p class="description">' . esc_html__( 'The gallery option controls the left-side slider shown in the landing page design.', 'html-landing-page-builder-for-woocommerce' ) . '</p></td></tr>';
-		echo '<tr><th scope="row"><label for="hlpb-shortcode-value">' . esc_html__( 'Shortcode', 'html-landing-page-builder-for-woocommerce' ) . '</label></th><td><input id="hlpb-shortcode-value" class="large-text code" type="text" readonly value="" /><p><button type="button" class="button button-primary" id="hlpb-shortcode-copy">' . esc_html__( 'Copy shortcode', 'html-landing-page-builder-for-woocommerce' ) . '</button> <span id="hlpb-shortcode-copy-status" aria-live="polite"></span></p></td></tr></tbody></table>';
-		echo '<hr><h3>' . esc_html__( 'Use it in Elementor', 'html-landing-page-builder-for-woocommerce' ) . '</h3><p>' . esc_html__( 'Add Elementor’s Shortcode widget to the page, then paste the copied code. The shortcode renders one offer/cart section and uses the selected landing page’s configuration.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
-		echo '<p class="description">' . esc_html__( 'Use one Cart Section shortcode per page because the interactive cart uses unique element IDs.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div></div>';
-		?>
-		<script>
-		(function () {
-			var landing = document.getElementById('hlpb-shortcode-landing');
-			var gallery = document.getElementById('hlpb-shortcode-gallery');
-			var output = document.getElementById('hlpb-shortcode-value');
-			var button = document.getElementById('hlpb-shortcode-copy');
-			var status = document.getElementById('hlpb-shortcode-copy-status');
-			function update() {
-				if (landing && gallery && output) output.value = '[hlpb_cart landing="' + landing.value + '" gallery="' + gallery.value + '"]';
-			}
-			if (landing) landing.addEventListener('change', update);
-			if (gallery) gallery.addEventListener('change', update);
-			if (button) button.addEventListener('click', function () {
-				if (!output) return;
-				output.focus(); output.select();
-				if (navigator.clipboard && window.isSecureContext) {
-					navigator.clipboard.writeText(output.value).then(function () { if (status) status.textContent = '<?php echo esc_js( __( 'Copied.', 'html-landing-page-builder-for-woocommerce' ) ); ?>'; });
-				} else {
-					document.execCommand('copy');
-					if (status) status.textContent = '<?php echo esc_js( __( 'Copied.', 'html-landing-page-builder-for-woocommerce' ) ); ?>';
-				}
-			});
-			update();
-		}());
-		</script>
-		<?php
+		echo '</select><p class="description">' . esc_html__( 'Only published landing pages with a Cart Section are listed.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></td></tr>';
+		echo '<tr><th scope="row"><label for="hlpb-shortcode-gallery">' . esc_html__( 'Left product gallery', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label></th><td><select id="hlpb-shortcode-gallery"><option value="yes">' . esc_html__( 'Show slider and thumbnails', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option><option value="no">' . esc_html__( 'Hide gallery and use full width', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option></select><p class="description">' . esc_html__( 'The gallery option controls the left-side slider shown in the landing page design.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></td></tr>';
+		echo '<tr><th scope="row"><label for="hlpb-shortcode-value">' . esc_html__( 'Shortcode', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label></th><td><input id="hlpb-shortcode-value" class="large-text code" type="text" readonly value="" /><p><button type="button" class="button button-primary" id="hlpb-shortcode-copy">' . esc_html__( 'Copy shortcode', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button> <span id="hlpb-shortcode-copy-status" aria-live="polite"></span></p></td></tr></tbody></table>';
+		echo '<hr><h3>' . esc_html__( 'Use it in Elementor', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</h3><p>' . esc_html__( 'Add Elementor’s Shortcode widget to the page, then paste the copied code. The shortcode renders one offer/cart section and uses the selected landing page’s configuration.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'Use one Cart Section shortcode per page because the interactive cart uses unique element IDs.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></div></div>';
 	}
 
 	/** Render a single landing's Cart Section as a portable shortcode. */
@@ -110,7 +109,7 @@ final class HLPB_Shortcodes {
 		$attributes = shortcode_atts( array( 'landing' => 0, 'gallery' => 'yes' ), $attributes, self::TAG );
 		$landing_id = absint( $attributes['landing'] );
 		if ( ! $landing_id || HLPB_Landing_Builder::POST_TYPE !== get_post_type( $landing_id ) || 'publish' !== get_post_status( $landing_id ) ) {
-			return self::shortcode_error( __( 'The selected landing page is unavailable.', 'html-landing-page-builder-for-woocommerce' ) );
+			return self::shortcode_error( __( 'The selected landing page is unavailable.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 
 		$sections = HLPB_Landing_Builder::get_sections( $landing_id );
@@ -122,15 +121,15 @@ final class HLPB_Shortcodes {
 			}
 		}
 		if ( ! $cart_section ) {
-			return self::shortcode_error( __( 'This landing page does not have a Cart Section.', 'html-landing-page-builder-for-woocommerce' ) );
+			return self::shortcode_error( __( 'This landing page does not have a Cart Section.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 
 		$config = HLPB_Cart_Section::build_public_config( $landing_id, $sections );
 		if ( empty( $config ) ) {
-			return self::shortcode_error( __( 'The Cart Section could not be loaded. Check that WooCommerce is active.', 'html-landing-page-builder-for-woocommerce' ) );
+			return self::shortcode_error( __( 'The Cart Section could not be loaded. Check that WooCommerce is active.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		if ( empty( $config['active'] ) ) {
-			return self::shortcode_error( __( 'Enable and configure at least one offer in this landing page’s Cart Section before using its shortcode.', 'html-landing-page-builder-for-woocommerce' ) );
+			return self::shortcode_error( __( 'Enable and configure at least one offer in this landing page’s Cart Section before using its shortcode.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 
 		$template_slug = HLPB_Landing_Builder::get_template_slug( $landing_id );
@@ -138,15 +137,31 @@ final class HLPB_Shortcodes {
 		$markup = HLPB_Landing_Builder::render_frontend_section( $cart_section, $template_slug, $asset_url );
 		$sprite = HLPB_Landing_Builder::render_frontend_section( array( 'type' => 'sprite' ), $template_slug, $asset_url );
 		if ( '' === $markup ) {
-			return self::shortcode_error( __( 'The Cart Section template markup could not be found.', 'html-landing-page-builder-for-woocommerce' ) );
+			return self::shortcode_error( __( 'The Cart Section template markup could not be found.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 
 		$gallery = in_array( strtolower( (string) $attributes['gallery'] ), array( '1', 'true', 'yes', 'on' ), true );
 		$wrapper_class = 'hlpb-cart-shortcode' . ( $gallery ? '' : ' hlpb-cart-shortcode--no-gallery' );
-		$styles = self::build_shortcode_styles( $template_slug );
+		$markup_safe = $markup;
+		$sprite_safe = $sprite;
 		self::enqueue_cart_script( $config );
+		self::enqueue_shortcode_styles( $template_slug );
 
-		return '<div class="' . esc_attr( $wrapper_class ) . '"><style>' . $styles . '</style>' . $sprite . $markup . '</div>';
+		// The renderers return trusted template HTML and escape dynamic values in their output context.
+		return '<div class="' . esc_attr( $wrapper_class ) . '">' . $sprite_safe . $markup_safe . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Trusted template fragments escape all editable values when rendered.
+	}
+
+	/** Enqueue the scoped template styles; shortcodes may render after wp_head(). */
+	private static function enqueue_shortcode_styles( $template_slug ) {
+		$handle = 'hlpb-cart-shortcode-style-' . sanitize_key( $template_slug );
+		if ( ! wp_style_is( $handle, 'registered' ) ) {
+			wp_register_style( $handle, false, array(), HLPB_LANDING_PAGE_BUILDER_VERSION );
+		}
+		wp_enqueue_style( $handle );
+		wp_add_inline_style( $handle, self::build_shortcode_styles( $template_slug ) );
+
+		// The shortcode callback runs inside page content, after the normal head enqueue pass.
+		wp_print_styles( array( $handle ) );
 	}
 
 	/** Add the cart runtime and its landing-specific config to the page footer. */

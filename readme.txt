@@ -1,11 +1,11 @@
-=== HTML Landing Page Builder for WooCommerce ===
+=== MikhailKyrychenko Offer Builder for WooCommerce ===
 Contributors: mikhailkyrychenko
 Donate link: https://www.privat24.ua/send/k4hk0
 Tags: woocommerce, landing page, product bundles, mix and match, page builder
 Requires at least: 6.2
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.6.8
+Stable tag: 0.6.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -13,7 +13,7 @@ Create standalone landing pages for WooCommerce products with editable sections,
 
 == Description ==
 
-HTML Landing Page Builder for WooCommerce helps store owners create product-focused landing pages in WordPress and publish them as standalone HTML pages. Configure the page path, select a design template, arrange sections, and connect the page to products in your WooCommerce store.
+MikhailKyrychenko Offer Builder for WooCommerce helps store owners create product-focused landing pages in WordPress and publish them as standalone HTML pages. Configure the page path, select a design template, arrange sections, and connect the page to products in your WooCommerce store.
 
 The published page keeps its offer and cart interactions connected to WooCommerce, so shoppers can choose product variations and add configured offers to their cart.
 
@@ -22,7 +22,6 @@ The published page keeps its offer and cart interactions connected to WooCommerc
 * Build a page from reusable sections and change their order, visibility, and content.
 * Choose from the included Cozy Mix and Field Notes designs.
 * Edit section text, images, links, and template-specific options.
-* Add page-specific CSS without changing the shared template styles.
 * Set the landing page URL folder and publish or update its standalone page.
 
 = WooCommerce offers =
@@ -67,7 +66,7 @@ The published page keeps its offer and cart interactions connected to WooCommerc
 
 1. Install and activate WooCommerce.
 2. Upload the plugin folder to `/wp-content/plugins/` or install the plugin ZIP from **Plugins → Add New**.
-3. Activate **HTML Landing Page Builder for WooCommerce**.
+3. Activate **MikhailKyrychenko Offer Builder for WooCommerce**.
 4. To explore the included examples, open **Landing Pages → Import** and import the demo data. This creates sample WooCommerce products and landing pages in your store.
 5. Open **Landing Pages → Add Landing Page**, choose a template, configure its sections and offers, then publish the page.
 
@@ -97,12 +96,31 @@ No score can be guaranteed. The plugin publishes a standalone HTML page, but Pag
 
 When a shopper subscribes to a back-in-stock alert, the email address and subscription status are stored in the site's WordPress database against the relevant product variation. Offer analytics reads WooCommerce order and coupon data associated with this plugin's offers. The store owner controls this data and should describe the relevant processing in the store's privacy policy.
 
+== Source Code ==
+
+The plugin's PHP, CSS, and JavaScript source is included in the distributed plugin. The custom browser scripts are maintained directly in these files:
+
+* `assets/frontend/cart-section.js`
+* `templates/cozy-mix/assets/js/site.js`
+* `templates/field-notes/assets/js/site.js`
+
+The static export copies these local assets into the landing page folder. There is no separate compiler or third-party build service required to generate them.
+
+== Developer Notes ==
+
+Static exports are complete HTML documents and include links to their copied local stylesheets and scripts. The WordPress Cart Section shortcode runs inside a WordPress page and loads its frontend script and scoped styles through WordPress enqueue functions.
+
 == Changelog ==
+
+= 0.6.9 =
+* Updated the plugin identity and WordPress.org submission metadata.
+* Removed free-form page CSS and moved generated exports into the uploads directory.
+* Improved shortcode asset handling, export migration, and admin notice scope.
 
 = 0.6.8 =
 * Prepared the plugin listing description and user-facing documentation.
 
 == Upgrade Notice ==
 
-= 0.6.8 =
-Initial WordPress.org release. Demo data import is optional and adds sample products and landing pages to your store.
+= 0.6.9 =
+Managed static exports are migrated to the uploads directory while keeping their public landing page links. Demo data import remains optional.

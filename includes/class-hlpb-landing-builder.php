@@ -2,7 +2,7 @@
 /**
  * Landing page post type and section editor.
  *
- * @package HTMLLandingPageBuilderForWooCommerce
+ * @package MikhailKyrychenkoOfferBuilderForWooCommerce
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -14,13 +14,14 @@ final class HLPB_Landing_Builder {
 	const META_KEY     = '_hlpb_sections';
 	const COZY_TEXT_IMAGE_MIGRATION_META = '_hlpb_cozy_text_image_sections_migrated';
 	const SEO_META_KEY = '_hlpb_seo';
-	const CUSTOM_CSS_META_KEY = '_hlpb_custom_css';
 	const TEMPLATE_KEY = '_hlpb_template';
 	const EXPORT_KEY   = '_hlpb_export_path';
 	const EXPORT_SLUG_KEY = '_hlpb_export_slug';
 	const EXPORT_PROMO_KEY = '_hlpb_export_promo_folder';
 	const EXPORT_DIRECTORY_KEY = '_hlpb_export_directory';
 	const EXPORT_HISTORY_KEY = '_hlpb_export_history';
+	const EXPORT_UPLOAD_DIRECTORY = 'hlpb-exports';
+	const EXPORT_STORAGE_MIGRATION_OPTION = 'hlpb_export_storage_migrated';
 	const EXPORT_FOLDER_QUERY_VAR = 'hlpb_export_folder';
 
 	/**
@@ -38,6 +39,7 @@ final class HLPB_Landing_Builder {
 	public static function init() {
 		add_action( 'init', array( __CLASS__, 'register_post_type' ) );
 		add_action( 'init', array( __CLASS__, 'register_export_route' ), 20 );
+		add_action( 'admin_init', array( __CLASS__, 'migrate_legacy_exports' ) );
 		add_action( 'add_meta_boxes_' . self::POST_TYPE, array( __CLASS__, 'add_meta_box' ) );
 		add_action( 'save_post_' . self::POST_TYPE, array( __CLASS__, 'save_sections' ), 10, 2 );
 		add_action( 'wp_after_insert_post', array( __CLASS__, 'finish_static_export' ), 10, 4 );
@@ -81,17 +83,17 @@ final class HLPB_Landing_Builder {
 	 */
 	public static function register_post_type() {
 		$labels = array(
-			'name'               => __( 'Landing Pages', 'html-landing-page-builder-for-woocommerce' ),
-			'singular_name'      => __( 'Landing Page', 'html-landing-page-builder-for-woocommerce' ),
-			'add_new'            => __( 'Add Landing Page', 'html-landing-page-builder-for-woocommerce' ),
-			'add_new_item'       => __( 'Create Landing Page', 'html-landing-page-builder-for-woocommerce' ),
-			'edit_item'          => __( 'Edit Landing Page', 'html-landing-page-builder-for-woocommerce' ),
-			'new_item'           => __( 'New Landing Page', 'html-landing-page-builder-for-woocommerce' ),
-			'view_item'          => __( 'View Landing Page', 'html-landing-page-builder-for-woocommerce' ),
-			'search_items'       => __( 'Search Landing Pages', 'html-landing-page-builder-for-woocommerce' ),
-			'not_found'          => __( 'No landing pages found.', 'html-landing-page-builder-for-woocommerce' ),
-			'not_found_in_trash' => __( 'No landing pages found in Trash.', 'html-landing-page-builder-for-woocommerce' ),
-			'menu_name'          => __( 'Landing Pages', 'html-landing-page-builder-for-woocommerce' ),
+			'name'               => __( 'Landing Pages', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'singular_name'      => __( 'Landing Page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'add_new'            => __( 'Add Landing Page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'add_new_item'       => __( 'Create Landing Page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'edit_item'          => __( 'Edit Landing Page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'new_item'           => __( 'New Landing Page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'view_item'          => __( 'View Landing Page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'search_items'       => __( 'Search Landing Pages', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'not_found'          => __( 'No landing pages found.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'not_found_in_trash' => __( 'No landing pages found in Trash.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'menu_name'          => __( 'Landing Pages', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 		);
 
 		register_post_type(
@@ -116,7 +118,7 @@ final class HLPB_Landing_Builder {
 	public static function add_clone_column( $columns ) {
 		$columns['hlpb_clone'] = self::is_russian_admin_locale()
 			? 'Действия'
-			: __( 'Action', 'html-landing-page-builder-for-woocommerce' );
+			: __( 'Action', 'mikhailkyrychenko-offer-builder-for-woocommerce' );
 		return $columns;
 	}
 
@@ -134,7 +136,7 @@ final class HLPB_Landing_Builder {
 			admin_url( 'admin-post.php' )
 		);
 		$url = wp_nonce_url( $url, 'hlpb_clone_landing_' . absint( $post_id ) );
-		$label = self::is_russian_admin_locale() ? 'Клонировать' : __( 'Clone', 'html-landing-page-builder-for-woocommerce' );
+		$label = self::is_russian_admin_locale() ? 'Клонировать' : __( 'Clone', 'mikhailkyrychenko-offer-builder-for-woocommerce' );
 		echo '<a class="button button-secondary button-small" href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
 	}
 
@@ -142,7 +144,7 @@ final class HLPB_Landing_Builder {
 	public static function handle_clone_landing() {
 		$source_id = isset( $_GET['post'] ) ? absint( wp_unslash( $_GET['post'] ) ) : 0;
 		if ( ! $source_id || self::POST_TYPE !== get_post_type( $source_id ) || ! current_user_can( 'edit_post', $source_id ) ) {
-			wp_die( esc_html__( 'You are not allowed to clone this landing page.', 'html-landing-page-builder-for-woocommerce' ) );
+			wp_die( esc_html__( 'You are not allowed to clone this landing page.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		check_admin_referer( 'hlpb_clone_landing_' . $source_id );
 
@@ -153,7 +155,7 @@ final class HLPB_Landing_Builder {
 		} else {
 			$title = sprintf(
 			// translators: %s: title of the landing page being copied.
-				__( 'Copy of %s', 'html-landing-page-builder-for-woocommerce' ),
+				__( 'Copy of %s', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 				get_the_title( $source_id )
 			);
 		}
@@ -179,7 +181,6 @@ final class HLPB_Landing_Builder {
 		}
 		update_post_meta( $clone_id, self::META_KEY, $sections );
 		update_post_meta( $clone_id, self::TEMPLATE_KEY, $template );
-		update_post_meta( $clone_id, self::CUSTOM_CSS_META_KEY, self::get_custom_css( $source_id ) );
 		$seo = self::get_seo_settings( $source_id );
 		$seo['canonical'] = '';
 		update_post_meta( $clone_id, self::SEO_META_KEY, $seo );
@@ -216,7 +217,7 @@ final class HLPB_Landing_Builder {
 		}
 		$message = self::is_russian_admin_locale()
 			? 'Создан черновик-клон. Выберите шаблон и сохраните страницу.'
-			: __( 'A draft copy was created. Choose a template and save the landing page.', 'html-landing-page-builder-for-woocommerce' );
+			: __( 'A draft copy was created. Choose a template and save the landing page.', 'mikhailkyrychenko-offer-builder-for-woocommerce' );
 		echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $message ) . '</p></div>';
 	}
 
@@ -247,6 +248,16 @@ final class HLPB_Landing_Builder {
 			if ( preg_match( '/^[a-z0-9-]+$/i', $folder ) ) {
 				$folders[ strtolower( $folder ) ] = $folder;
 			}
+			$history = get_post_meta( $post_id, self::EXPORT_HISTORY_KEY, true );
+			if ( is_array( $history ) ) {
+				foreach ( $history as $relative ) {
+					$normalized = self::normalize_export_relative_path( $relative );
+					$parts      = $normalized ? explode( '/', $normalized ) : array();
+					if ( 2 === count( $parts ) ) {
+						$folders[ strtolower( $parts[0] ) ] = $parts[0];
+					}
+				}
+			}
 		}
 		foreach ( $folders as $route_folder => $folder ) {
 			$regex = '^' . preg_quote( $route_folder, '/' ) . '/([^/]+)/?$';
@@ -274,17 +285,17 @@ final class HLPB_Landing_Builder {
 	 */
 	public static function get_section_types( $template_slug = '' ) {
 		$types = array(
-			'header'       => __( 'Header', 'html-landing-page-builder-for-woocommerce' ),
-			'offer_line'   => __( 'Offer Line', 'html-landing-page-builder-for-woocommerce' ),
-			'cart_section' => __( 'Cart Section', 'html-landing-page-builder-for-woocommerce' ),
-			'mix_it'       => __( 'Mix it your way', 'html-landing-page-builder-for-woocommerce' ),
-			'cozy_calculator' => __( 'Cozy Calculator', 'html-landing-page-builder-for-woocommerce' ),
-			'text_image'   => __( 'Text + Image', 'html-landing-page-builder-for-woocommerce' ),
-			'reviews'      => __( 'Reviews', 'html-landing-page-builder-for-woocommerce' ),
-			'faq'          => __( 'FAQ', 'html-landing-page-builder-for-woocommerce' ),
-			'why'          => __( 'Why?', 'html-landing-page-builder-for-woocommerce' ),
-			'limited_stock'=> __( 'Limited stock', 'html-landing-page-builder-for-woocommerce' ),
-			'footer'       => __( 'Footer', 'html-landing-page-builder-for-woocommerce' ),
+			'header'       => __( 'Header', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'offer_line'   => __( 'Offer Line', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'cart_section' => __( 'Cart Section', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'mix_it'       => __( 'Mix it your way', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'cozy_calculator' => __( 'Cozy Calculator', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'text_image'   => __( 'Text + Image', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'reviews'      => __( 'Reviews', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'faq'          => __( 'FAQ', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'why'          => __( 'Why?', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'limited_stock'=> __( 'Limited stock', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'footer'       => __( 'Footer', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 		);
 		$template = $template_slug ? self::get_template_info( $template_slug ) : false;
 		if ( $template && isset( $template['builder_sections'] ) && is_array( $template['builder_sections'] ) ) {
@@ -808,10 +819,10 @@ final class HLPB_Landing_Builder {
 			'brand_tagline' => 'LP DEMO',
 			'left_menu_mode' => 'custom',
 			'left_menu_id' => 0,
-			'left_menu_items' => array( array( 'label' => __( 'Home', 'html-landing-page-builder-for-woocommerce' ), 'url' => home_url( '/' ) ) ),
+			'left_menu_items' => array( array( 'label' => __( 'Home', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'url' => home_url( '/' ) ) ),
 			'right_menu_mode' => 'custom',
 			'right_menu_id' => 0,
-			'right_menu_items' => array( array( 'label' => __( 'Shop', 'html-landing-page-builder-for-woocommerce' ), 'url' => home_url( '/shop/' ) ) ),
+			'right_menu_items' => array( array( 'label' => __( 'Shop', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'url' => home_url( '/shop/' ) ) ),
 		);
 	}
 
@@ -822,10 +833,10 @@ final class HLPB_Landing_Builder {
 	 */
 	private static function get_default_offer_settings() {
 		return array(
-			'left_text' => __( 'Cozy Season Offer', 'html-landing-page-builder-for-woocommerce' ),
+			'left_text' => __( 'Cozy Season Offer', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 			'left_bold' => 1,
 			'left_color' => '#376c5c',
-			'right_text' => __( 'Buy more, save more · Free delivery on all orders', 'html-landing-page-builder-for-woocommerce' ),
+			'right_text' => __( 'Buy more, save more · Free delivery on all orders', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 			'right_bold' => 0,
 			'right_color' => '#376c5c',
 			'background' => '#dff1e8',
@@ -839,17 +850,17 @@ final class HLPB_Landing_Builder {
 	 */
 	private static function get_default_mix_settings() {
 		return array(
-			'title' => __( 'Mix it your way', 'html-landing-page-builder-for-woocommerce' ),
-			'subtitle' => __( 'Hoodies and blankets in beautiful colours, made for real life.', 'html-landing-page-builder-for-woocommerce' ),
+			'title' => __( 'Mix it your way', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'subtitle' => __( 'Hoodies and blankets in beautiful colours, made for real life.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 			'background' => '#eef8f3',
 			'title_color' => '#082b49',
 			'subtitle_color' => '#3b5264',
 			'benefit_title_color' => '#082b49',
 			'benefit_text_color' => '#4b5d6c',
 			'benefits' => array(
-				array( 'icon' => 'palette', 'icon_color' => '#244c59', 'title' => __( 'Any colours', 'html-landing-page-builder-for-woocommerce' ), 'text' => __( "Mix and match hoodies\nand blankets.", 'html-landing-page-builder-for-woocommerce' ) ),
-				array( 'icon' => 'heart', 'icon_color' => '#ec8180', 'title' => __( 'For everyone', 'html-landing-page-builder-for-woocommerce' ), 'text' => __( "Cosy combinations\nfor the whole family.", 'html-landing-page-builder-for-woocommerce' ) ),
-				array( 'icon' => 'people', 'icon_color' => '#273f5a', 'title' => __( 'Create your set', 'html-landing-page-builder-for-woocommerce' ), 'text' => __( "Build the perfect mix\nfor your home.", 'html-landing-page-builder-for-woocommerce' ) ),
+				array( 'icon' => 'palette', 'icon_color' => '#244c59', 'title' => __( 'Any colours', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'text' => __( "Mix and match hoodies\nand blankets.", 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ),
+				array( 'icon' => 'heart', 'icon_color' => '#ec8180', 'title' => __( 'For everyone', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'text' => __( "Cosy combinations\nfor the whole family.", 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ),
+				array( 'icon' => 'people', 'icon_color' => '#273f5a', 'title' => __( 'Create your set', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'text' => __( "Build the perfect mix\nfor your home.", 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ),
 			),
 		);
 	}
@@ -857,14 +868,14 @@ final class HLPB_Landing_Builder {
 	/** Default editable Why section copy and colors matching the supplied design. */
 	private static function get_default_why_settings() {
 		return array(
-			'eyebrow' => __( 'COSY SETS, BETTER VALUE', 'html-landing-page-builder-for-woocommerce' ),
-			'title' => __( 'Why bundle?', 'html-landing-page-builder-for-woocommerce' ),
-			'subtitle' => __( 'The more you gift (or keep for yourself), the more you save.', 'html-landing-page-builder-for-woocommerce' ),
+			'eyebrow' => __( 'COSY SETS, BETTER VALUE', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'title' => __( 'Why bundle?', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'subtitle' => __( 'The more you gift (or keep for yourself), the more you save.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 			'benefits' => array(
-				__( 'Better value', 'html-landing-page-builder-for-woocommerce' ),
-				__( 'The perfect pair', 'html-landing-page-builder-for-woocommerce' ),
-				__( 'Ideal for gifting', 'html-landing-page-builder-for-woocommerce' ),
-				__( 'More cosy moments', 'html-landing-page-builder-for-woocommerce' ),
+				__( 'Better value', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				__( 'The perfect pair', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				__( 'Ideal for gifting', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				__( 'More cosy moments', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 			),
 			'background' => '#fff7f2',
 			'eyebrow_color' => '#ef555c',
@@ -887,8 +898,8 @@ final class HLPB_Landing_Builder {
 			'savings_color' => '#df5554',
 			'stock_enabled' => 1,
 			'stock_icon' => 'fire',
-			'stock_title' => __( 'Limited stock available', 'html-landing-page-builder-for-woocommerce' ),
-			'stock_text' => __( "Our cosy bundles are in high demand. Once they’re gone, they may not be back for a while.", 'html-landing-page-builder-for-woocommerce' ),
+			'stock_title' => __( 'Limited stock available', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'stock_text' => __( "Our cosy bundles are in high demand. Once they’re gone, they may not be back for a while.", 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 			'stock_background' => '#ffe9e5',
 			'stock_title_color' => '#bf4e4c',
 			'stock_text_color' => '#596671',
@@ -903,11 +914,11 @@ final class HLPB_Landing_Builder {
 	 */
 	private static function get_default_reviews_settings() {
 		return array(
-			'title' => __( 'Over 200,000+ Happy Customers', 'html-landing-page-builder-for-woocommerce' ),
-			'subtitle' => __( 'Real people. Cosy homes. Brighter days.', 'html-landing-page-builder-for-woocommerce' ),
+			'title' => __( 'Over 200,000+ Happy Customers', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'subtitle' => __( 'Real people. Cosy homes. Brighter days.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 			'overall_stars' => 5,
 			'overall_score' => '4.9 out of 5',
-			'overall_count' => __( 'Based on 2,418 reviews', 'html-landing-page-builder-for-woocommerce' ),
+			'overall_count' => __( 'Based on 2,418 reviews', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 			'background' => '#ffffff',
 			'heading_color' => '#082b49',
 			'subtitle_color' => '#5b6c79',
@@ -921,9 +932,9 @@ final class HLPB_Landing_Builder {
 			'reviewer_color' => '#122b42',
 			'verified_color' => '#33a67d',
 			'reviews' => array(
-				array( 'demo_image' => 'thumb-hero-family.webp', 'image_id' => 0, 'image_alt' => __( 'Mother and daughter in cosy hoodie blankets', 'html-landing-page-builder-for-woocommerce' ), 'stars' => 5, 'title' => __( '“Perfect for cosy nights!”', 'html-landing-page-builder-for-woocommerce' ), 'text' => __( 'Me and my daughter both have a hoodie and we absolutely love them. So soft and warm — we live in them!', 'html-landing-page-builder-for-woocommerce' ), 'reviewer' => 'Sophie L.', 'verified' => 1, 'verified_text' => __( '✓ Verified buyer', 'html-landing-page-builder-for-woocommerce' ) ),
-				array( 'demo_image' => 'thumb-family-evening.webp', 'image_id' => 0, 'image_alt' => __( 'Family enjoying a cosy evening together', 'html-landing-page-builder-for-woocommerce' ), 'stars' => 5, 'title' => __( '“Amazing quality”', 'html-landing-page-builder-for-woocommerce' ), 'text' => __( 'I ordered a blanket and a hoodie and the quality is unreal. Super soft, washes really well, and delivered quickly. Highly recommend!', 'html-landing-page-builder-for-woocommerce' ), 'reviewer' => 'James T.', 'verified' => 1, 'verified_text' => __( '✓ Verified buyer', 'html-landing-page-builder-for-woocommerce' ) ),
-				array( 'demo_image' => 'thumb-family-evening.webp', 'image_id' => 0, 'image_alt' => __( 'Cosy blankets shared by a family', 'html-landing-page-builder-for-woocommerce' ), 'stars' => 5, 'title' => __( '“The best gift!”', 'html-landing-page-builder-for-woocommerce' ), 'text' => __( 'Bought a mix for my family and they all love them. Such a great idea and really good value when you buy more.', 'html-landing-page-builder-for-woocommerce' ), 'reviewer' => 'Emily R.', 'verified' => 1, 'verified_text' => __( '✓ Verified buyer', 'html-landing-page-builder-for-woocommerce' ) ),
+				array( 'demo_image' => 'thumb-hero-family.webp', 'image_id' => 0, 'image_alt' => __( 'Mother and daughter in cosy hoodie blankets', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'stars' => 5, 'title' => __( '“Perfect for cosy nights!”', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'text' => __( 'Me and my daughter both have a hoodie and we absolutely love them. So soft and warm — we live in them!', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'reviewer' => 'Sophie L.', 'verified' => 1, 'verified_text' => __( '✓ Verified buyer', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ),
+				array( 'demo_image' => 'thumb-family-evening.webp', 'image_id' => 0, 'image_alt' => __( 'Family enjoying a cosy evening together', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'stars' => 5, 'title' => __( '“Amazing quality”', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'text' => __( 'I ordered a blanket and a hoodie and the quality is unreal. Super soft, washes really well, and delivered quickly. Highly recommend!', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'reviewer' => 'James T.', 'verified' => 1, 'verified_text' => __( '✓ Verified buyer', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ),
+				array( 'demo_image' => 'thumb-family-evening.webp', 'image_id' => 0, 'image_alt' => __( 'Cosy blankets shared by a family', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'stars' => 5, 'title' => __( '“The best gift!”', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'text' => __( 'Bought a mix for my family and they all love them. Such a great idea and really good value when you buy more.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'reviewer' => 'Emily R.', 'verified' => 1, 'verified_text' => __( '✓ Verified buyer', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ),
 			),
 		);
 	}
@@ -935,8 +946,8 @@ final class HLPB_Landing_Builder {
 	 */
 	private static function get_default_faq_settings() {
 		return array(
-			'title' => __( "Frequently\nAsked Questions", 'html-landing-page-builder-for-woocommerce' ),
-			'subtitle' => __( 'Everything you need to know about your cosy order.', 'html-landing-page-builder-for-woocommerce' ),
+			'title' => __( "Frequently\nAsked Questions", 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'subtitle' => __( 'Everything you need to know about your cosy order.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 			'background' => '#ffffff',
 			'heading_color' => '#082b49',
 			'intro_color' => '#63717b',
@@ -946,11 +957,11 @@ final class HLPB_Landing_Builder {
 			'item_border_color' => '#e0e5e5',
 			'arrow_color' => '#6e7d86',
 			'faqs' => array(
-				array( 'question' => __( 'How long does delivery take?', 'html-landing-page-builder-for-woocommerce' ), 'answer' => __( 'UK delivery usually takes 2–4 working days in this demo. Delivery estimates should be updated to match your store’s actual fulfilment terms.', 'html-landing-page-builder-for-woocommerce' ) ),
-				array( 'question' => __( 'Can I mix hoodies and blankets?', 'html-landing-page-builder-for-woocommerce' ), 'answer' => __( 'Yes. Choose Mix & Match to combine hoodie blankets and weighted blankets in the colours you like.', 'html-landing-page-builder-for-woocommerce' ) ),
-				array( 'question' => __( 'What if I’m not happy with my order?', 'html-landing-page-builder-for-woocommerce' ), 'answer' => __( 'We want you to feel cosy and confident. Add your real returns and exchange policy here before launch.', 'html-landing-page-builder-for-woocommerce' ) ),
-				array( 'question' => __( 'How do I care for my hoodie and blanket?', 'html-landing-page-builder-for-woocommerce' ), 'answer' => __( 'Follow the care label on each product. Use your product’s verified washing instructions here.', 'html-landing-page-builder-for-woocommerce' ) ),
-				array( 'question' => __( 'Do you offer gift wrapping?', 'html-landing-page-builder-for-woocommerce' ), 'answer' => __( 'Gift wrapping and a personalised gift note can be selected with eligible bundles.', 'html-landing-page-builder-for-woocommerce' ) ),
+				array( 'question' => __( 'How long does delivery take?', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'answer' => __( 'UK delivery usually takes 2–4 working days in this demo. Delivery estimates should be updated to match your store’s actual fulfilment terms.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ),
+				array( 'question' => __( 'Can I mix hoodies and blankets?', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'answer' => __( 'Yes. Choose Mix & Match to combine hoodie blankets and weighted blankets in the colours you like.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ),
+				array( 'question' => __( 'What if I’m not happy with my order?', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'answer' => __( 'We want you to feel cosy and confident. Add your real returns and exchange policy here before launch.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ),
+				array( 'question' => __( 'How do I care for my hoodie and blanket?', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'answer' => __( 'Follow the care label on each product. Use your product’s verified washing instructions here.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ),
+				array( 'question' => __( 'Do you offer gift wrapping?', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'answer' => __( 'Gift wrapping and a personalised gift note can be selected with eligible bundles.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ),
 			),
 		);
 	}
@@ -996,11 +1007,11 @@ final class HLPB_Landing_Builder {
 	/** Footer social networks supported by the template icon sprite. */
 	private static function get_footer_social_icons() {
 		return array(
-			'instagram' => __( 'Instagram', 'html-landing-page-builder-for-woocommerce' ),
-			'facebook' => __( 'Facebook', 'html-landing-page-builder-for-woocommerce' ),
-			'pinterest' => __( 'Pinterest', 'html-landing-page-builder-for-woocommerce' ),
-			'tiktok' => __( 'TikTok', 'html-landing-page-builder-for-woocommerce' ),
-			'youtube' => __( 'YouTube', 'html-landing-page-builder-for-woocommerce' ),
+			'instagram' => __( 'Instagram', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'facebook' => __( 'Facebook', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'pinterest' => __( 'Pinterest', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'tiktok' => __( 'TikTok', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'youtube' => __( 'YouTube', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 		);
 	}
 
@@ -1013,7 +1024,7 @@ final class HLPB_Landing_Builder {
 	public static function add_meta_box( $post ) {
 		add_meta_box(
 			'hlpb-landing-sections',
-			__( 'Landing Page Sections', 'html-landing-page-builder-for-woocommerce' ),
+			__( 'Landing Page Sections', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 			array( __CLASS__, 'render_meta_box' ),
 			self::POST_TYPE,
 			'normal',
@@ -1047,9 +1058,9 @@ final class HLPB_Landing_Builder {
 		$last_export_dir   = self::get_current_export_relative_path( $post->ID );
 		?>
 		<div class="hlpb-builder">
-			<p class="hlpb-builder-intro"><?php esc_html_e( 'Drag sections to change their order, or enter an order number. New sections start with demo content.', 'html-landing-page-builder-for-woocommerce' ); ?></p>
+			<p class="hlpb-builder-intro"><?php esc_html_e( 'Drag sections to change their order, or enter an order number. New sections start with demo content.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></p>
 			<div class="hlpb-template-panel">
-				<label for="hlpb-template-select"><strong><?php esc_html_e( 'Landing page template', 'html-landing-page-builder-for-woocommerce' ); ?></strong></label>
+				<label for="hlpb-template-select"><strong><?php esc_html_e( 'Landing page template', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></strong></label>
 				<select id="hlpb-template-select" name="hlpb_template">
 					<?php foreach ( $templates as $template_slug => $template ) : ?>
 						<option value="<?php echo esc_attr( $template_slug ); ?>" data-image-base="<?php echo esc_url( self::get_template_asset_url( $template_slug ) . 'images/' ); ?>" data-default-image="<?php echo esc_attr( isset( $template['default_image'] ) ? sanitize_file_name( $template['default_image'] ) : '' ); ?>" <?php selected( $selected_template, $template_slug ); ?>><?php echo esc_html( $template['name'] ); ?></option>
@@ -1058,17 +1069,17 @@ final class HLPB_Landing_Builder {
 				<?php if ( $selected_template && isset( $templates[ $selected_template ]['description'] ) ) : ?>
 					<p class="description"><?php echo esc_html( $templates[ $selected_template ]['description'] ); ?></p>
 				<?php endif; ?>
-				<p class="description"><?php esc_html_e( 'Templates live in their own folder with a manifest, source HTML, CSS, JavaScript, images, icons, and section partials.', 'html-landing-page-builder-for-woocommerce' ); ?></p>
-				<p><label for="hlpb-export-promo-folder"><strong><?php esc_html_e( 'Promo folder', 'html-landing-page-builder-for-woocommerce' ); ?></strong></label><br><input type="text" class="regular-text" id="hlpb-export-promo-folder" name="hlpb_export_promo_folder" value="<?php echo esc_attr( $promo_folder ); ?>" pattern="[a-zA-Z0-9-]+" placeholder="Promo"><br><span class="description"><?php esc_html_e( 'Top-level folder for published landing pages. Use letters, numbers, and hyphens.', 'html-landing-page-builder-for-woocommerce' ); ?></span></p>
-				<p><label for="hlpb-export-slug"><strong><?php esc_html_e( 'Landing folder', 'html-landing-page-builder-for-woocommerce' ); ?></strong></label><br><input type="text" class="regular-text" id="hlpb-export-slug" name="hlpb_export_slug" value="<?php echo esc_attr( $export_slug ); ?>" pattern="[a-zA-Z0-9-]+" placeholder="Christmas-Event"><br><span class="description"><?php esc_html_e( 'Folder for this landing page. Use letters, numbers, and hyphens.', 'html-landing-page-builder-for-woocommerce' ); ?></span></p>
-				<p><strong><?php esc_html_e( 'Next Publish/Update creates', 'html-landing-page-builder-for-woocommerce' ); ?>:</strong> <?php esc_html_e( 'WordPress root', 'html-landing-page-builder-for-woocommerce' ); ?>/<code><?php echo esc_html( $promo_folder ); ?>/<?php echo esc_html( $export_slug ? $export_slug : '{landing-folder}' ); ?>/index.html</code> · <code><?php echo esc_html( $export_url ? wp_parse_url( $export_url, PHP_URL_PATH ) : '/promo/{landing-folder}/' ); ?></code></p>
+				<p class="description"><?php esc_html_e( 'Templates live in their own folder with a manifest, source HTML, CSS, JavaScript, images, icons, and section partials.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></p>
+				<p><label for="hlpb-export-promo-folder"><strong><?php esc_html_e( 'Promo folder', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></strong></label><br><input type="text" class="regular-text" id="hlpb-export-promo-folder" name="hlpb_export_promo_folder" value="<?php echo esc_attr( $promo_folder ); ?>" pattern="[a-zA-Z0-9-]+" placeholder="Promo"><br><span class="description"><?php esc_html_e( 'Top-level folder for published landing pages. Use letters, numbers, and hyphens.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></span></p>
+				<p><label for="hlpb-export-slug"><strong><?php esc_html_e( 'Landing folder', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></strong></label><br><input type="text" class="regular-text" id="hlpb-export-slug" name="hlpb_export_slug" value="<?php echo esc_attr( $export_slug ); ?>" pattern="[a-zA-Z0-9-]+" placeholder="Christmas-Event"><br><span class="description"><?php esc_html_e( 'Folder for this landing page. Use letters, numbers, and hyphens.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></span></p>
+				<p><strong><?php esc_html_e( 'Next Publish/Update creates', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?>:</strong> <?php esc_html_e( 'Uploads', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?>/<code><?php echo esc_html( self::EXPORT_UPLOAD_DIRECTORY ); ?>/<?php echo esc_html( $promo_folder ); ?>/<?php echo esc_html( $export_slug ? $export_slug : '{landing-folder}' ); ?>/index.html</code> · <code><?php echo esc_html( $export_url ? wp_parse_url( $export_url, PHP_URL_PATH ) : '/promo/{landing-folder}/' ); ?></code></p>
 				<?php if ( $export_path && $last_export_dir ) : ?>
-					<p><strong><?php esc_html_e( 'Last published static copy', 'html-landing-page-builder-for-woocommerce' ); ?>:</strong> <?php esc_html_e( 'WordPress root', 'html-landing-page-builder-for-woocommerce' ); ?>/<code><?php echo esc_html( $last_export_dir ); ?>/index.html</code> · <a href="<?php echo esc_url( $export_path ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Open published landing page', 'html-landing-page-builder-for-woocommerce' ); ?></a></p>
+					<p><strong><?php esc_html_e( 'Last published static copy', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?>:</strong> <?php esc_html_e( 'Uploads', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?>/<code><?php echo esc_html( self::EXPORT_UPLOAD_DIRECTORY . '/' . $last_export_dir ); ?>/index.html</code> · <a href="<?php echo esc_url( $export_path ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Open published landing page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></a></p>
 				<?php endif; ?>
-				<p class="description"><?php esc_html_e( 'Publish or Update automatically creates or refreshes the static page. Changing either folder creates a new copy and leaves the previous folder in place. Moving this landing page to Trash removes folders generated for it.', 'html-landing-page-builder-for-woocommerce' ); ?></p>
+				<p class="description"><?php esc_html_e( 'Publish or Update automatically creates or refreshes the static page. Changing either folder creates a new copy and leaves the previous folder in place. Moving this landing page to Trash removes folders generated for it.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></p>
 			</div>
 			<div class="hlpb-toolbar">
-				<label for="hlpb-new-section-type"><?php esc_html_e( 'Add section', 'html-landing-page-builder-for-woocommerce' ); ?></label>
+				<label for="hlpb-new-section-type"><?php esc_html_e( 'Add section', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></label>
 				<select id="hlpb-new-section-type">
 					<?php $first_type = key( $types ); ?>
 					<?php foreach ( $types as $type => $label ) : ?>
@@ -1079,9 +1090,9 @@ final class HLPB_Landing_Builder {
 					<span class="hlpb-section-type-preview-art"><?php echo self::get_section_preview_svg( $first_type ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Static SVG from the section preview map. ?></span>
 					<strong class="hlpb-section-type-preview-label"><?php echo esc_html( $types[ $first_type ] ); ?></strong>
 				</div>
-				<button type="button" class="button" id="hlpb-add-section"><?php esc_html_e( 'Add', 'html-landing-page-builder-for-woocommerce' ); ?></button>
-				<button type="button" class="button" id="hlpb-collapse-all"><?php esc_html_e( 'Collapse all', 'html-landing-page-builder-for-woocommerce' ); ?></button>
-				<button type="button" class="button" id="hlpb-expand-all"><?php esc_html_e( 'Expand all', 'html-landing-page-builder-for-woocommerce' ); ?></button>
+				<button type="button" class="button" id="hlpb-add-section"><?php esc_html_e( 'Add', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></button>
+				<button type="button" class="button" id="hlpb-collapse-all"><?php esc_html_e( 'Collapse all', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></button>
+				<button type="button" class="button" id="hlpb-expand-all"><?php esc_html_e( 'Expand all', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?></button>
 				<span class="hlpb-toolbar-status" aria-live="polite"></span>
 			</div>
 			<div id="hlpb-section-list" class="hlpb-section-list">
@@ -1089,9 +1100,8 @@ final class HLPB_Landing_Builder {
 					<?php echo self::render_section_card( $section, $selected_template ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Generated from escaped form controls. ?>
 				<?php endforeach; ?>
 			</div>
-			<p class="description"><?php if ( 'field-notes' === $selected_template ) : ?><?php esc_html_e( 'All Field Notes sections can be edited here. The calculator section lets you edit its introduction and choose which built-in calculators appear; its calculator logic stays intact.', 'html-landing-page-builder-for-woocommerce' ); ?><?php else : ?><?php esc_html_e( 'Header, Offer Line, Cart Section, Mix it your way, Why?, Text + Image, Reviews, FAQ, and Footer sections can be edited here. Other sections use their template demo content.', 'html-landing-page-builder-for-woocommerce' ); ?><?php endif; ?></p>
+			<p class="description"><?php if ( 'field-notes' === $selected_template ) : ?><?php esc_html_e( 'All Field Notes sections can be edited here. The calculator section lets you edit its introduction and choose which built-in calculators appear; its calculator logic stays intact.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?><?php else : ?><?php esc_html_e( 'Header, Offer Line, Cart Section, Mix it your way, Why?, Text + Image, Reviews, FAQ, and Footer sections can be edited here. Other sections use their template demo content.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ); ?><?php endif; ?></p>
 			<?php echo self::render_seo_fields( $post->ID ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Generated SEO controls are individually escaped. ?>
-			<?php echo self::render_custom_css_fields( $post->ID ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The editor value is escaped as textarea content. ?>
 		</div>
 		<?php
 	}
@@ -1111,8 +1121,8 @@ final class HLPB_Landing_Builder {
 		$visible = ! array_key_exists( 'visible', $section ) || ! empty( $section['visible'] );
 		$html  = '<article class="hlpb-section-card is-collapsed" data-section-id="' . esc_attr( $id ) . '" data-section-type="' . esc_attr( $type ) . '">';
 		$duplicate_disabled = in_array( $type, self::get_singleton_section_types( $template_slug ), true );
-		$duplicate_title    = $duplicate_disabled ? __( 'This section can only appear once.', 'html-landing-page-builder-for-woocommerce' ) : __( 'Duplicate section', 'html-landing-page-builder-for-woocommerce' );
-		$html .= '<div class="hlpb-section-heading"><span class="hlpb-drag-handle" aria-hidden="true">⠿</span><span class="hlpb-section-heading-preview" title="' . esc_attr( $label ) . '">' . self::get_section_preview_svg( $type ) . '</span><span class="hlpb-section-heading-label"><small>' . esc_html__( 'Section type', 'html-landing-page-builder-for-woocommerce' ) . '</small><strong class="hlpb-section-title">' . esc_html( $label ) . '</strong><span class="hlpb-section-hidden-label" ' . ( $visible ? 'hidden' : '' ) . '>' . esc_html__( 'Hidden on published page', 'html-landing-page-builder-for-woocommerce' ) . '</span></span><label class="hlpb-order-label">' . esc_html__( 'Order', 'html-landing-page-builder-for-woocommerce' ) . ' <input class="hlpb-order" type="number" min="1" step="1" name="hlpb_sections[' . esc_attr( $id ) . '][order]" value="' . esc_attr( $order ) . '"></label><input class="hlpb-section-visible-value" type="hidden" name="hlpb_sections[' . esc_attr( $id ) . '][visible]" value="' . ( $visible ? '1' : '0' ) . '"><button type="button" class="button hlpb-visibility-toggle" aria-pressed="' . ( $visible ? 'true' : 'false' ) . '" aria-label="' . esc_attr( $visible ? __( 'Hide section on published page', 'html-landing-page-builder-for-woocommerce' ) : __( 'Show section on published page', 'html-landing-page-builder-for-woocommerce' ) ) . '" title="' . esc_attr( $visible ? __( 'Hide section on published page', 'html-landing-page-builder-for-woocommerce' ) : __( 'Show section on published page', 'html-landing-page-builder-for-woocommerce' ) ) . '">' . self::get_visibility_icon( $visible ) . '</button><button type="button" class="button hlpb-toggle-section" aria-expanded="false" aria-controls="hlpb-content-' . esc_attr( $id ) . '">' . esc_html__( 'Expand', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button hlpb-clone-section" aria-label="' . esc_attr( $duplicate_title ) . '" title="' . esc_attr( $duplicate_title ) . '" ' . disabled( $duplicate_disabled, true, false ) . '>' . esc_html__( 'Duplicate', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button-link-delete hlpb-remove-section">' . esc_html__( 'Remove', 'html-landing-page-builder-for-woocommerce' ) . '</button></div>';
+		$duplicate_title    = $duplicate_disabled ? __( 'This section can only appear once.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) : __( 'Duplicate section', 'mikhailkyrychenko-offer-builder-for-woocommerce' );
+		$html .= '<div class="hlpb-section-heading"><span class="hlpb-drag-handle" aria-hidden="true">⠿</span><span class="hlpb-section-heading-preview" title="' . esc_attr( $label ) . '">' . self::get_section_preview_svg( $type ) . '</span><span class="hlpb-section-heading-label"><small>' . esc_html__( 'Section type', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</small><strong class="hlpb-section-title">' . esc_html( $label ) . '</strong><span class="hlpb-section-hidden-label" ' . ( $visible ? 'hidden' : '' ) . '>' . esc_html__( 'Hidden on published page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span></span><label class="hlpb-order-label">' . esc_html__( 'Order', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . ' <input class="hlpb-order" type="number" min="1" step="1" name="hlpb_sections[' . esc_attr( $id ) . '][order]" value="' . esc_attr( $order ) . '"></label><input class="hlpb-section-visible-value" type="hidden" name="hlpb_sections[' . esc_attr( $id ) . '][visible]" value="' . ( $visible ? '1' : '0' ) . '"><button type="button" class="button hlpb-visibility-toggle" aria-pressed="' . ( $visible ? 'true' : 'false' ) . '" aria-label="' . esc_attr( $visible ? __( 'Hide section on published page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) : __( 'Show section on published page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ) . '" title="' . esc_attr( $visible ? __( 'Hide section on published page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) : __( 'Show section on published page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ) . '">' . self::get_visibility_icon( $visible ) . '</button><button type="button" class="button hlpb-toggle-section" aria-expanded="false" aria-controls="hlpb-content-' . esc_attr( $id ) . '">' . esc_html__( 'Expand', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button><button type="button" class="button hlpb-clone-section" aria-label="' . esc_attr( $duplicate_title ) . '" title="' . esc_attr( $duplicate_title ) . '" ' . disabled( $duplicate_disabled, true, false ) . '>' . esc_html__( 'Duplicate', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button><button type="button" class="button-link-delete hlpb-remove-section">' . esc_html__( 'Remove', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></div>';
 		$html .= '<div class="hlpb-section-content" id="hlpb-content-' . esc_attr( $id ) . '"><input type="hidden" name="hlpb_sections[' . esc_attr( $id ) . '][id]" value="' . esc_attr( $id ) . '"><input type="hidden" name="hlpb_sections[' . esc_attr( $id ) . '][type]" value="' . esc_attr( $type ) . '">';
 
 		if ( 'text_image' === $type ) {
@@ -1135,7 +1145,7 @@ final class HLPB_Landing_Builder {
 			$html .= self::render_footer_fields( $section, $id, $template_slug );
 		} else {
 			if ( empty( self::get_template_field_definitions( $template_slug, $type ) ) ) {
-				$html .= '<p class="hlpb-section-demo">' . esc_html__( 'This section displays the matching demo content from the supplied landing page.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+				$html .= '<p class="hlpb-section-demo">' . esc_html__( 'This section displays the matching demo content from the supplied landing page.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p>';
 			}
 		}
 		$html .= self::render_template_section_fields( $section, $id, $template_slug );
@@ -1149,40 +1159,18 @@ final class HLPB_Landing_Builder {
 		$seo = self::get_seo_settings( $post_id );
 		$canonical_preview = $seo['canonical'] ? $seo['canonical'] : self::build_export_url( self::get_export_promo_folder( $post_id ), self::get_export_slug( $post_id ) );
 		$social_image_preview = self::get_landing_social_image( $post_id, $seo );
-		$html = '<section class="hlpb-seo-settings"><h3>' . esc_html__( 'SEO settings', 'html-landing-page-builder-for-woocommerce' ) . '</h3><p class="description">' . esc_html__( 'These settings apply only to this landing page. The description is required and is included in search and social previews.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
-		$html .= '<div class="hlpb-seo-grid"><div class="hlpb-field"><label for="hlpb-seo-title">' . esc_html__( 'SEO title', 'html-landing-page-builder-for-woocommerce' ) . '</label><input id="hlpb-seo-title" type="text" name="hlpb_seo[title]" value="' . esc_attr( $seo['title'] ) . '" maxlength="70" required><p class="description">' . esc_html__( 'Used as the browser and search result title.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
-		$html .= '<div class="hlpb-field"><label for="hlpb-seo-description">' . esc_html__( 'Meta description', 'html-landing-page-builder-for-woocommerce' ) . '</label><textarea id="hlpb-seo-description" name="hlpb_seo[description]" rows="3" maxlength="160" required>' . esc_textarea( $seo['description'] ) . '</textarea><p class="description">' . esc_html__( 'Required. Aim for a clear summary under 160 characters.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
-		$html .= '<div class="hlpb-field"><label for="hlpb-seo-canonical">' . esc_html__( 'Canonical URL (optional)', 'html-landing-page-builder-for-woocommerce' ) . '</label><input id="hlpb-seo-canonical" type="url" name="hlpb_seo[canonical]" value="' . esc_attr( $seo['canonical'] ) . '" placeholder="' . esc_attr__( 'Leave blank to use this landing page URL', 'html-landing-page-builder-for-woocommerce' ) . '"><p class="description">' . esc_html__( 'Leave blank to use the published landing URL automatically. Set a URL only when another page is the preferred original.', 'html-landing-page-builder-for-woocommerce' ) . '<br><strong>' . esc_html__( 'Current canonical:', 'html-landing-page-builder-for-woocommerce' ) . '</strong> <code>' . esc_html( $canonical_preview ) . '</code></p></div>';
-		$html .= '<div class="hlpb-field"><label for="hlpb-seo-image">' . esc_html__( 'Social sharing image URL (optional)', 'html-landing-page-builder-for-woocommerce' ) . '</label><input id="hlpb-seo-image" type="url" name="hlpb_seo[social_image]" value="' . esc_attr( $seo['social_image'] ) . '" placeholder="https://example.com/image.jpg"><p class="description">' . esc_html__( 'Leave blank to use the lead product image (or the template image). A wide image around 1200 × 630 px works well.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+		$html = '<section class="hlpb-seo-settings"><h3>' . esc_html__( 'SEO settings', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</h3><p class="description">' . esc_html__( 'These settings apply only to this landing page. The description is required and is included in search and social previews.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p>';
+		$html .= '<div class="hlpb-seo-grid"><div class="hlpb-field"><label for="hlpb-seo-title">' . esc_html__( 'SEO title', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><input id="hlpb-seo-title" type="text" name="hlpb_seo[title]" value="' . esc_attr( $seo['title'] ) . '" maxlength="70" required><p class="description">' . esc_html__( 'Used as the browser and search result title.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></div>';
+		$html .= '<div class="hlpb-field"><label for="hlpb-seo-description">' . esc_html__( 'Meta description', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><textarea id="hlpb-seo-description" name="hlpb_seo[description]" rows="3" maxlength="160" required>' . esc_textarea( $seo['description'] ) . '</textarea><p class="description">' . esc_html__( 'Required. Aim for a clear summary under 160 characters.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></div>';
+		$html .= '<div class="hlpb-field"><label for="hlpb-seo-canonical">' . esc_html__( 'Canonical URL (optional)', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><input id="hlpb-seo-canonical" type="url" name="hlpb_seo[canonical]" value="' . esc_attr( $seo['canonical'] ) . '" placeholder="' . esc_attr__( 'Leave blank to use this landing page URL', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '"><p class="description">' . esc_html__( 'Leave blank to use the published landing URL automatically. Set a URL only when another page is the preferred original.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '<br><strong>' . esc_html__( 'Current canonical:', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</strong> <code>' . esc_html( $canonical_preview ) . '</code></p></div>';
+		$html .= '<div class="hlpb-field"><label for="hlpb-seo-image">' . esc_html__( 'Social sharing image URL (optional)', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><input id="hlpb-seo-image" type="url" name="hlpb_seo[social_image]" value="' . esc_attr( $seo['social_image'] ) . '" placeholder="https://example.com/image.jpg"><p class="description">' . esc_html__( 'Leave blank to use the lead product image (or the template image). A wide image around 1200 × 630 px works well.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p>';
 		if ( ! $seo['social_image'] && $social_image_preview ) {
-			$html .= '<p class="description"><strong>' . esc_html__( 'Current automatic image:', 'html-landing-page-builder-for-woocommerce' ) . '</strong><br><img src="' . esc_url( $social_image_preview ) . '" alt="" loading="lazy" style="display:block;max-width:180px;max-height:110px;width:auto;height:auto;margin-top:6px;border:1px solid #dcdcde;border-radius:4px"></p>';
+			$html .= '<p class="description"><strong>' . esc_html__( 'Current automatic image:', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</strong><br><img src="' . esc_url( $social_image_preview ) . '" alt="" loading="lazy" style="display:block;max-width:180px;max-height:110px;width:auto;height:auto;margin-top:6px;border:1px solid #dcdcde;border-radius:4px"></p>';
 		}
 		$html .= '</div></div>';
-		$html .= '<fieldset class="hlpb-seo-social"><legend>' . esc_html__( 'Social preview', 'html-landing-page-builder-for-woocommerce' ) . '</legend><div class="hlpb-seo-grid"><div class="hlpb-field"><label for="hlpb-seo-social-title">' . esc_html__( 'Social title', 'html-landing-page-builder-for-woocommerce' ) . '</label><input id="hlpb-seo-social-title" type="text" name="hlpb_seo[social_title]" value="' . esc_attr( $seo['social_title'] ) . '" maxlength="100"></div><div class="hlpb-field"><label for="hlpb-seo-social-description">' . esc_html__( 'Social description', 'html-landing-page-builder-for-woocommerce' ) . '</label><textarea id="hlpb-seo-social-description" name="hlpb_seo[social_description]" rows="3" maxlength="200">' . esc_textarea( $seo['social_description'] ) . '</textarea></div></div></fieldset>';
-		$html .= '<fieldset class="hlpb-seo-robots"><legend>' . esc_html__( 'Search visibility', 'html-landing-page-builder-for-woocommerce' ) . '</legend><input type="hidden" name="hlpb_seo[index]" value="0"><label class="hlpb-checkbox"><input type="checkbox" name="hlpb_seo[index]" value="1" ' . checked( $seo['index'], 1, false ) . '> ' . esc_html__( 'Allow search engines to index this page', 'html-landing-page-builder-for-woocommerce' ) . '</label><input type="hidden" name="hlpb_seo[follow]" value="0"><label class="hlpb-checkbox"><input type="checkbox" name="hlpb_seo[follow]" value="1" ' . checked( $seo['follow'], 1, false ) . '> ' . esc_html__( 'Allow search engines to follow links on this page', 'html-landing-page-builder-for-woocommerce' ) . '</label><p class="description">' . esc_html__( 'Both options are enabled by default for the demo landing pages.', 'html-landing-page-builder-for-woocommerce' ) . '</p></fieldset></section>';
+		$html .= '<fieldset class="hlpb-seo-social"><legend>' . esc_html__( 'Social preview', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</legend><div class="hlpb-seo-grid"><div class="hlpb-field"><label for="hlpb-seo-social-title">' . esc_html__( 'Social title', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><input id="hlpb-seo-social-title" type="text" name="hlpb_seo[social_title]" value="' . esc_attr( $seo['social_title'] ) . '" maxlength="100"></div><div class="hlpb-field"><label for="hlpb-seo-social-description">' . esc_html__( 'Social description', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><textarea id="hlpb-seo-social-description" name="hlpb_seo[social_description]" rows="3" maxlength="200">' . esc_textarea( $seo['social_description'] ) . '</textarea></div></div></fieldset>';
+		$html .= '<fieldset class="hlpb-seo-robots"><legend>' . esc_html__( 'Search visibility', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</legend><input type="hidden" name="hlpb_seo[index]" value="0"><label class="hlpb-checkbox"><input type="checkbox" name="hlpb_seo[index]" value="1" ' . checked( $seo['index'], 1, false ) . '> ' . esc_html__( 'Allow search engines to index this page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><input type="hidden" name="hlpb_seo[follow]" value="0"><label class="hlpb-checkbox"><input type="checkbox" name="hlpb_seo[follow]" value="1" ' . checked( $seo['follow'], 1, false ) . '> ' . esc_html__( 'Allow search engines to follow links on this page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><p class="description">' . esc_html__( 'Both options are enabled by default for the demo landing pages.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></fieldset></section>';
 		return $html;
-	}
-
-	/** Render custom styles that are exported with this landing page only. */
-	private static function render_custom_css_fields( $post_id ) {
-		$css  = self::get_custom_css( $post_id );
-		$html = '<section class="hlpb-custom-css-settings"><h3>' . esc_html__( 'Custom CSS', 'html-landing-page-builder-for-woocommerce' ) . '</h3><p class="description">' . esc_html__( 'CSS entered here is included only in this landing page’s published static copy. It does not change other landing pages or your store theme.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
-		$html .= '<div class="hlpb-field"><label for="hlpb-custom-css">' . esc_html__( 'Page-specific CSS', 'html-landing-page-builder-for-woocommerce' ) . '</label><textarea id="hlpb-custom-css" class="code" name="hlpb_custom_css" rows="12" spellcheck="false" placeholder="/* Add CSS for this landing page */">' . esc_textarea( $css ) . '</textarea><p class="description">' . esc_html__( 'Use CSS selectors for this page’s template. Save or update the landing page to publish your changes.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div></section>';
-		return $html;
-	}
-
-	/** Read the per-landing custom stylesheet as plain text. */
-	private static function get_custom_css( $post_id ) {
-		$css = get_post_meta( absint( $post_id ), self::CUSTOM_CSS_META_KEY, true );
-		if ( ! is_string( $css ) ) {
-			return '';
-		}
-		return wp_check_invalid_utf8( str_replace( "\0", '', $css ), true );
-	}
-
-	/** Prevent an admin-entered closing style tag from terminating the generated style element. */
-	private static function make_custom_css_style_safe( $css ) {
-		return str_ireplace( '</style', '<\\/style', (string) $css );
 	}
 
 	/** Inline eye icons for the section visibility control. */
@@ -1255,7 +1243,7 @@ final class HLPB_Landing_Builder {
 				$default_image = isset( $section[ $key ] ) ? self::safe_demo_image( $section[ $key ], $template_slug ) : ( isset( $field['default'] ) ? self::safe_demo_image( $field['default'], $template_slug ) : '' );
 				$demo_url = $default_image ? self::get_template_asset_url( $template_slug ) . 'images/' . rawurlencode( $default_image ) : '';
 				$image_url = $image_url ? $image_url : $demo_url;
-				$html .= '<div class="hlpb-field"><label>' . esc_html( $label ) . '</label><div class="hlpb-image-control"><img class="hlpb-image-preview" src="' . esc_url( $image_url ) . '" alt=""><input type="hidden" class="hlpb-image-id" name="' . esc_attr( $name . '[' . $key . '_id]' ) . '" value="' . esc_attr( $image_id ) . '"><input type="hidden" name="' . esc_attr( $name . '[' . $key . ']' ) . '" value="' . esc_attr( $default_image ) . '"><input type="hidden" class="hlpb-demo-image" value="' . esc_attr( $default_image ) . '"><button type="button" class="button hlpb-select-image">' . esc_html__( 'Choose image', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button-link hlpb-clear-image">' . esc_html__( 'Use template image', 'html-landing-page-builder-for-woocommerce' ) . '</button></div></div>';
+				$html .= '<div class="hlpb-field"><label>' . esc_html( $label ) . '</label><div class="hlpb-image-control"><img class="hlpb-image-preview" src="' . esc_url( $image_url ) . '" alt=""><input type="hidden" class="hlpb-image-id" name="' . esc_attr( $name . '[' . $key . '_id]' ) . '" value="' . esc_attr( $image_id ) . '"><input type="hidden" name="' . esc_attr( $name . '[' . $key . ']' ) . '" value="' . esc_attr( $default_image ) . '"><input type="hidden" class="hlpb-demo-image" value="' . esc_attr( $default_image ) . '"><button type="button" class="button hlpb-select-image">' . esc_html__( 'Choose image', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button><button type="button" class="button-link hlpb-clear-image">' . esc_html__( 'Use template image', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></div></div>';
 				continue;
 			}
 			if ( 'select' === $kind ) {
@@ -1273,7 +1261,7 @@ final class HLPB_Landing_Builder {
 			}
 			if ( 'checklist' === $kind ) {
 				$selected = isset( $section[ $key ] ) && is_array( $section[ $key ] ) ? array_map( 'sanitize_key', $section[ $key ] ) : array();
-				$html .= '<fieldset class="hlpb-template-checklist"><legend>' . esc_html( $label ) . '</legend><p class="description">' . esc_html__( 'Choose which calculators appear in the customer menu. Their calculation logic stays unchanged.', 'html-landing-page-builder-for-woocommerce' ) . '</p>';
+				$html .= '<fieldset class="hlpb-template-checklist"><legend>' . esc_html( $label ) . '</legend><p class="description">' . esc_html__( 'Choose which calculators appear in the customer menu. Their calculation logic stays unchanged.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p>';
 				foreach ( ( isset( $field['groups'] ) && is_array( $field['groups'] ) ? $field['groups'] : array() ) as $group ) {
 					if ( empty( $group['items'] ) || ! is_array( $group['items'] ) ) {
 						continue;
@@ -1310,12 +1298,12 @@ final class HLPB_Landing_Builder {
 		$logo_url = $logo_id ? wp_get_attachment_image_url( $logo_id, 'medium' ) : false;
 		$logo_url = $logo_url ? $logo_url : self::get_template_asset_url( $template_slug ) . 'icons/nest-stack.svg';
 		$name = 'hlpb_sections[' . $id . ']';
-		$html = '<div class="hlpb-header-fields"><div class="hlpb-field"><label>' . esc_html__( 'Logo', 'html-landing-page-builder-for-woocommerce' ) . '</label><div class="hlpb-image-control"><img class="hlpb-logo-preview" src="' . esc_url( $logo_url ) . '" alt=""><input class="hlpb-logo-id" type="hidden" name="' . esc_attr( $name . '[logo_id]' ) . '" value="' . esc_attr( $logo_id ) . '"><button type="button" class="button hlpb-select-image" data-image-target="logo">' . esc_html__( 'Choose logo', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button-link hlpb-clear-logo">' . esc_html__( 'Use template logo', 'html-landing-page-builder-for-woocommerce' ) . '</button></div><p class="description">' . esc_html__( 'Without a selected image, the logo and wordmark from the template are shown.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+		$html = '<div class="hlpb-header-fields"><div class="hlpb-field"><label>' . esc_html__( 'Logo', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><div class="hlpb-image-control"><img class="hlpb-logo-preview" src="' . esc_url( $logo_url ) . '" alt=""><input class="hlpb-logo-id" type="hidden" name="' . esc_attr( $name . '[logo_id]' ) . '" value="' . esc_attr( $logo_id ) . '"><button type="button" class="button hlpb-select-image" data-image-target="logo">' . esc_html__( 'Choose logo', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button><button type="button" class="button-link hlpb-clear-logo">' . esc_html__( 'Use template logo', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></div><p class="description">' . esc_html__( 'Without a selected image, the logo and wordmark from the template are shown.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></div>';
 		if ( 'cozy-mix' === $template_slug ) {
-			$html .= '<div class="hlpb-header-wordmark-fields">' . self::text_field( $name . '[brand_name]', __( 'Brand name beside the logo', 'html-landing-page-builder-for-woocommerce' ), $section['brand_name'] ) . self::text_field( $name . '[brand_tagline]', __( 'Brand tagline', 'html-landing-page-builder-for-woocommerce' ), $section['brand_tagline'] ) . '<p class="description">' . esc_html__( 'These lines appear beside the logo in the Cozy header.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+			$html .= '<div class="hlpb-header-wordmark-fields">' . self::text_field( $name . '[brand_name]', __( 'Brand name beside the logo', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['brand_name'] ) . self::text_field( $name . '[brand_tagline]', __( 'Brand tagline', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['brand_tagline'] ) . '<p class="description">' . esc_html__( 'These lines appear beside the logo in the Cozy header.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></div>';
 		}
-		$html .= self::render_menu_editor( $id, 'left', __( 'Left menu', 'html-landing-page-builder-for-woocommerce' ), $section );
-		$html .= self::render_menu_editor( $id, 'right', __( 'Right menu', 'html-landing-page-builder-for-woocommerce' ), $section );
+		$html .= self::render_menu_editor( $id, 'left', __( 'Left menu', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section );
+		$html .= self::render_menu_editor( $id, 'right', __( 'Right menu', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section );
 		$html .= '</div>';
 		return $html;
 	}
@@ -1327,15 +1315,15 @@ final class HLPB_Landing_Builder {
 		$menu_id = absint( $section[ $side . '_menu_id' ] );
 		$items = is_array( $section[ $side . '_menu_items' ] ) ? array_slice( $section[ $side . '_menu_items' ], 0, 20 ) : array();
 		$name = 'hlpb_sections[' . $section_id . ']';
-		$html = '<fieldset class="hlpb-menu-editor" data-menu-side="' . esc_attr( $side ) . '"><legend>' . esc_html( $label ) . '</legend><div class="hlpb-field"><label>' . esc_html__( 'Menu source', 'html-landing-page-builder-for-woocommerce' ) . '</label><select class="hlpb-menu-mode" name="' . esc_attr( $name . '[' . $side . '_menu_mode]' ) . '"><option value="custom" ' . selected( $mode, 'custom', false ) . '>' . esc_html__( 'Custom links', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="wp_menu" ' . selected( $mode, 'wp_menu', false ) . '>' . esc_html__( 'WordPress menu', 'html-landing-page-builder-for-woocommerce' ) . '</option></select></div><div class="hlpb-menu-custom" ' . ( 'custom' !== $mode ? 'hidden' : '' ) . '><div class="hlpb-menu-item-list">';
+		$html = '<fieldset class="hlpb-menu-editor" data-menu-side="' . esc_attr( $side ) . '"><legend>' . esc_html( $label ) . '</legend><div class="hlpb-field"><label>' . esc_html__( 'Menu source', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><select class="hlpb-menu-mode" name="' . esc_attr( $name . '[' . $side . '_menu_mode]' ) . '"><option value="custom" ' . selected( $mode, 'custom', false ) . '>' . esc_html__( 'Custom links', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option><option value="wp_menu" ' . selected( $mode, 'wp_menu', false ) . '>' . esc_html__( 'WordPress menu', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option></select></div><div class="hlpb-menu-custom" ' . ( 'custom' !== $mode ? 'hidden' : '' ) . '><div class="hlpb-menu-item-list">';
 		foreach ( $items as $index => $item ) {
 			$html .= self::render_menu_item_row( $section_id, $side, $index, $item );
 		}
-		$html .= '</div><button type="button" class="button hlpb-add-menu-item" data-menu-side="' . esc_attr( $side ) . '">' . esc_html__( 'Add menu item', 'html-landing-page-builder-for-woocommerce' ) . '</button></div><div class="hlpb-menu-wordpress" ' . ( 'wp_menu' !== $mode ? 'hidden' : '' ) . '><label>' . esc_html__( 'Choose menu', 'html-landing-page-builder-for-woocommerce' ) . ' <select name="' . esc_attr( $name . '[' . $side . '_menu_id]' ) . '"><option value="0">' . esc_html__( 'Select a menu', 'html-landing-page-builder-for-woocommerce' ) . '</option>';
+		$html .= '</div><button type="button" class="button hlpb-add-menu-item" data-menu-side="' . esc_attr( $side ) . '">' . esc_html__( 'Add menu item', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></div><div class="hlpb-menu-wordpress" ' . ( 'wp_menu' !== $mode ? 'hidden' : '' ) . '><label>' . esc_html__( 'Choose menu', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . ' <select name="' . esc_attr( $name . '[' . $side . '_menu_id]' ) . '"><option value="0">' . esc_html__( 'Select a menu', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option>';
 		foreach ( $menus as $menu ) {
 			$html .= '<option value="' . esc_attr( $menu->term_id ) . '" ' . selected( $menu_id, $menu->term_id, false ) . '>' . esc_html( $menu->name ) . '</option>';
 		}
-		$html .= '</select></label>' . ( empty( $menus ) ? '<p class="description">' . esc_html__( 'No WordPress menus exist yet. Create one in Appearance → Menus.', 'html-landing-page-builder-for-woocommerce' ) . '</p>' : '' ) . '</div></fieldset>';
+		$html .= '</select></label>' . ( empty( $menus ) ? '<p class="description">' . esc_html__( 'No WordPress menus exist yet. Create one in Appearance → Menus.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p>' : '' ) . '</div></fieldset>';
 		return $html;
 	}
 
@@ -1344,7 +1332,7 @@ final class HLPB_Landing_Builder {
 		$name = 'hlpb_sections[' . $section_id . '][' . $side . '_menu_items][' . absint( $index ) . ']';
 		$label = isset( $item['label'] ) ? $item['label'] : '';
 		$url = isset( $item['url'] ) ? $item['url'] : '';
-		return '<div class="hlpb-menu-item-row"><label><span>' . esc_html__( 'Label', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[label]' ) . '" value="' . esc_attr( $label ) . '"></label><label><span>' . esc_html__( 'Link URL', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" inputmode="url" name="' . esc_attr( $name . '[url]' ) . '" value="' . esc_attr( $url ) . '"></label><button type="button" class="button-link-delete hlpb-remove-menu-item" aria-label="' . esc_attr__( 'Remove menu item', 'html-landing-page-builder-for-woocommerce' ) . '">×</button></div>';
+		return '<div class="hlpb-menu-item-row"><label><span>' . esc_html__( 'Label', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[label]' ) . '" value="' . esc_attr( $label ) . '"></label><label><span>' . esc_html__( 'Link URL', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><input type="text" inputmode="url" name="' . esc_attr( $name . '[url]' ) . '" value="' . esc_attr( $url ) . '"></label><button type="button" class="button-link-delete hlpb-remove-menu-item" aria-label="' . esc_attr__( 'Remove menu item', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '">×</button></div>';
 	}
 
 	/** Render editable Offer Line controls. */
@@ -1355,10 +1343,10 @@ final class HLPB_Landing_Builder {
 		}
 		$name = 'hlpb_sections[' . $id . ']';
 		$html = '<div class="hlpb-fields-grid">';
-		foreach ( array( 'left' => __( 'Left text', 'html-landing-page-builder-for-woocommerce' ), 'right' => __( 'Right text', 'html-landing-page-builder-for-woocommerce' ) ) as $side => $label ) {
-			$html .= '<div class="hlpb-offer-side"><h4>' . esc_html( $label ) . '</h4>' . self::text_field( $name . '[' . $side . '_text]', __( 'Text (emoji supported)', 'html-landing-page-builder-for-woocommerce' ), $section[ $side . '_text' ] ) . '<label class="hlpb-checkbox"><input type="checkbox" name="' . esc_attr( $name . '[' . $side . '_bold]' ) . '" value="1" ' . checked( ! empty( $section[ $side . '_bold' ] ), true, false ) . '> ' . esc_html__( 'Bold text', 'html-landing-page-builder-for-woocommerce' ) . '</label>' . self::render_color_control( $name . '[' . $side . '_color]', __( 'Text color', 'html-landing-page-builder-for-woocommerce' ), $section[ $side . '_color' ], $id . '-' . $side ) . '</div>';
+		foreach ( array( 'left' => __( 'Left text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'right' => __( 'Right text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ) as $side => $label ) {
+			$html .= '<div class="hlpb-offer-side"><h4>' . esc_html( $label ) . '</h4>' . self::text_field( $name . '[' . $side . '_text]', __( 'Text (emoji supported)', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section[ $side . '_text' ] ) . '<label class="hlpb-checkbox"><input type="checkbox" name="' . esc_attr( $name . '[' . $side . '_bold]' ) . '" value="1" ' . checked( ! empty( $section[ $side . '_bold' ] ), true, false ) . '> ' . esc_html__( 'Bold text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label>' . self::render_color_control( $name . '[' . $side . '_color]', __( 'Text color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section[ $side . '_color' ], $id . '-' . $side ) . '</div>';
 		}
-		$html .= '</div>' . self::render_color_control( $name . '[background]', __( 'Line background', 'html-landing-page-builder-for-woocommerce' ), $section['background'], $id . '-background' );
+		$html .= '</div>' . self::render_color_control( $name . '[background]', __( 'Line background', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['background'], $id . '-background' );
 		return $html;
 	}
 
@@ -1367,16 +1355,16 @@ final class HLPB_Landing_Builder {
 		$section = array_merge( self::get_default_mix_settings(), $section );
 		$name = 'hlpb_sections[' . $id . ']';
 		$benefits = is_array( $section['benefits'] ) ? array_slice( $section['benefits'], 0, 8 ) : array();
-		$html = '<div class="hlpb-mix-fields">' . self::text_field( $name . '[title]', __( 'Title', 'html-landing-page-builder-for-woocommerce' ), $section['title'] ) . self::text_field( $name . '[subtitle]', __( 'Subtitle', 'html-landing-page-builder-for-woocommerce' ), $section['subtitle'] ) . '</div><div class="hlpb-fields-grid">';
-		$html .= self::render_color_control( $name . '[background]', __( 'Section background', 'html-landing-page-builder-for-woocommerce' ), $section['background'], $id . '-background' );
-		$html .= self::render_color_control( $name . '[title_color]', __( 'Title color', 'html-landing-page-builder-for-woocommerce' ), $section['title_color'], $id . '-title' );
-		$html .= self::render_color_control( $name . '[subtitle_color]', __( 'Subtitle color', 'html-landing-page-builder-for-woocommerce' ), $section['subtitle_color'], $id . '-subtitle' );
-		$html .= self::render_color_control( $name . '[benefit_title_color]', __( 'Benefit title color', 'html-landing-page-builder-for-woocommerce' ), $section['benefit_title_color'], $id . '-benefit-title' );
-		$html .= self::render_color_control( $name . '[benefit_text_color]', __( 'Benefit text color', 'html-landing-page-builder-for-woocommerce' ), $section['benefit_text_color'], $id . '-benefit-text' ) . '</div><fieldset class="hlpb-mix-benefits"><legend>' . esc_html__( 'Benefits', 'html-landing-page-builder-for-woocommerce' ) . '</legend><div class="hlpb-mix-benefit-list">';
+		$html = '<div class="hlpb-mix-fields">' . self::text_field( $name . '[title]', __( 'Title', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['title'] ) . self::text_field( $name . '[subtitle]', __( 'Subtitle', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['subtitle'] ) . '</div><div class="hlpb-fields-grid">';
+		$html .= self::render_color_control( $name . '[background]', __( 'Section background', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['background'], $id . '-background' );
+		$html .= self::render_color_control( $name . '[title_color]', __( 'Title color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['title_color'], $id . '-title' );
+		$html .= self::render_color_control( $name . '[subtitle_color]', __( 'Subtitle color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['subtitle_color'], $id . '-subtitle' );
+		$html .= self::render_color_control( $name . '[benefit_title_color]', __( 'Benefit title color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['benefit_title_color'], $id . '-benefit-title' );
+		$html .= self::render_color_control( $name . '[benefit_text_color]', __( 'Benefit text color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['benefit_text_color'], $id . '-benefit-text' ) . '</div><fieldset class="hlpb-mix-benefits"><legend>' . esc_html__( 'Benefits', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</legend><div class="hlpb-mix-benefit-list">';
 		foreach ( $benefits as $index => $benefit ) {
 			$html .= self::render_mix_benefit_row( $id, $index, $benefit );
 		}
-		$html .= '</div><button type="button" class="button hlpb-add-mix-benefit">' . esc_html__( 'Add benefit', 'html-landing-page-builder-for-woocommerce' ) . '</button></fieldset>';
+		$html .= '</div><button type="button" class="button hlpb-add-mix-benefit">' . esc_html__( 'Add benefit', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></fieldset>';
 		return $html;
 	}
 
@@ -1385,14 +1373,14 @@ final class HLPB_Landing_Builder {
 		$icons = self::get_icon_labels();
 		$icon = isset( $benefit['icon'] ) && isset( $icons[ $benefit['icon'] ] ) ? $benefit['icon'] : 'heart';
 		$name = 'hlpb_sections[' . $section_id . '][benefits][' . absint( $index ) . ']';
-		$html = '<div class="hlpb-mix-benefit-row"><div class="hlpb-mix-benefit-controls"><label><span>' . esc_html__( 'Icon', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $name . '[icon]' ) . '">';
+		$html = '<div class="hlpb-mix-benefit-row"><div class="hlpb-mix-benefit-controls"><label><span>' . esc_html__( 'Icon', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $name . '[icon]' ) . '">';
 		foreach ( $icons as $value => $label ) {
 			$html .= '<option value="' . esc_attr( $value ) . '" ' . selected( $icon, $value, false ) . '>' . esc_html( $label ) . '</option>';
 		}
 		$icon_color = isset( $benefit['icon_color'] ) ? sanitize_hex_color( $benefit['icon_color'] ) : '#244c59';
-		$html .= '</select></label><label><span>' . esc_html__( 'Title', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[title]' ) . '" value="' . esc_attr( isset( $benefit['title'] ) ? $benefit['title'] : '' ) . '"></label>';
-		$html .= self::render_color_control( $name . '[icon_color]', __( 'Icon color', 'html-landing-page-builder-for-woocommerce' ), $icon_color ? $icon_color : '#244c59', $section_id . '-icon-' . absint( $index ) );
-		$html .= '<label class="hlpb-mix-benefit-text"><span>' . esc_html__( 'Text', 'html-landing-page-builder-for-woocommerce' ) . '</span><textarea rows="2" name="' . esc_attr( $name . '[text]' ) . '">' . esc_textarea( isset( $benefit['text'] ) ? $benefit['text'] : '' ) . '</textarea></label><button type="button" class="button-link-delete hlpb-remove-mix-benefit" aria-label="' . esc_attr__( 'Remove benefit', 'html-landing-page-builder-for-woocommerce' ) . '">×</button></div></div>';
+		$html .= '</select></label><label><span>' . esc_html__( 'Title', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[title]' ) . '" value="' . esc_attr( isset( $benefit['title'] ) ? $benefit['title'] : '' ) . '"></label>';
+		$html .= self::render_color_control( $name . '[icon_color]', __( 'Icon color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $icon_color ? $icon_color : '#244c59', $section_id . '-icon-' . absint( $index ) );
+		$html .= '<label class="hlpb-mix-benefit-text"><span>' . esc_html__( 'Text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><textarea rows="2" name="' . esc_attr( $name . '[text]' ) . '">' . esc_textarea( isset( $benefit['text'] ) ? $benefit['text'] : '' ) . '</textarea></label><button type="button" class="button-link-delete hlpb-remove-mix-benefit" aria-label="' . esc_attr__( 'Remove benefit', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '">×</button></div></div>';
 		return $html;
 	}
 
@@ -1401,54 +1389,54 @@ final class HLPB_Landing_Builder {
 		$section = array_merge( self::get_default_why_settings(), $section );
 		$name = 'hlpb_sections[' . $id . ']';
 		$benefits = is_array( $section['benefits'] ) ? array_slice( $section['benefits'], 0, 8 ) : array();
-		$html = '<div class="hlpb-fields-column hlpb-why-fields">' . self::text_field( $name . '[eyebrow]', __( 'Eyebrow', 'html-landing-page-builder-for-woocommerce' ), $section['eyebrow'] ) . self::text_field( $name . '[title]', __( 'Heading', 'html-landing-page-builder-for-woocommerce' ), $section['title'] ) . self::text_field( $name . '[subtitle]', __( 'Subtitle', 'html-landing-page-builder-for-woocommerce' ), $section['subtitle'] ) . '<fieldset class="hlpb-why-benefits"><legend>' . esc_html__( 'Benefits list', 'html-landing-page-builder-for-woocommerce' ) . '</legend><p class="description">' . esc_html__( 'Add, edit, or remove the short points shown under the heading.', 'html-landing-page-builder-for-woocommerce' ) . '</p><input type="hidden" name="' . esc_attr( $name . '[benefits_present]' ) . '" value="1"><div class="hlpb-why-benefit-list">';
+		$html = '<div class="hlpb-fields-column hlpb-why-fields">' . self::text_field( $name . '[eyebrow]', __( 'Eyebrow', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['eyebrow'] ) . self::text_field( $name . '[title]', __( 'Heading', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['title'] ) . self::text_field( $name . '[subtitle]', __( 'Subtitle', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['subtitle'] ) . '<fieldset class="hlpb-why-benefits"><legend>' . esc_html__( 'Benefits list', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</legend><p class="description">' . esc_html__( 'Add, edit, or remove the short points shown under the heading.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p><input type="hidden" name="' . esc_attr( $name . '[benefits_present]' ) . '" value="1"><div class="hlpb-why-benefit-list">';
 		foreach ( $benefits as $index => $benefit ) {
 			$html .= self::render_why_benefit_row( $id, $index, $benefit );
 		}
-		$html .= '</div><button type="button" class="button hlpb-add-why-benefit">' . esc_html__( 'Add benefit', 'html-landing-page-builder-for-woocommerce' ) . '</button></fieldset><div class="hlpb-fields-grid">';
+		$html .= '</div><button type="button" class="button hlpb-add-why-benefit">' . esc_html__( 'Add benefit', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></fieldset><div class="hlpb-fields-grid">';
 		$color_fields = array(
-			'background' => __( 'Section background', 'html-landing-page-builder-for-woocommerce' ),
-			'eyebrow_color' => __( 'Eyebrow color', 'html-landing-page-builder-for-woocommerce' ),
-			'title_color' => __( 'Heading color', 'html-landing-page-builder-for-woocommerce' ),
-			'subtitle_color' => __( 'Subtitle color', 'html-landing-page-builder-for-woocommerce' ),
-			'benefit_color' => __( 'Benefit text color', 'html-landing-page-builder-for-woocommerce' ),
-			'check_color' => __( 'Checkmark color', 'html-landing-page-builder-for-woocommerce' ),
-			'check_background' => __( 'Checkmark background', 'html-landing-page-builder-for-woocommerce' ),
-			'card_background' => __( 'Offer card background', 'html-landing-page-builder-for-woocommerce' ),
-			'card_border_color' => __( 'Offer card border', 'html-landing-page-builder-for-woocommerce' ),
-			'card_text_color' => __( 'Offer card text', 'html-landing-page-builder-for-woocommerce' ),
-			'card_price_color' => __( 'Offer card price', 'html-landing-page-builder-for-woocommerce' ),
-			'card_label_color' => __( 'Offer card label', 'html-landing-page-builder-for-woocommerce' ),
-			'popular_background' => __( 'Highlighted card background', 'html-landing-page-builder-for-woocommerce' ),
-			'popular_text_color' => __( 'Highlighted card text', 'html-landing-page-builder-for-woocommerce' ),
-			'selected_outline_color' => __( 'Selected offer outline', 'html-landing-page-builder-for-woocommerce' ),
-			'badge_background' => __( 'Badge background', 'html-landing-page-builder-for-woocommerce' ),
-			'badge_text_color' => __( 'Badge text color', 'html-landing-page-builder-for-woocommerce' ),
-			'savings_background' => __( 'Savings label background', 'html-landing-page-builder-for-woocommerce' ),
-			'savings_color' => __( 'Savings label text', 'html-landing-page-builder-for-woocommerce' ),
+			'background' => __( 'Section background', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'eyebrow_color' => __( 'Eyebrow color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'title_color' => __( 'Heading color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'subtitle_color' => __( 'Subtitle color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'benefit_color' => __( 'Benefit text color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'check_color' => __( 'Checkmark color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'check_background' => __( 'Checkmark background', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'card_background' => __( 'Offer card background', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'card_border_color' => __( 'Offer card border', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'card_text_color' => __( 'Offer card text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'card_price_color' => __( 'Offer card price', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'card_label_color' => __( 'Offer card label', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'popular_background' => __( 'Highlighted card background', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'popular_text_color' => __( 'Highlighted card text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'selected_outline_color' => __( 'Selected offer outline', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'badge_background' => __( 'Badge background', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'badge_text_color' => __( 'Badge text color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'savings_background' => __( 'Savings label background', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'savings_color' => __( 'Savings label text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 		);
 		foreach ( $color_fields as $key => $label ) {
 			$html .= self::render_color_control( $name . '[' . $key . ']', $label, $section[ $key ], $id . '-why-' . $key );
 		}
 		$stock_icons = self::get_icon_labels();
-		$stock_icons['fire'] = __( 'Fire', 'html-landing-page-builder-for-woocommerce' );
+		$stock_icons['fire'] = __( 'Fire', 'mikhailkyrychenko-offer-builder-for-woocommerce' );
 		$stock_icon = isset( $stock_icons[ $section['stock_icon'] ] ) ? $section['stock_icon'] : 'fire';
-		$html .= '</div><fieldset class="hlpb-why-stock"><legend>' . esc_html__( 'Limited-stock note', 'html-landing-page-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[stock_enabled]' ) . '" value="0"><label class="hlpb-checkbox"><input type="checkbox" name="' . esc_attr( $name . '[stock_enabled]' ) . '" value="1" ' . checked( ! empty( $section['stock_enabled'] ), true, false ) . '> ' . esc_html__( 'Show this note', 'html-landing-page-builder-for-woocommerce' ) . '</label>' . self::text_field( $name . '[stock_title]', __( 'Note heading', 'html-landing-page-builder-for-woocommerce' ), $section['stock_title'] ) . '<label class="hlpb-field"><span>' . esc_html__( 'Note text', 'html-landing-page-builder-for-woocommerce' ) . '</span><textarea rows="3" name="' . esc_attr( $name . '[stock_text]' ) . '">' . esc_textarea( $section['stock_text'] ) . '</textarea></label><div class="hlpb-field"><label for="hlpb-why-stock-icon-' . esc_attr( $id ) . '">' . esc_html__( 'Note icon', 'html-landing-page-builder-for-woocommerce' ) . '</label><select id="hlpb-why-stock-icon-' . esc_attr( $id ) . '" name="' . esc_attr( $name . '[stock_icon]' ) . '">';
+		$html .= '</div><fieldset class="hlpb-why-stock"><legend>' . esc_html__( 'Limited-stock note', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[stock_enabled]' ) . '" value="0"><label class="hlpb-checkbox"><input type="checkbox" name="' . esc_attr( $name . '[stock_enabled]' ) . '" value="1" ' . checked( ! empty( $section['stock_enabled'] ), true, false ) . '> ' . esc_html__( 'Show this note', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label>' . self::text_field( $name . '[stock_title]', __( 'Note heading', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['stock_title'] ) . '<label class="hlpb-field"><span>' . esc_html__( 'Note text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><textarea rows="3" name="' . esc_attr( $name . '[stock_text]' ) . '">' . esc_textarea( $section['stock_text'] ) . '</textarea></label><div class="hlpb-field"><label for="hlpb-why-stock-icon-' . esc_attr( $id ) . '">' . esc_html__( 'Note icon', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><select id="hlpb-why-stock-icon-' . esc_attr( $id ) . '" name="' . esc_attr( $name . '[stock_icon]' ) . '">';
 		foreach ( $stock_icons as $icon_key => $icon_label ) {
 			$html .= '<option value="' . esc_attr( $icon_key ) . '" ' . selected( $stock_icon, $icon_key, false ) . '>' . esc_html( $icon_label ) . '</option>';
 		}
 		$html .= '</select></div><div class="hlpb-fields-grid">';
-		foreach ( array( 'stock_background' => __( 'Note background', 'html-landing-page-builder-for-woocommerce' ), 'stock_title_color' => __( 'Note heading color', 'html-landing-page-builder-for-woocommerce' ), 'stock_text_color' => __( 'Note text color', 'html-landing-page-builder-for-woocommerce' ), 'stock_icon_color' => __( 'Note icon color', 'html-landing-page-builder-for-woocommerce' ) ) as $key => $label ) {
+		foreach ( array( 'stock_background' => __( 'Note background', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'stock_title_color' => __( 'Note heading color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'stock_text_color' => __( 'Note text color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), 'stock_icon_color' => __( 'Note icon color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ) as $key => $label ) {
 			$html .= self::render_color_control( $name . '[' . $key . ']', $label, $section[ $key ], $id . '-why-' . $key );
 		}
-		$html .= '</div></fieldset><p class="description hlpb-why-pricing-note">' . esc_html__( 'Offer cards and prices are filled from the first enabled tab: Buy More, then Mix & Match, then Cozy bundle. Change the offer rules in Cart Section.', 'html-landing-page-builder-for-woocommerce' ) . '</p></div>';
+		$html .= '</div></fieldset><p class="description hlpb-why-pricing-note">' . esc_html__( 'Offer cards and prices are filled from the first enabled tab: Buy More, then Mix & Match, then Cozy bundle. Change the offer rules in Cart Section.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p></div>';
 		return $html;
 	}
 
 	/** Render one editable Why benefit. */
 	private static function render_why_benefit_row( $section_id, $index, $benefit ) {
 		$name = 'hlpb_sections[' . $section_id . '][benefits][' . absint( $index ) . ']';
-		return '<div class="hlpb-why-benefit-row"><label><span>' . esc_html__( 'Benefit', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name ) . '" value="' . esc_attr( is_scalar( $benefit ) ? $benefit : '' ) . '"></label><button type="button" class="button-link-delete hlpb-remove-why-benefit" aria-label="' . esc_attr__( 'Remove benefit', 'html-landing-page-builder-for-woocommerce' ) . '">×</button></div>';
+		return '<div class="hlpb-why-benefit-row"><label><span>' . esc_html__( 'Benefit', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name ) . '" value="' . esc_attr( is_scalar( $benefit ) ? $benefit : '' ) . '"></label><button type="button" class="button-link-delete hlpb-remove-why-benefit" aria-label="' . esc_attr__( 'Remove benefit', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '">×</button></div>';
 	}
 
 	/** Render editable reviews section controls. */
@@ -1456,29 +1444,29 @@ final class HLPB_Landing_Builder {
 		$section = array_merge( self::get_default_reviews_settings(), $section );
 		$name = 'hlpb_sections[' . $id . ']';
 		$reviews = is_array( $section['reviews'] ) ? array_slice( $section['reviews'], 0, 20 ) : array();
-		$html = '<div class="hlpb-fields-column hlpb-reviews-fields">' . self::text_field( $name . '[title]', __( 'Heading', 'html-landing-page-builder-for-woocommerce' ), $section['title'] ) . self::text_field( $name . '[subtitle]', __( 'Subtitle', 'html-landing-page-builder-for-woocommerce' ), $section['subtitle'] ) . '<div class="hlpb-fields-grid"><div class="hlpb-field"><label>' . esc_html__( 'Overall stars', 'html-landing-page-builder-for-woocommerce' ) . '</label>' . self::render_star_select( $name . '[overall_stars]', $section['overall_stars'] ) . '</div>' . self::text_field( $name . '[overall_score]', __( 'Overall score text', 'html-landing-page-builder-for-woocommerce' ), $section['overall_score'] ) . self::text_field( $name . '[overall_count]', __( 'Review count text', 'html-landing-page-builder-for-woocommerce' ), $section['overall_count'] ) . '</div><div class="hlpb-fields-grid">';
+		$html = '<div class="hlpb-fields-column hlpb-reviews-fields">' . self::text_field( $name . '[title]', __( 'Heading', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['title'] ) . self::text_field( $name . '[subtitle]', __( 'Subtitle', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['subtitle'] ) . '<div class="hlpb-fields-grid"><div class="hlpb-field"><label>' . esc_html__( 'Overall stars', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label>' . self::render_star_select( $name . '[overall_stars]', $section['overall_stars'] ) . '</div>' . self::text_field( $name . '[overall_score]', __( 'Overall score text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['overall_score'] ) . self::text_field( $name . '[overall_count]', __( 'Review count text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['overall_count'] ) . '</div><div class="hlpb-fields-grid">';
 		$color_fields = array(
-			'background' => __( 'Section background', 'html-landing-page-builder-for-woocommerce' ),
-			'heading_color' => __( 'Heading color', 'html-landing-page-builder-for-woocommerce' ),
-			'subtitle_color' => __( 'Subtitle color', 'html-landing-page-builder-for-woocommerce' ),
-			'star_color' => __( 'Star color', 'html-landing-page-builder-for-woocommerce' ),
-			'score_color' => __( 'Overall score color', 'html-landing-page-builder-for-woocommerce' ),
-			'count_color' => __( 'Review count color', 'html-landing-page-builder-for-woocommerce' ),
-			'card_background' => __( 'Review card background', 'html-landing-page-builder-for-woocommerce' ),
-			'card_border_color' => __( 'Review card border color', 'html-landing-page-builder-for-woocommerce' ),
-			'review_title_color' => __( 'Review title color', 'html-landing-page-builder-for-woocommerce' ),
-			'review_text_color' => __( 'Review text color', 'html-landing-page-builder-for-woocommerce' ),
-			'reviewer_color' => __( 'Reviewer name color', 'html-landing-page-builder-for-woocommerce' ),
-			'verified_color' => __( 'Verified label color', 'html-landing-page-builder-for-woocommerce' ),
+			'background' => __( 'Section background', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'heading_color' => __( 'Heading color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'subtitle_color' => __( 'Subtitle color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'star_color' => __( 'Star color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'score_color' => __( 'Overall score color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'count_color' => __( 'Review count color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'card_background' => __( 'Review card background', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'card_border_color' => __( 'Review card border color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'review_title_color' => __( 'Review title color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'review_text_color' => __( 'Review text color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'reviewer_color' => __( 'Reviewer name color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'verified_color' => __( 'Verified label color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 		);
 		foreach ( $color_fields as $key => $label ) {
 			$html .= self::render_color_control( $name . '[' . $key . ']', $label, $section[ $key ], $id . '-reviews-' . $key );
 		}
-		$html .= '</div><fieldset class="hlpb-reviews-list"><legend>' . esc_html__( 'Reviews', 'html-landing-page-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[reviews_present]' ) . '" value="1"><div class="hlpb-review-items">';
+		$html .= '</div><fieldset class="hlpb-reviews-list"><legend>' . esc_html__( 'Reviews', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[reviews_present]' ) . '" value="1"><div class="hlpb-review-items">';
 		foreach ( $reviews as $index => $review ) {
 			$html .= self::render_review_row( $id, $index, $review, $template_slug );
 		}
-		$html .= '</div><template class="hlpb-review-template">' . self::render_review_row( '__hlpb_review_template__', 0, self::get_default_reviews_settings()['reviews'][0], $template_slug ) . '</template><button type="button" class="button hlpb-add-review">' . esc_html__( 'Add review', 'html-landing-page-builder-for-woocommerce' ) . '</button></fieldset></div>';
+		$html .= '</div><template class="hlpb-review-template">' . self::render_review_row( '__hlpb_review_template__', 0, self::get_default_reviews_settings()['reviews'][0], $template_slug ) . '</template><button type="button" class="button hlpb-add-review">' . esc_html__( 'Add review', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></fieldset></div>';
 		return $html;
 	}
 
@@ -1487,26 +1475,26 @@ final class HLPB_Landing_Builder {
 		$section = array_merge( self::get_default_faq_settings(), $section );
 		$name = 'hlpb_sections[' . $id . ']';
 		$faqs = is_array( $section['faqs'] ) ? array_slice( $section['faqs'], 0, 30 ) : array();
-		$html = '<div class="hlpb-fields-column hlpb-faq-fields"><div class="hlpb-field"><label for="hlpb-faq-title-' . esc_attr( $id ) . '">' . esc_html__( 'Heading', 'html-landing-page-builder-for-woocommerce' ) . '</label><textarea id="hlpb-faq-title-' . esc_attr( $id ) . '" rows="2" name="' . esc_attr( $name . '[title]' ) . '">' . esc_textarea( $section['title'] ) . '</textarea></div>';
-		$html .= self::text_field( $name . '[subtitle]', __( 'Intro text', 'html-landing-page-builder-for-woocommerce' ), $section['subtitle'] ) . '<div class="hlpb-fields-grid">';
+		$html = '<div class="hlpb-fields-column hlpb-faq-fields"><div class="hlpb-field"><label for="hlpb-faq-title-' . esc_attr( $id ) . '">' . esc_html__( 'Heading', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><textarea id="hlpb-faq-title-' . esc_attr( $id ) . '" rows="2" name="' . esc_attr( $name . '[title]' ) . '">' . esc_textarea( $section['title'] ) . '</textarea></div>';
+		$html .= self::text_field( $name . '[subtitle]', __( 'Intro text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['subtitle'] ) . '<div class="hlpb-fields-grid">';
 		$color_fields = array(
-			'background' => __( 'Section background', 'html-landing-page-builder-for-woocommerce' ),
-			'heading_color' => __( 'Heading color', 'html-landing-page-builder-for-woocommerce' ),
-			'intro_color' => __( 'Intro text color', 'html-landing-page-builder-for-woocommerce' ),
-			'question_color' => __( 'Question color', 'html-landing-page-builder-for-woocommerce' ),
-			'answer_color' => __( 'Answer color', 'html-landing-page-builder-for-woocommerce' ),
-			'item_background' => __( 'Question background', 'html-landing-page-builder-for-woocommerce' ),
-			'item_border_color' => __( 'Question border color', 'html-landing-page-builder-for-woocommerce' ),
-			'arrow_color' => __( 'Arrow color', 'html-landing-page-builder-for-woocommerce' ),
+			'background' => __( 'Section background', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'heading_color' => __( 'Heading color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'intro_color' => __( 'Intro text color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'question_color' => __( 'Question color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'answer_color' => __( 'Answer color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'item_background' => __( 'Question background', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'item_border_color' => __( 'Question border color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'arrow_color' => __( 'Arrow color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 		);
 		foreach ( $color_fields as $key => $label ) {
 			$html .= self::render_color_control( $name . '[' . $key . ']', $label, $section[ $key ], $id . '-faq-' . $key );
 		}
-		$html .= '</div><fieldset class="hlpb-faq-list"><legend>' . esc_html__( 'Questions and answers', 'html-landing-page-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[faqs_present]' ) . '" value="1"><div class="hlpb-faq-items">';
+		$html .= '</div><fieldset class="hlpb-faq-list"><legend>' . esc_html__( 'Questions and answers', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[faqs_present]' ) . '" value="1"><div class="hlpb-faq-items">';
 		foreach ( $faqs as $index => $faq ) {
 			$html .= self::render_faq_row( $id, $index, $faq );
 		}
-		$html .= '</div><template class="hlpb-faq-template">' . self::render_faq_row( '__hlpb_faq_template__', 0, array( 'question' => '', 'answer' => '' ) ) . '</template><button type="button" class="button hlpb-add-faq">' . esc_html__( 'Add question', 'html-landing-page-builder-for-woocommerce' ) . '</button></fieldset></div>';
+		$html .= '</div><template class="hlpb-faq-template">' . self::render_faq_row( '__hlpb_faq_template__', 0, array( 'question' => '', 'answer' => '' ) ) . '</template><button type="button" class="button hlpb-add-faq">' . esc_html__( 'Add question', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></fieldset></div>';
 		return $html;
 	}
 
@@ -1516,7 +1504,7 @@ final class HLPB_Landing_Builder {
 		$answer = isset( $faq['answer'] ) ? $faq['answer'] : '';
 		$name = 'hlpb_sections[' . $section_id . '][faqs][' . absint( $index ) . ']';
 		// translators: %d: position of the FAQ question in the editor.
-		return '<fieldset class="hlpb-faq-item"><div class="hlpb-faq-item-heading"><strong>' . esc_html( sprintf( __( 'Question %d', 'html-landing-page-builder-for-woocommerce' ), $index + 1 ) ) . '</strong><button type="button" class="button-link-delete hlpb-remove-faq">' . esc_html__( 'Remove question', 'html-landing-page-builder-for-woocommerce' ) . '</button></div><label><span>' . esc_html__( 'Question', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[question]' ) . '" value="' . esc_attr( $question ) . '"></label><label><span>' . esc_html__( 'Answer', 'html-landing-page-builder-for-woocommerce' ) . '</span><textarea rows="3" name="' . esc_attr( $name . '[answer]' ) . '">' . esc_textarea( $answer ) . '</textarea></label></fieldset>';
+		return '<fieldset class="hlpb-faq-item"><div class="hlpb-faq-item-heading"><strong>' . esc_html( sprintf( __( 'Question %d', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $index + 1 ) ) . '</strong><button type="button" class="button-link-delete hlpb-remove-faq">' . esc_html__( 'Remove question', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></div><label><span>' . esc_html__( 'Question', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[question]' ) . '" value="' . esc_attr( $question ) . '"></label><label><span>' . esc_html__( 'Answer', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><textarea rows="3" name="' . esc_attr( $name . '[answer]' ) . '">' . esc_textarea( $answer ) . '</textarea></label></fieldset>';
 	}
 
 	/** Render editable footer settings and repeatable content. */
@@ -1529,30 +1517,30 @@ final class HLPB_Landing_Builder {
 		$primary_links = is_array( $section['primary_links'] ) ? array_slice( $section['primary_links'], 0, 20 ) : array();
 		$legal_links = is_array( $section['legal_links'] ) ? array_slice( $section['legal_links'], 0, 20 ) : array();
 		$social_links = is_array( $section['social_links'] ) ? array_slice( $section['social_links'], 0, 20 ) : array();
-		$html = '<div class="hlpb-fields-column hlpb-footer-fields"><div class="hlpb-footer-brand-fields"><div class="hlpb-field"><label>' . esc_html__( 'Footer logo', 'html-landing-page-builder-for-woocommerce' ) . '</label><div class="hlpb-image-control"><img class="hlpb-footer-logo-preview" src="' . esc_url( $logo_url ) . '" alt=""><input class="hlpb-footer-logo-id" type="hidden" name="' . esc_attr( $name . '[logo_id]' ) . '" value="' . esc_attr( $logo_id ) . '"><button type="button" class="button hlpb-select-image" data-image-target="footer-logo">' . esc_html__( 'Choose logo', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button-link hlpb-clear-footer-logo">' . esc_html__( 'Use template logo', 'html-landing-page-builder-for-woocommerce' ) . '</button></div></div><div class="hlpb-fields-column">' . self::text_field( $name . '[brand_name]', __( 'Brand name', 'html-landing-page-builder-for-woocommerce' ), $section['brand_name'] ) . self::text_field( $name . '[brand_tagline]', __( 'Brand tagline', 'html-landing-page-builder-for-woocommerce' ), $section['brand_tagline'] ) . self::text_field( $name . '[brand_url]', __( 'Brand link URL', 'html-landing-page-builder-for-woocommerce' ), $section['brand_url'] ) . '</div></div>';
-		$html .= '<fieldset class="hlpb-footer-list"><legend>' . esc_html__( 'Main footer links', 'html-landing-page-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[primary_links_present]' ) . '" value="1"><div class="hlpb-footer-rows" data-footer-group="primary_links">';
+		$html = '<div class="hlpb-fields-column hlpb-footer-fields"><div class="hlpb-footer-brand-fields"><div class="hlpb-field"><label>' . esc_html__( 'Footer logo', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><div class="hlpb-image-control"><img class="hlpb-footer-logo-preview" src="' . esc_url( $logo_url ) . '" alt=""><input class="hlpb-footer-logo-id" type="hidden" name="' . esc_attr( $name . '[logo_id]' ) . '" value="' . esc_attr( $logo_id ) . '"><button type="button" class="button hlpb-select-image" data-image-target="footer-logo">' . esc_html__( 'Choose logo', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button><button type="button" class="button-link hlpb-clear-footer-logo">' . esc_html__( 'Use template logo', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></div></div><div class="hlpb-fields-column">' . self::text_field( $name . '[brand_name]', __( 'Brand name', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['brand_name'] ) . self::text_field( $name . '[brand_tagline]', __( 'Brand tagline', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['brand_tagline'] ) . self::text_field( $name . '[brand_url]', __( 'Brand link URL', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['brand_url'] ) . '</div></div>';
+		$html .= '<fieldset class="hlpb-footer-list"><legend>' . esc_html__( 'Main footer links', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[primary_links_present]' ) . '" value="1"><div class="hlpb-footer-rows" data-footer-group="primary_links">';
 		foreach ( $primary_links as $index => $item ) {
 			$html .= self::render_footer_link_row( $id, 'primary_links', $index, $item );
 		}
-		$html .= '</div><template class="hlpb-footer-link-template" data-footer-group="primary_links">' . self::render_footer_link_row( '__hlpb_footer_template__', 'primary_links', 0, array( 'label' => '', 'url' => '' ) ) . '</template><button type="button" class="button hlpb-add-footer-row" data-footer-group="primary_links">' . esc_html__( 'Add footer link', 'html-landing-page-builder-for-woocommerce' ) . '</button></fieldset>';
-		$html .= '<fieldset class="hlpb-footer-list"><legend>' . esc_html__( 'Social links', 'html-landing-page-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[social_links_present]' ) . '" value="1"><div class="hlpb-footer-rows" data-footer-group="social_links">';
+		$html .= '</div><template class="hlpb-footer-link-template" data-footer-group="primary_links">' . self::render_footer_link_row( '__hlpb_footer_template__', 'primary_links', 0, array( 'label' => '', 'url' => '' ) ) . '</template><button type="button" class="button hlpb-add-footer-row" data-footer-group="primary_links">' . esc_html__( 'Add footer link', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></fieldset>';
+		$html .= '<fieldset class="hlpb-footer-list"><legend>' . esc_html__( 'Social links', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[social_links_present]' ) . '" value="1"><div class="hlpb-footer-rows" data-footer-group="social_links">';
 		foreach ( $social_links as $index => $item ) {
 			$html .= self::render_footer_social_row( $id, $index, $item );
 		}
-		$html .= '</div><template class="hlpb-footer-social-template">' . self::render_footer_social_row( '__hlpb_footer_template__', 0, array( 'icon' => 'instagram', 'label' => '', 'url' => '' ) ) . '</template><button type="button" class="button hlpb-add-footer-row" data-footer-group="social_links">' . esc_html__( 'Add social link', 'html-landing-page-builder-for-woocommerce' ) . '</button></fieldset>';
-		$html .= '<div class="hlpb-fields-grid">' . self::text_field( $name . '[copyright]', __( 'Copyright text', 'html-landing-page-builder-for-woocommerce' ), $section['copyright'] ) . self::text_field( $name . '[legal_note]', __( 'Bottom note', 'html-landing-page-builder-for-woocommerce' ), $section['legal_note'] ) . '<div class="hlpb-field"><label>' . esc_html__( 'Disclaimer text', 'html-landing-page-builder-for-woocommerce' ) . '</label><textarea rows="3" name="' . esc_attr( $name . '[disclaimer]' ) . '">' . esc_textarea( $section['disclaimer'] ) . '</textarea></div></div>';
-		$html .= '<fieldset class="hlpb-footer-list"><legend>' . esc_html__( 'Legal links', 'html-landing-page-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[legal_links_present]' ) . '" value="1"><div class="hlpb-footer-rows" data-footer-group="legal_links">';
+		$html .= '</div><template class="hlpb-footer-social-template">' . self::render_footer_social_row( '__hlpb_footer_template__', 0, array( 'icon' => 'instagram', 'label' => '', 'url' => '' ) ) . '</template><button type="button" class="button hlpb-add-footer-row" data-footer-group="social_links">' . esc_html__( 'Add social link', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></fieldset>';
+		$html .= '<div class="hlpb-fields-grid">' . self::text_field( $name . '[copyright]', __( 'Copyright text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['copyright'] ) . self::text_field( $name . '[legal_note]', __( 'Bottom note', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['legal_note'] ) . '<div class="hlpb-field"><label>' . esc_html__( 'Disclaimer text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><textarea rows="3" name="' . esc_attr( $name . '[disclaimer]' ) . '">' . esc_textarea( $section['disclaimer'] ) . '</textarea></div></div>';
+		$html .= '<fieldset class="hlpb-footer-list"><legend>' . esc_html__( 'Legal links', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</legend><input type="hidden" name="' . esc_attr( $name . '[legal_links_present]' ) . '" value="1"><div class="hlpb-footer-rows" data-footer-group="legal_links">';
 		foreach ( $legal_links as $index => $item ) {
 			$html .= self::render_footer_link_row( $id, 'legal_links', $index, $item );
 		}
-		$html .= '</div><template class="hlpb-footer-link-template" data-footer-group="legal_links">' . self::render_footer_link_row( '__hlpb_footer_template__', 'legal_links', 0, array( 'label' => '', 'url' => '' ) ) . '</template><button type="button" class="button hlpb-add-footer-row" data-footer-group="legal_links">' . esc_html__( 'Add legal link', 'html-landing-page-builder-for-woocommerce' ) . '</button></fieldset><div class="hlpb-fields-grid">';
+		$html .= '</div><template class="hlpb-footer-link-template" data-footer-group="legal_links">' . self::render_footer_link_row( '__hlpb_footer_template__', 'legal_links', 0, array( 'label' => '', 'url' => '' ) ) . '</template><button type="button" class="button hlpb-add-footer-row" data-footer-group="legal_links">' . esc_html__( 'Add legal link', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></fieldset><div class="hlpb-fields-grid">';
 		$color_fields = array(
-			'background' => __( 'Footer background', 'html-landing-page-builder-for-woocommerce' ),
-			'text_color' => __( 'Main text and link color', 'html-landing-page-builder-for-woocommerce' ),
-			'brand_color' => __( 'Brand text color', 'html-landing-page-builder-for-woocommerce' ),
-			'bottom_text_color' => __( 'Bottom text color', 'html-landing-page-builder-for-woocommerce' ),
-			'disclaimer_color' => __( 'Disclaimer color', 'html-landing-page-builder-for-woocommerce' ),
-			'divider_color' => __( 'Divider color', 'html-landing-page-builder-for-woocommerce' ),
+			'background' => __( 'Footer background', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'text_color' => __( 'Main text and link color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'brand_color' => __( 'Brand text color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'bottom_text_color' => __( 'Bottom text color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'disclaimer_color' => __( 'Disclaimer color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'divider_color' => __( 'Divider color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 		);
 		foreach ( $color_fields as $key => $label ) {
 			$html .= self::render_color_control( $name . '[' . $key . ']', $label, $section[ $key ], $id . '-footer-' . $key );
@@ -1564,7 +1552,7 @@ final class HLPB_Landing_Builder {
 	private static function render_footer_link_row( $section_id, $group, $index, $item ) {
 		$name = 'hlpb_sections[' . $section_id . '][' . $group . '][' . absint( $index ) . ']';
 		// translators: %d: position of the footer link in the editor.
-		return '<div class="hlpb-footer-row"><strong>' . esc_html( sprintf( __( 'Link %d', 'html-landing-page-builder-for-woocommerce' ), $index + 1 ) ) . '</strong><label><span>' . esc_html__( 'Label', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[label]' ) . '" value="' . esc_attr( isset( $item['label'] ) ? $item['label'] : '' ) . '"></label><label><span>' . esc_html__( 'Link URL', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[url]' ) . '" value="' . esc_attr( isset( $item['url'] ) ? $item['url'] : '' ) . '"></label><button type="button" class="button-link-delete hlpb-remove-footer-row">' . esc_html__( 'Remove', 'html-landing-page-builder-for-woocommerce' ) . '</button></div>';
+		return '<div class="hlpb-footer-row"><strong>' . esc_html( sprintf( __( 'Link %d', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $index + 1 ) ) . '</strong><label><span>' . esc_html__( 'Label', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[label]' ) . '" value="' . esc_attr( isset( $item['label'] ) ? $item['label'] : '' ) . '"></label><label><span>' . esc_html__( 'Link URL', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[url]' ) . '" value="' . esc_attr( isset( $item['url'] ) ? $item['url'] : '' ) . '"></label><button type="button" class="button-link-delete hlpb-remove-footer-row">' . esc_html__( 'Remove', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></div>';
 	}
 
 	/** Render one social footer link editor row. */
@@ -1573,11 +1561,11 @@ final class HLPB_Landing_Builder {
 		$icons = self::get_footer_social_icons();
 		$icon = isset( $item['icon'] ) && isset( $icons[ $item['icon'] ] ) ? $item['icon'] : 'instagram';
 		// translators: %d: position of the social link in the editor.
-		$html = '<div class="hlpb-footer-row hlpb-footer-social-row"><strong>' . esc_html( sprintf( __( 'Social link %d', 'html-landing-page-builder-for-woocommerce' ), $index + 1 ) ) . '</strong><label><span>' . esc_html__( 'Icon', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $name . '[icon]' ) . '">';
+		$html = '<div class="hlpb-footer-row hlpb-footer-social-row"><strong>' . esc_html( sprintf( __( 'Social link %d', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $index + 1 ) ) . '</strong><label><span>' . esc_html__( 'Icon', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $name . '[icon]' ) . '">';
 		foreach ( $icons as $value => $label ) {
 			$html .= '<option value="' . esc_attr( $value ) . '" ' . selected( $icon, $value, false ) . '>' . esc_html( $label ) . '</option>';
 		}
-		$html .= '</select></label><label><span>' . esc_html__( 'Accessible label', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[label]' ) . '" value="' . esc_attr( isset( $item['label'] ) ? $item['label'] : '' ) . '"></label><label><span>' . esc_html__( 'Link URL', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[url]' ) . '" value="' . esc_attr( isset( $item['url'] ) ? $item['url'] : '' ) . '"></label><button type="button" class="button-link-delete hlpb-remove-footer-row">' . esc_html__( 'Remove', 'html-landing-page-builder-for-woocommerce' ) . '</button></div>';
+		$html .= '</select></label><label><span>' . esc_html__( 'Accessible label', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[label]' ) . '" value="' . esc_attr( isset( $item['label'] ) ? $item['label'] : '' ) . '"></label><label><span>' . esc_html__( 'Link URL', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[url]' ) . '" value="' . esc_attr( isset( $item['url'] ) ? $item['url'] : '' ) . '"></label><button type="button" class="button-link-delete hlpb-remove-footer-row">' . esc_html__( 'Remove', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></div>';
 		return $html;
 	}
 
@@ -1592,10 +1580,10 @@ final class HLPB_Landing_Builder {
 		$name = 'hlpb_sections[' . $section_id . '][reviews][' . absint( $index ) . ']';
 		$review_label = sprintf(
 			// translators: %d: position of the review in the editor.
-			__( 'Review %d', 'html-landing-page-builder-for-woocommerce' ),
+			__( 'Review %d', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 			$index + 1
 		);
-		$html = '<article class="hlpb-review-item"><div class="hlpb-review-item-heading"><strong>' . esc_html( $review_label ) . '</strong><button type="button" class="button-link-delete hlpb-remove-review">' . esc_html__( 'Remove review', 'html-landing-page-builder-for-woocommerce' ) . '</button></div><div class="hlpb-review-item-fields"><div class="hlpb-image-control"><img class="hlpb-image-preview hlpb-review-image-preview" src="' . esc_url( $image_url ) . '" alt=""><input type="hidden" class="hlpb-image-id hlpb-review-image-id" name="' . esc_attr( $name . '[image_id]' ) . '" value="' . esc_attr( $image_id ) . '"><input type="hidden" class="hlpb-demo-image" name="' . esc_attr( $name . '[demo_image]' ) . '" value="' . esc_attr( $demo_image ) . '"><button type="button" class="button hlpb-select-image">' . esc_html__( 'Choose photo', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button-link hlpb-clear-image">' . esc_html__( 'Use demo photo', 'html-landing-page-builder-for-woocommerce' ) . '</button></div><div class="hlpb-review-text-fields">' . self::text_field( $name . '[image_alt]', __( 'Photo description (alt text)', 'html-landing-page-builder-for-woocommerce' ), $review['image_alt'] ) . '<div class="hlpb-field"><label>' . esc_html__( 'Stars', 'html-landing-page-builder-for-woocommerce' ) . '</label>' . self::render_star_select( $name . '[stars]', $review['stars'] ) . '</div>' . self::text_field( $name . '[title]', __( 'Review title', 'html-landing-page-builder-for-woocommerce' ), $review['title'] ) . '<div class="hlpb-field"><label>' . esc_html__( 'Review text', 'html-landing-page-builder-for-woocommerce' ) . '</label><textarea rows="4" name="' . esc_attr( $name . '[text]' ) . '">' . esc_textarea( $review['text'] ) . '</textarea></div>' . self::text_field( $name . '[reviewer]', __( 'Reviewer name', 'html-landing-page-builder-for-woocommerce' ), $review['reviewer'] ) . '<label class="hlpb-checkbox"><input type="checkbox" name="' . esc_attr( $name . '[verified]' ) . '" value="1" ' . checked( ! empty( $review['verified'] ), true, false ) . '> ' . esc_html__( 'Show verified buyer label', 'html-landing-page-builder-for-woocommerce' ) . '</label>' . self::text_field( $name . '[verified_text]', __( 'Verified buyer label', 'html-landing-page-builder-for-woocommerce' ), $review['verified_text'] ) . '</div></div></article>';
+		$html = '<article class="hlpb-review-item"><div class="hlpb-review-item-heading"><strong>' . esc_html( $review_label ) . '</strong><button type="button" class="button-link-delete hlpb-remove-review">' . esc_html__( 'Remove review', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></div><div class="hlpb-review-item-fields"><div class="hlpb-image-control"><img class="hlpb-image-preview hlpb-review-image-preview" src="' . esc_url( $image_url ) . '" alt=""><input type="hidden" class="hlpb-image-id hlpb-review-image-id" name="' . esc_attr( $name . '[image_id]' ) . '" value="' . esc_attr( $image_id ) . '"><input type="hidden" class="hlpb-demo-image" name="' . esc_attr( $name . '[demo_image]' ) . '" value="' . esc_attr( $demo_image ) . '"><button type="button" class="button hlpb-select-image">' . esc_html__( 'Choose photo', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button><button type="button" class="button-link hlpb-clear-image">' . esc_html__( 'Use demo photo', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></div><div class="hlpb-review-text-fields">' . self::text_field( $name . '[image_alt]', __( 'Photo description (alt text)', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $review['image_alt'] ) . '<div class="hlpb-field"><label>' . esc_html__( 'Stars', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label>' . self::render_star_select( $name . '[stars]', $review['stars'] ) . '</div>' . self::text_field( $name . '[title]', __( 'Review title', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $review['title'] ) . '<div class="hlpb-field"><label>' . esc_html__( 'Review text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><textarea rows="4" name="' . esc_attr( $name . '[text]' ) . '">' . esc_textarea( $review['text'] ) . '</textarea></div>' . self::text_field( $name . '[reviewer]', __( 'Reviewer name', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $review['reviewer'] ) . '<label class="hlpb-checkbox"><input type="checkbox" name="' . esc_attr( $name . '[verified]' ) . '" value="1" ' . checked( ! empty( $review['verified'] ), true, false ) . '> ' . esc_html__( 'Show verified buyer label', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label>' . self::text_field( $name . '[verified_text]', __( 'Verified buyer label', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $review['verified_text'] ) . '</div></div></article>';
 		return $html;
 	}
 
@@ -1638,18 +1626,18 @@ final class HLPB_Landing_Builder {
 		$icon_labels    = self::get_icon_labels();
 		$name_prefix    = 'hlpb_sections[' . $id . ']';
 		$html           = '<div class="hlpb-text-image-fields">';
-		$html          .= '<div class="hlpb-image-control"><img class="hlpb-image-preview" src="' . esc_url( $image_url ) . '" alt=""><input class="hlpb-image-id" type="hidden" name="' . esc_attr( $name_prefix . '[image_id]' ) . '" value="' . esc_attr( $image_id ) . '"><input type="hidden" class="hlpb-demo-image" name="' . esc_attr( $name_prefix . '[demo_image]' ) . '" value="' . esc_attr( $demo_image ) . '"><button type="button" class="button hlpb-select-image">' . esc_html__( 'Choose image', 'html-landing-page-builder-for-woocommerce' ) . '</button><button type="button" class="button-link hlpb-clear-image">' . esc_html__( 'Use demo image', 'html-landing-page-builder-for-woocommerce' ) . '</button></div>';
+		$html          .= '<div class="hlpb-image-control"><img class="hlpb-image-preview" src="' . esc_url( $image_url ) . '" alt=""><input class="hlpb-image-id" type="hidden" name="' . esc_attr( $name_prefix . '[image_id]' ) . '" value="' . esc_attr( $image_id ) . '"><input type="hidden" class="hlpb-demo-image" name="' . esc_attr( $name_prefix . '[demo_image]' ) . '" value="' . esc_attr( $demo_image ) . '"><button type="button" class="button hlpb-select-image">' . esc_html__( 'Choose image', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button><button type="button" class="button-link hlpb-clear-image">' . esc_html__( 'Use demo image', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></div>';
 		$html          .= '<div class="hlpb-fields-column">';
-		$html          .= self::text_field( $name_prefix . '[subtitle]', __( 'Subtitle', 'html-landing-page-builder-for-woocommerce' ), $section['subtitle'] );
-		$html          .= self::text_field( $name_prefix . '[title]', __( 'Title', 'html-landing-page-builder-for-woocommerce' ), $section['title'], true );
-		$html          .= self::text_field( $name_prefix . '[body]', __( 'Text', 'html-landing-page-builder-for-woocommerce' ), $section['body'], true );
-		$html          .= '<div class="hlpb-field"><label>' . esc_html__( 'Image position', 'html-landing-page-builder-for-woocommerce' ) . '</label><select name="' . esc_attr( $name_prefix . '[image_position]' ) . '"><option value="left" ' . selected( $position, 'left', false ) . '>' . esc_html__( 'Image left, text right', 'html-landing-page-builder-for-woocommerce' ) . '</option><option value="right" ' . selected( $position, 'right', false ) . '>' . esc_html__( 'Image right, text left', 'html-landing-page-builder-for-woocommerce' ) . '</option></select></div>';
-		$html          .= '<div class="hlpb-field hlpb-color-field"><label for="hlpb-color-' . esc_attr( $id ) . '">' . esc_html__( 'Text color', 'html-landing-page-builder-for-woocommerce' ) . '</label><input type="color" name="' . esc_attr( $name_prefix . '[color]' ) . '" id="hlpb-color-' . esc_attr( $id ) . '" value="' . esc_attr( $text_color ) . '"><span>' . esc_html( $text_color ) . '</span></div>';
-		$html          .= '<fieldset class="hlpb-features"><legend>' . esc_html__( 'Icons and captions', 'html-landing-page-builder-for-woocommerce' ) . '</legend><div class="hlpb-feature-list">';
+		$html          .= self::text_field( $name_prefix . '[subtitle]', __( 'Subtitle', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['subtitle'] );
+		$html          .= self::text_field( $name_prefix . '[title]', __( 'Title', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['title'], true );
+		$html          .= self::text_field( $name_prefix . '[body]', __( 'Text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ), $section['body'], true );
+		$html          .= '<div class="hlpb-field"><label>' . esc_html__( 'Image position', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><select name="' . esc_attr( $name_prefix . '[image_position]' ) . '"><option value="left" ' . selected( $position, 'left', false ) . '>' . esc_html__( 'Image left, text right', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option><option value="right" ' . selected( $position, 'right', false ) . '>' . esc_html__( 'Image right, text left', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</option></select></div>';
+		$html          .= '<div class="hlpb-field hlpb-color-field"><label for="hlpb-color-' . esc_attr( $id ) . '">' . esc_html__( 'Text color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</label><input type="color" name="' . esc_attr( $name_prefix . '[color]' ) . '" id="hlpb-color-' . esc_attr( $id ) . '" value="' . esc_attr( $text_color ) . '"><span>' . esc_html( $text_color ) . '</span></div>';
+		$html          .= '<fieldset class="hlpb-features"><legend>' . esc_html__( 'Icons and captions', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</legend><div class="hlpb-feature-list">';
 		foreach ( $features as $index => $feature ) {
 			$html .= self::render_feature_row( $id, $index, $feature, $icon_labels );
 		}
-		$html          .= '</div><button type="button" class="button hlpb-add-feature">' . esc_html__( 'Add icon', 'html-landing-page-builder-for-woocommerce' ) . '</button></fieldset>';
+		$html          .= '</div><button type="button" class="button hlpb-add-feature">' . esc_html__( 'Add icon', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</button></fieldset>';
 		$html          .= '</div></div>';
 		return $html;
 	}
@@ -1667,11 +1655,11 @@ final class HLPB_Landing_Builder {
 		$icon = isset( $feature['icon'] ) && isset( $icons[ $feature['icon'] ] ) ? $feature['icon'] : 'heart';
 		$text = isset( $feature['text'] ) ? $feature['text'] : '';
 		$name = 'hlpb_sections[' . $section_id . '][features][' . absint( $index ) . ']';
-		$html = '<div class="hlpb-feature-row"><label><span>' . esc_html__( 'Icon', 'html-landing-page-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $name . '[icon]' ) . '">';
+		$html = '<div class="hlpb-feature-row"><label><span>' . esc_html__( 'Icon', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><select name="' . esc_attr( $name . '[icon]' ) . '">';
 		foreach ( $icons as $value => $label ) {
 			$html .= '<option value="' . esc_attr( $value ) . '" ' . selected( $icon, $value, false ) . '>' . esc_html( $label ) . '</option>';
 		}
-		$html .= '</select></label><label><span>' . esc_html__( 'Caption', 'html-landing-page-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[text]' ) . '" value="' . esc_attr( $text ) . '"></label><button type="button" class="button-link-delete hlpb-remove-feature" aria-label="' . esc_attr__( 'Remove icon', 'html-landing-page-builder-for-woocommerce' ) . '">×</button></div>';
+		$html .= '</select></label><label><span>' . esc_html__( 'Caption', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><input type="text" name="' . esc_attr( $name . '[text]' ) . '" value="' . esc_attr( $text ) . '"></label><button type="button" class="button-link-delete hlpb-remove-feature" aria-label="' . esc_attr__( 'Remove icon', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '">×</button></div>';
 		return $html;
 	}
 
@@ -1702,17 +1690,17 @@ final class HLPB_Landing_Builder {
 	 */
 	public static function get_icon_labels() {
 		return array(
-			'leaf'    => __( 'Leaf', 'html-landing-page-builder-for-woocommerce' ),
-			'gift'    => __( 'Gift', 'html-landing-page-builder-for-woocommerce' ),
-			'palette' => __( 'Palette', 'html-landing-page-builder-for-woocommerce' ),
-			'heart'   => __( 'Heart', 'html-landing-page-builder-for-woocommerce' ),
-			'people'  => __( 'People', 'html-landing-page-builder-for-woocommerce' ),
-			'waves'   => __( 'Waves', 'html-landing-page-builder-for-woocommerce' ),
-			'diamond' => __( 'Diamond', 'html-landing-page-builder-for-woocommerce' ),
-			'sofa'    => __( 'Sofa', 'html-landing-page-builder-for-woocommerce' ),
-			'moon'    => __( 'Moon', 'html-landing-page-builder-for-woocommerce' ),
-			'truck'   => __( 'Truck', 'html-landing-page-builder-for-woocommerce' ),
-			'shield'  => __( 'Shield', 'html-landing-page-builder-for-woocommerce' ),
+			'leaf'    => __( 'Leaf', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'gift'    => __( 'Gift', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'palette' => __( 'Palette', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'heart'   => __( 'Heart', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'people'  => __( 'People', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'waves'   => __( 'Waves', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'diamond' => __( 'Diamond', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'sofa'    => __( 'Sofa', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'moon'    => __( 'Moon', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'truck'   => __( 'Truck', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			'shield'  => __( 'Shield', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 		);
 	}
 
@@ -1724,14 +1712,14 @@ final class HLPB_Landing_Builder {
 	public static function ajax_render_section() {
 		check_ajax_referer( 'hlpb_builder', 'nonce' );
 		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_send_json_error( array( 'message' => __( 'You cannot edit landing pages.', 'html-landing-page-builder-for-woocommerce' ) ), 403 );
+			wp_send_json_error( array( 'message' => __( 'You cannot edit landing pages.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 403 );
 		}
 
 		$type  = isset( $_POST['type'] ) ? sanitize_key( wp_unslash( $_POST['type'] ) ) : '';
 		$template_slug = isset( $_POST['template'] ) ? sanitize_key( wp_unslash( $_POST['template'] ) ) : 'cozy-mix';
 		$types = self::get_section_types( $template_slug );
 		if ( ! isset( $types[ $type ] ) || ! self::get_template_info( $template_slug ) ) {
-			wp_send_json_error( array( 'message' => __( 'Choose a valid section type.', 'html-landing-page-builder-for-woocommerce' ) ), 400 );
+			wp_send_json_error( array( 'message' => __( 'Choose a valid section type.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ), 400 );
 		}
 
 		$section = array(
@@ -1808,37 +1796,37 @@ final class HLPB_Landing_Builder {
 				'typesByTemplate' => $types_by_template,
 				'singleInstanceTypesByTemplate' => $singletons_by_template,
 				'singleInstanceTypes' => self::get_singleton_section_types( $template_slug ),
-				'error'       => __( 'The section could not be added. Please try again.', 'html-landing-page-builder-for-woocommerce' ),
+				'error'       => __( 'The section could not be added. Please try again.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 				'pluginUrl'   => HLPB_LANDING_PAGE_BUILDER_URL,
 				'imageBase'   => self::get_template_asset_url( $template_slug ) . 'images/',
 				'defaultImage'=> $template && ! empty( $template['default_image'] ) ? sanitize_file_name( $template['default_image'] ) : 'texture-closeup-480.webp',
-				'orderLabel'  => __( 'Order', 'html-landing-page-builder-for-woocommerce' ),
-				'removeLabel' => __( 'Remove', 'html-landing-page-builder-for-woocommerce' ),
-				'demoText'    => __( 'This section displays the matching demo content from the supplied landing page.', 'html-landing-page-builder-for-woocommerce' ),
-				'iconLabel'   => __( 'Icon', 'html-landing-page-builder-for-woocommerce' ),
-				'captionLabel'=> __( 'Caption', 'html-landing-page-builder-for-woocommerce' ),
-				'titleLabel' => __( 'Title', 'html-landing-page-builder-for-woocommerce' ),
-				'textLabel' => __( 'Text', 'html-landing-page-builder-for-woocommerce' ),
-				'menuItemLabel' => __( 'Label', 'html-landing-page-builder-for-woocommerce' ),
-				'menuLinkLabel' => __( 'Link URL', 'html-landing-page-builder-for-woocommerce' ),
-				'iconColorLabel' => __( 'Icon color', 'html-landing-page-builder-for-woocommerce' ),
-				'removeIcon'  => __( 'Remove icon', 'html-landing-page-builder-for-woocommerce' ),
-				'removeMenuItem' => __( 'Remove menu item', 'html-landing-page-builder-for-woocommerce' ),
-				'removeBenefit' => __( 'Remove benefit', 'html-landing-page-builder-for-woocommerce' ),
-				'benefitLabel' => __( 'Benefit', 'html-landing-page-builder-for-woocommerce' ),
-				'collapseSection' => __( 'Collapse', 'html-landing-page-builder-for-woocommerce' ),
-				'expandSection' => __( 'Expand', 'html-landing-page-builder-for-woocommerce' ),
-				'hideSection' => __( 'Hide section on published page', 'html-landing-page-builder-for-woocommerce' ),
-				'showSection' => __( 'Show section on published page', 'html-landing-page-builder-for-woocommerce' ),
+				'orderLabel'  => __( 'Order', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'removeLabel' => __( 'Remove', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'demoText'    => __( 'This section displays the matching demo content from the supplied landing page.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'iconLabel'   => __( 'Icon', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'captionLabel'=> __( 'Caption', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'titleLabel' => __( 'Title', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'textLabel' => __( 'Text', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'menuItemLabel' => __( 'Label', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'menuLinkLabel' => __( 'Link URL', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'iconColorLabel' => __( 'Icon color', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'removeIcon'  => __( 'Remove icon', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'removeMenuItem' => __( 'Remove menu item', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'removeBenefit' => __( 'Remove benefit', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'benefitLabel' => __( 'Benefit', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'collapseSection' => __( 'Collapse', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'expandSection' => __( 'Expand', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'hideSection' => __( 'Hide section on published page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'showSection' => __( 'Show section on published page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 				'visibilityIcons' => array(
 					'visible' => self::get_visibility_icon( true ),
 					'hidden' => self::get_visibility_icon( false ),
 				),
-				'hiddenSectionLabel' => __( 'Hidden on published page', 'html-landing-page-builder-for-woocommerce' ),
-				'reviewLabel' => __( 'Review', 'html-landing-page-builder-for-woocommerce' ),
-				'faqQuestionLabel' => __( 'Question', 'html-landing-page-builder-for-woocommerce' ),
-				'footerLinkLabel' => __( 'Link', 'html-landing-page-builder-for-woocommerce' ),
-				'footerSocialLabel' => __( 'Social link', 'html-landing-page-builder-for-woocommerce' ),
+				'hiddenSectionLabel' => __( 'Hidden on published page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'reviewLabel' => __( 'Review', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'faqQuestionLabel' => __( 'Question', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'footerLinkLabel' => __( 'Link', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+				'footerSocialLabel' => __( 'Social link', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 			)
 		);
 	}
@@ -1890,10 +1878,6 @@ final class HLPB_Landing_Builder {
 			self::add_export_history( $post_id, $previous_directory );
 		}
 		update_post_meta( $post_id, self::META_KEY, $sections );
-		if ( isset( $_POST['hlpb_custom_css'] ) && is_scalar( $_POST['hlpb_custom_css'] ) ) {
-			$custom_css = wp_check_invalid_utf8( str_replace( "\0", '', (string) wp_unslash( $_POST['hlpb_custom_css'] ) ), true ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- CSS is normalized here and filtered before it is emitted in the landing page.
-			update_post_meta( $post_id, self::CUSTOM_CSS_META_KEY, $custom_css );
-		}
 		if ( 'cozy-mix' === $template_slug ) {
 			update_post_meta( $post_id, self::COZY_TEXT_IMAGE_MIGRATION_META, '1' );
 		}
@@ -1914,7 +1898,7 @@ final class HLPB_Landing_Builder {
 			if ( preg_match( '/^[a-z0-9-]+$/i', $promo_folder ) ) {
 				update_post_meta( $post_id, self::EXPORT_PROMO_KEY, $promo_folder );
 			} else {
-				$export_error = __( 'The Promo folder must contain only letters, numbers, and hyphens.', 'html-landing-page-builder-for-woocommerce' );
+				$export_error = __( 'The Promo folder must contain only letters, numbers, and hyphens.', 'mikhailkyrychenko-offer-builder-for-woocommerce' );
 			}
 		}
 		if ( isset( $_POST['hlpb_export_slug'] ) ) {
@@ -1922,7 +1906,7 @@ final class HLPB_Landing_Builder {
 			if ( preg_match( '/^[a-z0-9-]+$/i', $export_slug ) ) {
 				update_post_meta( $post_id, self::EXPORT_SLUG_KEY, $export_slug );
 			} else {
-				$export_error = __( 'The Landing folder must contain only letters, numbers, and hyphens.', 'html-landing-page-builder-for-woocommerce' );
+				$export_error = __( 'The Landing folder must contain only letters, numbers, and hyphens.', 'mikhailkyrychenko-offer-builder-for-woocommerce' );
 			}
 		}
 		if ( isset( $templates[ $template_slug ] ) ) {
@@ -2003,12 +1987,12 @@ final class HLPB_Landing_Builder {
 		if ( ! $export_state['previous_directory'] || $export_state['previous_directory'] !== $current_directory ) {
 			$message = $export_state['previous_directory']
 				? sprintf(
-					/* translators: %s is a folder path relative to the WordPress root. */
-					__( 'A new static copy was published in %1$s. The previous folder, %2$s, was left in place.', 'html-landing-page-builder-for-woocommerce' ),
+					/* translators: %s is a folder path relative to the dedicated uploads export directory. */
+					__( 'A new static copy was published in %1$s. The previous folder, %2$s, was left in place.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 					$current_directory,
 					$export_state['previous_directory']
 				)
-				: __( 'The static landing page was published.', 'html-landing-page-builder-for-woocommerce' );
+				: __( 'The static landing page was published.', 'mikhailkyrychenko-offer-builder-for-woocommerce' );
 			set_transient(
 				'hlpb_export_notice_' . get_current_user_id(),
 				array( 'success' => true, 'message' => $message, 'url' => $result ),
@@ -2021,7 +2005,7 @@ final class HLPB_Landing_Builder {
 	public static function publish_static_export( $post_id ) {
 		$post_id = absint( $post_id );
 		if ( self::POST_TYPE !== get_post_type( $post_id ) || 'publish' !== get_post_status( $post_id ) ) {
-			return new WP_Error( 'hlpb_export_post_not_published', __( 'Publish the landing page before generating its static copy.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_export_post_not_published', __( 'Publish the landing page before generating its static copy.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 
 		$promo_folder = self::get_export_promo_folder( $post_id );
@@ -2039,6 +2023,9 @@ final class HLPB_Landing_Builder {
 	 * @return void
 	 */
 	public static function show_export_notice() {
+		if ( ! self::is_landing_admin_screen() ) {
+			return;
+		}
 		$key    = 'hlpb_export_notice_' . get_current_user_id();
 		$notice = get_transient( $key );
 		if ( ! is_array( $notice ) || empty( $notice['message'] ) ) {
@@ -2048,22 +2035,35 @@ final class HLPB_Landing_Builder {
 		$class = ! empty( $notice['success'] ) ? 'notice notice-success is-dismissible' : 'notice notice-error';
 		echo '<div class="' . esc_attr( $class ) . '"><p>' . esc_html( $notice['message'] );
 		if ( ! empty( $notice['url'] ) ) {
-			echo ' <a href="' . esc_url( $notice['url'] ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Open published landing page', 'html-landing-page-builder-for-woocommerce' ) . '</a>';
+			echo ' <a href="' . esc_url( $notice['url'] ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Open published landing page', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</a>';
 		}
 		echo '</p></div>';
+	}
+
+	/** Keep export notices on landing-page screens instead of across the dashboard. */
+	private static function is_landing_admin_screen() {
+		if ( ! is_admin() ) {
+			return false;
+		}
+		$post_type = isset( $_GET['post_type'] ) ? sanitize_key( wp_unslash( $_GET['post_type'] ) ) : '';
+		if ( self::POST_TYPE === $post_type ) {
+			return true;
+		}
+		$post_id = isset( $_GET['post'] ) ? absint( wp_unslash( $_GET['post'] ) ) : 0;
+		return $post_id && self::POST_TYPE === get_post_type( $post_id );
 	}
 
 	/**
 	 * Write a standalone HTML page and a copy of its selected template assets.
 	 *
-	 * The export folder is ABSPATH/{promo-folder}/{landing-folder}.
+	 * The export folder is the dedicated uploads directory/{promo-folder}/{landing-folder}.
 	 *
 	 * @param int $post_id Landing page ID.
 	 * @return string|WP_Error Public export URL or an error.
 	 */
 	private static function generate_static_export( $post_id, $previous_directory = '' ) {
 		if ( self::POST_TYPE !== get_post_type( $post_id ) ) {
-			return new WP_Error( 'hlpb_invalid_post', __( 'This record is not a Landing Page.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_invalid_post', __( 'This record is not a Landing Page.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		if ( $previous_directory ) {
 			self::add_export_history( $post_id, $previous_directory );
@@ -2071,62 +2071,67 @@ final class HLPB_Landing_Builder {
 
 		$slug = self::get_export_slug( $post_id );
 		if ( '' === $slug ) {
-			return new WP_Error( 'hlpb_missing_slug', __( 'Add a title and save the record before generating its static page.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_missing_slug', __( 'Add a title and save the record before generating its static page.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		if ( ! preg_match( '/^[a-z0-9-]+$/i', $slug ) ) {
-			return new WP_Error( 'hlpb_invalid_slug', __( 'The page slug can contain lowercase letters, numbers, and hyphens only.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_invalid_slug', __( 'The page slug can contain lowercase letters, numbers, and hyphens only.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		$promo_folder = self::get_export_promo_folder( $post_id );
 		if ( ! preg_match( '/^[a-z0-9-]+$/i', $promo_folder ) ) {
-			return new WP_Error( 'hlpb_invalid_promo_folder', __( 'The Promo folder can contain letters, numbers, and hyphens only.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_invalid_promo_folder', __( 'The Promo folder can contain letters, numbers, and hyphens only.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 
 		$template_slug = self::get_template_slug( $post_id );
 		$template      = self::get_template_info( $template_slug );
 		if ( ! $template ) {
-			return new WP_Error( 'hlpb_missing_template', __( 'The selected template is missing or invalid.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_missing_template', __( 'The selected template is missing or invalid.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 
 		$relative_export_path = $promo_folder . '/' . $slug;
-		$export_dir           = self::get_export_directory_path( $relative_export_path );
-		$root                 = realpath( ABSPATH );
-		if ( ! $export_dir || ! $root ) {
-			return new WP_Error( 'hlpb_unsafe_export_path', __( 'The static export path is not inside the WordPress root or contains a symbolic link.', 'html-landing-page-builder-for-woocommerce' ) );
+		$legacy_export_dir    = self::get_legacy_export_directory_path( $relative_export_path );
+		if ( $legacy_export_dir && is_dir( $legacy_export_dir ) && self::export_marker_belongs_to_post( $legacy_export_dir, $post_id ) && ! self::migrate_legacy_export_directory( $legacy_export_dir, $relative_export_path, $post_id ) ) {
+			return new WP_Error( 'hlpb_legacy_export_migration', __( 'The previous landing page export could not be moved into the WordPress uploads folder. Check filesystem permissions and try again.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
-		$promo_dir = trailingslashit( wp_normalize_path( $root ) ) . $promo_folder;
+
+		$storage_root = self::get_export_storage_root( true );
+		$export_dir   = self::get_export_directory_path( $relative_export_path, true );
+		if ( ! $export_dir || ! $storage_root ) {
+			return new WP_Error( 'hlpb_unsafe_export_path', __( 'The static export path is not inside the plugin uploads folder or contains a symbolic link.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
+		}
+		$promo_dir = trailingslashit( wp_normalize_path( $storage_root ) ) . $promo_folder;
 		if ( is_link( $promo_dir ) || ( file_exists( $promo_dir ) && ! is_dir( $promo_dir ) ) ) {
-			return new WP_Error( 'hlpb_export_promo_exists', __( 'A file or symbolic link already uses the Promo folder name.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_export_promo_exists', __( 'A file or symbolic link already uses the Promo folder name.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
-		if ( ! wp_mkdir_p( $promo_dir ) || ! self::path_is_inside_root( $promo_dir ) ) {
-			return new WP_Error( 'hlpb_export_mkdir', __( 'WordPress could not create the Promo folder. Check folder write permissions.', 'html-landing-page-builder-for-woocommerce' ) );
+		if ( ! wp_mkdir_p( $promo_dir ) || ! self::path_is_inside_export_root( $promo_dir ) ) {
+			return new WP_Error( 'hlpb_export_mkdir', __( 'WordPress could not create the Promo folder. Check folder write permissions.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		if ( file_exists( $export_dir ) || is_link( $export_dir ) ) {
 			if ( is_link( $export_dir ) || ! is_dir( $export_dir ) ) {
-				return new WP_Error( 'hlpb_export_path_exists', __( 'A file or symbolic link already uses the requested landing folder name.', 'html-landing-page-builder-for-woocommerce' ) );
+				return new WP_Error( 'hlpb_export_path_exists', __( 'A file or symbolic link already uses the requested landing folder name.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 			}
 			$marker_path = trailingslashit( $export_dir ) . '.hlpb-export.json';
 			if ( is_link( $marker_path ) ) {
-				return new WP_Error( 'hlpb_export_marker_link', __( 'The export ownership file cannot be a symbolic link.', 'html-landing-page-builder-for-woocommerce' ) );
+				return new WP_Error( 'hlpb_export_marker_link', __( 'The export ownership file cannot be a symbolic link.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 			}
 			if ( is_file( $marker_path ) ) {
 				$marker = json_decode( file_get_contents( $marker_path ), true );
 				if ( ! is_array( $marker ) || absint( $marker['post_id'] ?? 0 ) !== absint( $post_id ) ) {
-					return new WP_Error( 'hlpb_export_owned_elsewhere', __( 'This folder is already used by another landing page export.', 'html-landing-page-builder-for-woocommerce' ) );
+					return new WP_Error( 'hlpb_export_owned_elsewhere', __( 'This folder is already used by another landing page export.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 				}
 			} else {
 				$contents = array_diff( scandir( $export_dir ), array( '.', '..' ) );
 				if ( ! empty( $contents ) ) {
-					return new WP_Error( 'hlpb_export_folder_not_empty', __( 'The export folder already contains files and is not managed by this plugin.', 'html-landing-page-builder-for-woocommerce' ) );
+					return new WP_Error( 'hlpb_export_folder_not_empty', __( 'The export folder already contains files and is not managed by this plugin.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 				}
 			}
 		}
 
-		if ( ! wp_mkdir_p( $export_dir ) || ! self::path_is_inside_root( $export_dir ) ) {
-			return new WP_Error( 'hlpb_export_mkdir', __( 'WordPress could not create the static export folder. Check folder write permissions.', 'html-landing-page-builder-for-woocommerce' ) );
+		if ( ! wp_mkdir_p( $export_dir ) || ! self::path_is_inside_export_root( $export_dir ) ) {
+			return new WP_Error( 'hlpb_export_mkdir', __( 'WordPress could not create the static export folder. Check folder write permissions.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		$marker_path = trailingslashit( $export_dir ) . '.hlpb-export.json';
 		if ( is_link( $marker_path ) ) {
-			return new WP_Error( 'hlpb_export_marker_link', __( 'The export ownership file cannot be a symbolic link.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_export_marker_link', __( 'The export ownership file cannot be a symbolic link.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		$marker = array(
 			'post_id'      => absint( $post_id ),
@@ -2134,17 +2139,17 @@ final class HLPB_Landing_Builder {
 			'generated_at' => current_time( 'mysql', true ),
 		);
 		if ( false === file_put_contents( $marker_path, wp_json_encode( $marker, JSON_PRETTY_PRINT ) ) ) {
-			return new WP_Error( 'hlpb_export_marker', __( 'WordPress could not write the export ownership file.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_export_marker', __( 'WordPress could not write the export ownership file.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		self::add_export_history( $post_id, $relative_export_path );
 
 		$asset_dir       = $export_dir . '/assets';
 		if ( is_link( $asset_dir ) || ( file_exists( $asset_dir ) && ! is_dir( $asset_dir ) ) ) {
-			return new WP_Error( 'hlpb_export_assets_path', __( 'The export assets path is not a safe directory.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_export_assets_path', __( 'The export assets path is not a safe directory.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		$template_assets = self::resolve_template_file( $template_slug, $template['assets'] );
 		if ( ! $template_assets || ! is_dir( $template_assets ) || ! self::copy_template_directory( $template_assets, $asset_dir ) ) {
-			return new WP_Error( 'hlpb_export_assets', __( 'The selected template assets could not be copied to the export folder.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_export_assets', __( 'The selected template assets could not be copied to the export folder.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		$sections  = array_values(
 			array_filter(
@@ -2156,10 +2161,13 @@ final class HLPB_Landing_Builder {
 		);
 		$has_cart = (bool) array_filter( $sections, static function ( $section ) { return isset( $section['type'] ) && 'cart_section' === $section['type']; } );
 		if ( $has_cart && ! HLPB_Cart_Section::copy_export_assets( $asset_dir ) ) {
-			return new WP_Error( 'hlpb_export_cart_assets', __( 'The Cart Section interaction files could not be copied to the export folder.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_export_cart_assets', __( 'The Cart Section interaction files could not be copied to the export folder.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 
-		$asset_url = trailingslashit( home_url( '/' . rawurlencode( $promo_folder ) . '/' . rawurlencode( $slug ) . '/assets/' ) );
+		$asset_url = self::get_export_asset_url( $promo_folder, $slug );
+		if ( ! $asset_url ) {
+			return new WP_Error( 'hlpb_export_upload_url', __( 'WordPress could not determine the public URL for the uploaded landing page assets.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
+		}
 		$images    = self::copy_section_images( $sections, $asset_dir, $asset_url, $template_slug );
 		if ( is_wp_error( $images ) ) {
 			return $images;
@@ -2168,7 +2176,7 @@ final class HLPB_Landing_Builder {
 		$styles_path = self::path_from_asset_root( $template, $template['styles'] );
 		$script_path = ! empty( $template['script'] ) ? self::path_from_asset_root( $template, $template['script'] ) : '';
 		if ( ! $styles_path ) {
-			return new WP_Error( 'hlpb_export_styles', __( 'The selected template stylesheet must be inside its assets folder.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_export_styles', __( 'The selected template stylesheet must be inside its assets folder.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		$styles_source  = self::resolve_template_file( $template_slug, $template['styles'] );
 		$styles_version = $styles_source && is_file( $styles_source ) ? (string) filemtime( $styles_source ) : HLPB_LANDING_PAGE_BUILDER_VERSION;
@@ -2222,10 +2230,6 @@ final class HLPB_Landing_Builder {
 			// phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Cart behavior is loaded by the standalone static export.
 			$html .= '<script defer src="' . esc_url( $asset_url . 'hlpb-cart.js' ) . '?v=' . esc_attr( HLPB_LANDING_PAGE_BUILDER_VERSION ) . '"></script>' . "\n";
 		}
-		$custom_css = self::get_custom_css( $post_id );
-		if ( '' !== trim( $custom_css ) ) {
-			$html .= '<style id="hlpb-custom-css">' . self::make_custom_css_style_safe( $custom_css ) . '</style>' . "\n";
-		}
 		$html .= "</head>\n<body class=\"hlpb-landing-page\">\n<div class=\"hlpb-page\">\n";
 		$html .= self::get_demo_fragment( 'sprite', $template_slug, $asset_url ) . "\n<main id=\"top\">\n";
 		$has_cart = false;
@@ -2248,14 +2252,14 @@ final class HLPB_Landing_Builder {
 		$index_path = $export_dir . '/index.html';
 		$temp_path  = $index_path . '.tmp';
 		if ( is_link( $index_path ) || is_link( $temp_path ) ) {
-			return new WP_Error( 'hlpb_export_html_link', __( 'The export HTML path cannot be a symbolic link.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_export_html_link', __( 'The export HTML path cannot be a symbolic link.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 		$filesystem = self::get_filesystem();
 		if ( ! $filesystem || ! $filesystem->put_contents( $temp_path, $html, FS_CHMOD_FILE ) || ! $filesystem->move( $temp_path, $index_path, true ) ) {
 			if ( $filesystem && $filesystem->exists( $temp_path ) ) {
 				$filesystem->delete( $temp_path );
 			}
-			return new WP_Error( 'hlpb_export_html', __( 'WordPress could not write index.html to the export folder.', 'html-landing-page-builder-for-woocommerce' ) );
+			return new WP_Error( 'hlpb_export_html', __( 'WordPress could not write index.html to the export folder.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 		}
 
 		$public_url = self::build_export_url( $promo_folder, $slug );
@@ -2318,7 +2322,7 @@ final class HLPB_Landing_Builder {
 		if ( ! $upload_root ) {
 			foreach ( $sections as $section ) {
 				if ( self::get_section_image_ids( $section, $template_slug ) ) {
-					return new WP_Error( 'hlpb_export_uploads_missing', __( 'WordPress uploads are unavailable, so the selected image cannot be included in a standalone export.', 'html-landing-page-builder-for-woocommerce' ) );
+					return new WP_Error( 'hlpb_export_uploads_missing', __( 'WordPress uploads are unavailable, so the selected image cannot be included in a standalone export.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 				}
 			}
 			return $images;
@@ -2333,20 +2337,20 @@ final class HLPB_Landing_Builder {
 			$file = get_attached_file( $image_id );
 			$file = $file ? realpath( $file ) : false;
 			if ( ! $file || ! is_file( $file ) ) {
-				return new WP_Error( 'hlpb_export_image_missing', __( 'A selected image file could not be found. Choose the image again before generating.', 'html-landing-page-builder-for-woocommerce' ) );
+				return new WP_Error( 'hlpb_export_image_missing', __( 'A selected image file could not be found. Choose the image again before generating.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 			}
 			$file_normalized = strtolower( wp_normalize_path( $file ) );
 			if ( 0 !== strpos( $file_normalized, $upload_root ) ) {
-				return new WP_Error( 'hlpb_export_image_location', __( 'Selected images must be stored in the WordPress uploads folder to include them in a standalone export.', 'html-landing-page-builder-for-woocommerce' ) );
+				return new WP_Error( 'hlpb_export_image_location', __( 'Selected images must be stored in the WordPress uploads folder to include them in a standalone export.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 			}
 			$extension = strtolower( pathinfo( $file, PATHINFO_EXTENSION ) );
 			if ( ! in_array( $extension, array( 'jpg', 'jpeg', 'png', 'gif', 'webp', 'avif' ), true ) ) {
-				return new WP_Error( 'hlpb_export_image_type', __( 'A selected image uses an unsupported file type. Use JPG, PNG, GIF, WebP, or AVIF.', 'html-landing-page-builder-for-woocommerce' ) );
+				return new WP_Error( 'hlpb_export_image_type', __( 'A selected image uses an unsupported file type. Use JPG, PNG, GIF, WebP, or AVIF.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 			}
 			$relative_name = 'uploads/landing-image-' . $image_id . '.' . $extension;
 			$destination   = trailingslashit( $asset_dir ) . $relative_name;
 			if ( ! wp_mkdir_p( dirname( $destination ) ) || ! copy( $file, $destination ) ) {
-				return new WP_Error( 'hlpb_export_image', __( 'A selected image could not be copied into the static export.', 'html-landing-page-builder-for-woocommerce' ) );
+				return new WP_Error( 'hlpb_export_image', __( 'A selected image could not be copied into the static export.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) );
 			}
 			$images[ $image_id ] = trailingslashit( $asset_url ) . $relative_name;
 			}
@@ -2415,13 +2419,22 @@ final class HLPB_Landing_Builder {
 	 * @return string
 	 */
 	private static function build_export_url( $promo_folder, $slug ) {
+		if ( ! get_option( 'permalink_structure' ) ) {
+			return add_query_arg(
+				array(
+					'hlpb_static_export'          => strtolower( $slug ),
+					self::EXPORT_FOLDER_QUERY_VAR => $promo_folder,
+				),
+				home_url( '/' )
+			);
+		}
 		return home_url( '/' . rawurlencode( strtolower( $promo_folder ) ) . '/' . rawurlencode( strtolower( $slug ) ) . '/' );
 	}
 
 	/**
 	 * Normalize a relative export path and allow one legacy or two current segments.
 	 *
-	 * @param string $relative Relative path inside ABSPATH.
+	 * @param string $relative Relative path inside the uploads export directory.
 	 * @return string|false
 	 */
 	private static function normalize_export_relative_path( $relative ) {
@@ -2439,19 +2452,61 @@ final class HLPB_Landing_Builder {
 	}
 
 	/**
-	 * Resolve a relative export path, rejecting symlinks and paths outside ABSPATH.
+	 * Get the dedicated export directory below the configured uploads directory.
 	 *
-	 * @param string $relative Relative export folder.
+	 * @param bool $create Whether to create the directory when needed.
 	 * @return string|false
 	 */
-	private static function get_export_directory_path( $relative ) {
+	private static function get_export_storage_root( $create = false ) {
+		$uploads   = wp_upload_dir( null, false );
+		$base_dir  = isset( $uploads['basedir'] ) ? $uploads['basedir'] : '';
+		$upload_root = $base_dir ? realpath( $base_dir ) : false;
+		if ( ! $upload_root && $create && $base_dir && wp_mkdir_p( $base_dir ) ) {
+			$upload_root = realpath( $base_dir );
+		}
+		if ( ! $upload_root || ! is_dir( $upload_root ) ) {
+			return false;
+		}
+
+		$root = trailingslashit( wp_normalize_path( $upload_root ) ) . self::EXPORT_UPLOAD_DIRECTORY;
+		if ( is_link( $root ) ) {
+			return false;
+		}
+		if ( ! file_exists( $root ) && $create && ! wp_mkdir_p( $root ) ) {
+			return false;
+		}
+		$real_root = realpath( $root );
+		if ( ! $real_root || ! is_dir( $real_root ) || ! self::path_is_inside_directory( $real_root, $upload_root ) ) {
+			return false;
+		}
+		return wp_normalize_path( $real_root );
+	}
+
+	/** Build the public URL for a generated export asset directory. */
+	private static function get_export_asset_url( $promo_folder, $slug ) {
+		$uploads = wp_upload_dir( null, false );
+		$baseurl = isset( $uploads['baseurl'] ) ? untrailingslashit( $uploads['baseurl'] ) : '';
+		if ( '' === $baseurl ) {
+			return false;
+		}
+		return trailingslashit( $baseurl . '/' . self::EXPORT_UPLOAD_DIRECTORY . '/' . rawurlencode( $promo_folder ) . '/' . rawurlencode( $slug ) . '/assets' );
+	}
+
+	/**
+	 * Resolve an export directory below the uploads export root, rejecting symlinks.
+	 *
+	 * @param string $relative Relative export folder.
+	 * @param bool   $create_root Whether to create the dedicated root when needed.
+	 * @return string|false
+	 */
+	private static function get_export_directory_path( $relative, $create_root = false ) {
 		$relative = self::normalize_export_relative_path( $relative );
-		$root     = realpath( ABSPATH );
+		$root     = self::get_export_storage_root( $create_root );
 		if ( ! $relative || ! $root ) {
 			return false;
 		}
-		$root = untrailingslashit( wp_normalize_path( $root ) );
-		$path = $root;
+
+		$path = untrailingslashit( $root );
 		foreach ( explode( '/', $relative ) as $segment ) {
 			$path .= '/' . $segment;
 			if ( is_link( $path ) ) {
@@ -2460,37 +2515,284 @@ final class HLPB_Landing_Builder {
 		}
 		if ( file_exists( $path ) ) {
 			$real_path = realpath( $path );
-			if ( ! $real_path || ! self::path_is_inside_root( $real_path ) ) {
+			if ( ! $real_path || ! self::path_is_inside_directory( $real_path, $root ) ) {
 				return false;
 			}
 			return wp_normalize_path( $real_path );
 		}
+
 		$parent = realpath( dirname( $path ) );
-		if ( $parent && ! self::path_is_inside_root( $parent ) ) {
+		if ( $parent && ! self::path_is_inside_directory( $parent, $root ) ) {
 			return false;
 		}
 		return wp_normalize_path( $path );
 	}
 
-	/**
-	 * Check that a resolved path is below the real WordPress root.
-	 *
-	 * @param string $path Absolute path.
-	 * @return bool
-	 */
-	private static function path_is_inside_root( $path ) {
-		$root = realpath( ABSPATH );
-		$path = realpath( $path );
-		if ( ! $root || ! $path ) {
+	/** Resolve a legacy export path for one-time migration from the site root. */
+	private static function get_legacy_export_directory_path( $relative ) {
+		$relative = self::normalize_export_relative_path( $relative );
+		$root     = self::get_legacy_export_root();
+		if ( ! $relative || ! $root ) {
 			return false;
 		}
-		$root = trailingslashit( wp_normalize_path( $root ) );
-		$path = trailingslashit( wp_normalize_path( $path ) );
-		if ( '\\' === DIRECTORY_SEPARATOR ) {
-			$root = strtolower( $root );
-			$path = strtolower( $path );
+
+		$path = untrailingslashit( $root );
+		foreach ( explode( '/', $relative ) as $segment ) {
+			$path .= '/' . $segment;
+			if ( is_link( $path ) ) {
+				return false;
+			}
 		}
-		return 0 === strpos( $path, $root );
+		if ( file_exists( $path ) ) {
+			$real_path = realpath( $path );
+			if ( ! $real_path || ! self::path_is_inside_directory( $real_path, $root ) ) {
+				return false;
+			}
+			return wp_normalize_path( $real_path );
+		}
+
+		$parent = realpath( dirname( $path ) );
+		if ( $parent && ! self::path_is_inside_directory( $parent, $root ) ) {
+			return false;
+		}
+		return wp_normalize_path( $path );
+	}
+
+	/** Get the installation root only for safely locating exports from older releases. */
+	private static function get_legacy_export_root() {
+		if ( ! function_exists( 'get_home_path' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+		$root = function_exists( 'get_home_path' ) ? realpath( get_home_path() ) : false;
+		return $root && is_dir( $root ) ? wp_normalize_path( $root ) : false;
+	}
+
+	/** Check that a real path is inside another real directory path. */
+	private static function path_is_inside_directory( $path, $root ) {
+		$real_root = realpath( $root );
+		$real_path = realpath( $path );
+		if ( ! $real_root || ! $real_path ) {
+			return false;
+		}
+		$real_root = trailingslashit( wp_normalize_path( $real_root ) );
+		$real_path = trailingslashit( wp_normalize_path( $real_path ) );
+		if ( '\\' === DIRECTORY_SEPARATOR ) {
+			$real_root = strtolower( $real_root );
+			$real_path = strtolower( $real_path );
+		}
+		return 0 === strpos( $real_path, $real_root );
+	}
+
+	/** Ensure an export operation only touches uploads exports or owned legacy folders. */
+	private static function path_is_inside_export_root( $path ) {
+		$root = self::get_export_storage_root();
+		return $root && self::path_is_inside_directory( $path, $root );
+	}
+
+	private static function path_is_inside_legacy_export_root( $path ) {
+		$root = self::get_legacy_export_root();
+		return $root && self::path_is_inside_directory( $path, $root );
+	}
+
+	private static function path_is_inside_known_export_root( $path ) {
+		return self::path_is_inside_export_root( $path ) || self::path_is_inside_legacy_export_root( $path );
+	}
+
+	/** Move owned exports from older releases into Uploads while preserving public URLs. */
+	public static function migrate_legacy_exports() {
+		if ( '1' === get_option( self::EXPORT_STORAGE_MIGRATION_OPTION ) ) {
+			return;
+		}
+		if ( ! current_user_can( 'manage_options' ) && ! current_user_can( 'manage_woocommerce' ) ) {
+			return;
+		}
+
+		$posts = get_posts(
+			array(
+				'post_type'      => self::POST_TYPE,
+				'post_status'    => array( 'publish', 'draft', 'pending', 'private', 'future', 'trash' ),
+				'posts_per_page' => -1,
+				'fields'         => 'ids',
+				'no_found_rows'  => true,
+			)
+		);
+		$complete = true;
+		foreach ( $posts as $post_id ) {
+			$paths   = array( get_post_meta( $post_id, self::EXPORT_DIRECTORY_KEY, true ), self::get_export_slug( $post_id ) );
+			$history = get_post_meta( $post_id, self::EXPORT_HISTORY_KEY, true );
+			if ( is_array( $history ) ) {
+				$paths = array_merge( $paths, $history );
+			}
+
+			$seen = array();
+			foreach ( $paths as $candidate ) {
+				$relative = self::normalize_export_relative_path( $candidate );
+				if ( ! $relative || isset( $seen[ strtolower( $relative ) ] ) ) {
+					continue;
+				}
+				$seen[ strtolower( $relative ) ] = true;
+				$legacy_directory = self::get_legacy_export_directory_path( $relative );
+				if ( ! $legacy_directory || ! is_dir( $legacy_directory ) || ! self::export_marker_belongs_to_post( $legacy_directory, $post_id ) ) {
+					continue;
+				}
+				if ( ! self::migrate_legacy_export_directory( $legacy_directory, $relative, $post_id ) ) {
+					$complete = false;
+				}
+			}
+		}
+
+		if ( $complete ) {
+			update_option( self::EXPORT_STORAGE_MIGRATION_OPTION, '1', false );
+			return;
+		}
+
+		set_transient(
+			'hlpb_export_notice_' . get_current_user_id(),
+			array(
+				'success' => false,
+				'message' => __( 'A previous landing page export could not be moved into the WordPress uploads folder. Check filesystem permissions and open the affected landing page to try again.', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
+			),
+			MINUTE_IN_SECONDS
+		);
+	}
+
+	/** Move one export after confirming its ownership marker and rewriting old asset URLs. */
+	private static function migrate_legacy_export_directory( $legacy_directory, $relative, $post_id ) {
+		$relative = self::normalize_export_relative_path( $relative );
+		if ( ! $relative || ! self::export_marker_belongs_to_post( $legacy_directory, $post_id ) ) {
+			return false;
+		}
+
+		$old_parts = explode( '/', $relative );
+		$promo     = 2 === count( $old_parts ) ? $old_parts[0] : 'Promo';
+		$slug      = 2 === count( $old_parts ) ? $old_parts[1] : $old_parts[0];
+		$new_relative = 2 === count( $old_parts ) ? $relative : $promo . '/' . $slug;
+		$new_parts    = explode( '/', $new_relative );
+		$new_directory = self::get_export_directory_path( $new_relative, true );
+		$asset_url     = self::get_export_asset_url( $new_parts[0], $new_parts[1] );
+		$filesystem    = self::get_filesystem();
+		if ( ! $new_directory || ! $asset_url || ! $filesystem || ! self::path_is_inside_legacy_export_root( $legacy_directory ) ) {
+			return false;
+		}
+
+		if ( is_dir( $new_directory ) ) {
+			if ( ! self::export_marker_belongs_to_post( $new_directory, $post_id ) ) {
+				return false;
+			}
+			$target_index = trailingslashit( $new_directory ) . 'index.html';
+			if ( is_link( $target_index ) ) {
+				return false;
+			}
+			if ( is_file( $target_index ) ) {
+				$existing_html = $filesystem->get_contents( $target_index );
+				if ( false === $existing_html ) {
+					return false;
+				}
+				$updated_html = self::rewrite_legacy_export_asset_urls( $existing_html, $promo, $slug, $asset_url, 1 === count( $old_parts ) );
+				if ( $updated_html !== $existing_html ) {
+					$temp_index = $target_index . '.tmp';
+					if ( is_link( $temp_index ) || ! $filesystem->put_contents( $temp_index, $updated_html, FS_CHMOD_FILE ) || ! $filesystem->move( $temp_index, $target_index, true ) ) {
+						return false;
+					}
+				}
+			}
+			self::remove_export_directory_contents( $legacy_directory );
+			self::update_export_directory_meta_after_migration( $post_id, $relative, $new_relative, $promo, $slug );
+			self::remove_empty_legacy_export_parent( $legacy_directory );
+			return true;
+		}
+
+		$index_path = trailingslashit( $legacy_directory ) . 'index.html';
+		if ( is_link( $index_path ) ) {
+			return false;
+		}
+		$legacy_html = is_file( $index_path ) ? $filesystem->get_contents( $index_path ) : false;
+		if ( false === $legacy_html && is_file( $index_path ) ) {
+			return false;
+		}
+		if ( false !== $legacy_html ) {
+			$legacy_html = self::rewrite_legacy_export_asset_urls( $legacy_html, $promo, $slug, $asset_url, 1 === count( $old_parts ) );
+		}
+
+		$target_parent = dirname( $new_directory );
+		if ( ! wp_mkdir_p( $target_parent ) || ! self::path_is_inside_export_root( $target_parent ) || ! $filesystem->move( $legacy_directory, $new_directory, false ) ) {
+			return false;
+		}
+
+		if ( false !== $legacy_html ) {
+			$target_index = trailingslashit( $new_directory ) . 'index.html';
+			$temp_index   = $target_index . '.tmp';
+			if ( is_link( $target_index ) || is_link( $temp_index ) || ! $filesystem->put_contents( $temp_index, $legacy_html, FS_CHMOD_FILE ) || ! $filesystem->move( $temp_index, $target_index, true ) ) {
+				$filesystem->move( $new_directory, $legacy_directory, false );
+				return false;
+			}
+		}
+
+		self::update_export_directory_meta_after_migration( $post_id, $relative, $new_relative, $promo, $slug );
+		self::remove_empty_legacy_export_parent( $legacy_directory );
+		return true;
+	}
+
+	/** Replace the old root-relative asset prefix in an export being migrated. */
+	private static function rewrite_legacy_export_asset_urls( $html, $promo, $slug, $asset_url, $root_level = false ) {
+		$legacy_urls = array(
+			trailingslashit( home_url( '/' . rawurlencode( $promo ) . '/' . rawurlencode( $slug ) . '/assets/' ) ),
+			trailingslashit( home_url( '/' . rawurlencode( strtolower( $promo ) ) . '/' . rawurlencode( strtolower( $slug ) ) . '/assets/' ) ),
+		);
+		$html        = str_replace( array_unique( $legacy_urls ), $asset_url, (string) $html );
+		if ( $root_level ) {
+			$old_page_urls = array(
+				trailingslashit( home_url( '/' . rawurlencode( $slug ) ) ),
+				trailingslashit( home_url( '/' . rawurlencode( strtolower( $slug ) ) ) ),
+			);
+			$old_asset_urls = array(
+				trailingslashit( home_url( '/' . rawurlencode( $slug ) . '/assets' ) ),
+				trailingslashit( home_url( '/' . rawurlencode( strtolower( $slug ) ) . '/assets' ) ),
+			);
+			$html = str_replace( array_unique( $old_asset_urls ), $asset_url, $html );
+			$html = str_replace( array_unique( $old_page_urls ), self::build_export_url( $promo, $slug ), $html );
+		}
+		return $html;
+	}
+
+	/** Update stored relative paths when a pre-folder-setting export is moved. */
+	private static function update_export_directory_meta_after_migration( $post_id, $old_relative, $new_relative, $promo, $slug ) {
+		$current = self::normalize_export_relative_path( get_post_meta( $post_id, self::EXPORT_DIRECTORY_KEY, true ) );
+		$is_current = ( $current && 0 === strcasecmp( $current, $old_relative ) ) || ( ! $current && 1 === count( explode( '/', $old_relative ) ) && 0 === strcasecmp( self::get_export_slug( $post_id ), $old_relative ) );
+		if ( $is_current ) {
+			update_post_meta( $post_id, self::EXPORT_DIRECTORY_KEY, $new_relative );
+			update_post_meta( $post_id, self::EXPORT_KEY, self::build_export_url( $promo, $slug ) );
+		}
+
+		$history = get_post_meta( $post_id, self::EXPORT_HISTORY_KEY, true );
+		if ( ! is_array( $history ) ) {
+			return;
+		}
+		$updated = array();
+		foreach ( $history as $entry ) {
+			$normalized = self::normalize_export_relative_path( $entry );
+			if ( $normalized && 0 === strcasecmp( $normalized, $old_relative ) ) {
+				$entry = $new_relative;
+			}
+			if ( is_string( $entry ) && ! in_array( strtolower( $entry ), array_map( 'strtolower', $updated ), true ) ) {
+				$updated[] = $entry;
+			}
+		}
+		update_post_meta( $post_id, self::EXPORT_HISTORY_KEY, array_values( $updated ) );
+	}
+
+	/** Remove an empty old campaign folder after the owned export has been moved. */
+	private static function remove_empty_legacy_export_parent( $legacy_directory ) {
+		$filesystem = self::get_filesystem();
+		$root       = self::get_legacy_export_root();
+		$parent     = realpath( dirname( $legacy_directory ) );
+		if ( ! $filesystem || ! $root || ! $parent || 0 === strcasecmp( untrailingslashit( $parent ), untrailingslashit( $root ) ) || ! self::path_is_inside_directory( $parent, $root ) ) {
+			return;
+		}
+		$entries = $filesystem->dirlist( $parent, true, false );
+		if ( is_array( $entries ) && empty( $entries ) ) {
+			$filesystem->rmdir( $parent );
+		}
 	}
 
 	/**
@@ -2501,7 +2803,7 @@ final class HLPB_Landing_Builder {
 	 * @return bool
 	 */
 	private static function export_marker_belongs_to_post( $directory, $post_id ) {
-		if ( ! $directory || is_link( $directory ) || ! is_dir( $directory ) || ! self::path_is_inside_root( $directory ) ) {
+		if ( ! $directory || is_link( $directory ) || ! is_dir( $directory ) || ! self::path_is_inside_known_export_root( $directory ) ) {
 			return false;
 		}
 		$marker_path = trailingslashit( $directory ) . '.hlpb-export.json';
@@ -2646,7 +2948,7 @@ final class HLPB_Landing_Builder {
 	 */
 	private static function remove_export_directory_contents( $directory ) {
 		$filesystem = self::get_filesystem();
-		if ( ! $filesystem || is_link( $directory ) || ! $filesystem->is_dir( $directory ) || ! self::path_is_inside_root( $directory ) ) {
+		if ( ! $filesystem || is_link( $directory ) || ! $filesystem->is_dir( $directory ) || ! self::path_is_inside_known_export_root( $directory ) ) {
 			return;
 		}
 		$entries = $filesystem->dirlist( $directory, true, false );
@@ -2661,7 +2963,7 @@ final class HLPB_Landing_Builder {
 			$path = trailingslashit( $directory ) . $name;
 			if ( is_link( $path ) || ( isset( $entry['type'] ) && 'f' === $entry['type'] ) || $filesystem->is_file( $path ) ) {
 				$filesystem->delete( $path );
-			} elseif ( ( ( isset( $entry['type'] ) && 'd' === $entry['type'] ) || $filesystem->is_dir( $path ) ) && self::path_is_inside_root( $path ) ) {
+			} elseif ( ( ( isset( $entry['type'] ) && 'd' === $entry['type'] ) || $filesystem->is_dir( $path ) ) && self::path_is_inside_known_export_root( $path ) ) {
 				self::remove_export_directory_contents( $path );
 			}
 		}
@@ -2716,7 +3018,7 @@ final class HLPB_Landing_Builder {
 	}
 
 	/**
-	 * Serve a static page from its configured root/{folder}/{slug} directory.
+	 * Serve a static page from its configured uploads/{folder}/{slug} directory.
 	 *
 	 * @return void
 	 */
@@ -2731,14 +3033,13 @@ final class HLPB_Landing_Builder {
 		$relative    = self::normalize_export_relative_path( $folder . '/' . $slug );
 		$export_dir  = $relative ? self::get_export_directory_path( $relative ) : false;
 		if ( ! $export_dir || ! is_dir( $export_dir ) ) {
-			// Older plugin versions put exports directly in the WordPress root.
-			$export_dir = self::get_export_directory_path( $slug );
+			$export_dir = false;
 		}
 		$index_path  = $export_dir ? trailingslashit( $export_dir ) . 'index.html' : '';
 		$marker_path = $export_dir ? trailingslashit( $export_dir ) . '.hlpb-export.json' : '';
 		$marker      = $marker_path && is_file( $marker_path ) && ! is_link( $marker_path ) ? json_decode( file_get_contents( $marker_path ), true ) : false;
 		$owner_id    = is_array( $marker ) ? absint( $marker['post_id'] ?? 0 ) : 0;
-		if ( ! preg_match( '/^[a-z0-9-]+$/i', $slug ) || ! $index_path || is_link( $index_path ) || ! is_file( $index_path ) || ! $owner_id || self::POST_TYPE !== get_post_type( $owner_id ) || 'publish' !== get_post_status( $owner_id ) || ! self::path_is_inside_root( $export_dir ) ) {
+		if ( ! preg_match( '/^[a-z0-9-]+$/i', $slug ) || ! $index_path || is_link( $index_path ) || ! is_file( $index_path ) || ! $owner_id || self::POST_TYPE !== get_post_type( $owner_id ) || 'publish' !== get_post_status( $owner_id ) || ! self::path_is_inside_export_root( $export_dir ) ) {
 			global $wp_query;
 			$wp_query->set_404();
 			status_header( 404 );
@@ -2903,7 +3204,7 @@ final class HLPB_Landing_Builder {
 					$section[ $color_key ] = $color ? $color : $defaults[ $color_key ];
 				}
 				$stock_icons = self::get_icon_labels();
-				$stock_icons['fire'] = __( 'Fire', 'html-landing-page-builder-for-woocommerce' );
+				$stock_icons['fire'] = __( 'Fire', 'mikhailkyrychenko-offer-builder-for-woocommerce' );
 				$stock_icon = isset( $raw_section['stock_icon'] ) ? sanitize_key( $raw_section['stock_icon'] ) : $defaults['stock_icon'];
 				$section['stock_icon'] = isset( $stock_icons[ $stock_icon ] ) ? $stock_icon : $defaults['stock_icon'];
 				$raw_benefits = isset( $raw_section['benefits'] ) && is_array( $raw_section['benefits'] ) ? array_slice( $raw_section['benefits'], 0, 8 ) : ( ! empty( $raw_section['benefits_present'] ) ? array() : $defaults['benefits'] );
@@ -3380,9 +3681,9 @@ final class HLPB_Landing_Builder {
 		}
 		$left_links = self::render_header_links( $section, 'left' );
 		$right_links = self::render_header_links( $section, 'right' );
-		$left_mobile = '<details class="mobile-menu mobile-menu-left"><summary aria-label="' . esc_attr__( 'Open left menu', 'html-landing-page-builder-for-woocommerce' ) . '"><span class="mobile-menu-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span>' . esc_html__( 'Menu', 'html-landing-page-builder-for-woocommerce' ) . '</span></summary><div class="mobile-menu-panel"><p>' . esc_html__( 'Explore', 'html-landing-page-builder-for-woocommerce' ) . '</p><nav aria-label="' . esc_attr__( 'Mobile left navigation', 'html-landing-page-builder-for-woocommerce' ) . '">' . $left_links . '</nav></div></details>';
-		$right_mobile = '<details class="mobile-menu mobile-menu-right"><summary aria-label="' . esc_attr__( 'Open right menu', 'html-landing-page-builder-for-woocommerce' ) . '"><span>' . esc_html__( 'More', 'html-landing-page-builder-for-woocommerce' ) . '</span><span class="mobile-menu-icon mobile-menu-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="m6 9 6 6 6-6"/></svg></span></summary><div class="mobile-menu-panel"><p>' . esc_html__( 'More', 'html-landing-page-builder-for-woocommerce' ) . '</p><nav aria-label="' . esc_attr__( 'Mobile right navigation', 'html-landing-page-builder-for-woocommerce' ) . '">' . $right_links . '</nav></div></details>';
-		return '<header class="site-header"><div class="container header-inner">' . $left_mobile . '<nav class="header-nav" aria-label="' . esc_attr__( 'Left navigation', 'html-landing-page-builder-for-woocommerce' ) . '">' . $left_links . '</nav><a class="brand" href="' . esc_url( home_url( '/' ) ) . '" aria-label="' . esc_attr( $site_name . ' ' . __( 'home', 'html-landing-page-builder-for-woocommerce' ) ) . '">' . $brand . '</a><nav class="header-story" aria-label="' . esc_attr__( 'Right navigation', 'html-landing-page-builder-for-woocommerce' ) . '">' . $right_links . '</nav>' . $right_mobile . '</div></header>';
+		$left_mobile = '<details class="mobile-menu mobile-menu-left"><summary aria-label="' . esc_attr__( 'Open left menu', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '"><span class="mobile-menu-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span>' . esc_html__( 'Menu', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span></summary><div class="mobile-menu-panel"><p>' . esc_html__( 'Explore', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p><nav aria-label="' . esc_attr__( 'Mobile left navigation', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '">' . $left_links . '</nav></div></details>';
+		$right_mobile = '<details class="mobile-menu mobile-menu-right"><summary aria-label="' . esc_attr__( 'Open right menu', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '"><span>' . esc_html__( 'More', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</span><span class="mobile-menu-icon mobile-menu-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="m6 9 6 6 6-6"/></svg></span></summary><div class="mobile-menu-panel"><p>' . esc_html__( 'More', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</p><nav aria-label="' . esc_attr__( 'Mobile right navigation', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '">' . $right_links . '</nav></div></details>';
+		return '<header class="site-header"><div class="container header-inner">' . $left_mobile . '<nav class="header-nav" aria-label="' . esc_attr__( 'Left navigation', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '">' . $left_links . '</nav><a class="brand" href="' . esc_url( home_url( '/' ) ) . '" aria-label="' . esc_attr( $site_name . ' ' . __( 'home', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) ) . '">' . $brand . '</a><nav class="header-story" aria-label="' . esc_attr__( 'Right navigation', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '">' . $right_links . '</nav>' . $right_mobile . '</div></header>';
 	}
 
 	/** Render menu links from a selected WordPress menu or custom links. */
@@ -3474,19 +3775,19 @@ final class HLPB_Landing_Builder {
 			$saving = '' !== $card[2] ? '<em>' . esc_html( $card[2] ) . '</em>' : '';
 			$buy_label = sprintf(
 				// translators: %d: number of products in the displayed offer.
-				__( 'BUY %d', 'html-landing-page-builder-for-woocommerce' ),
+				__( 'BUY %d', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 				$card[0]
 			);
-			$cards_markup .= '<button class="bundle-card' . esc_attr( $popular_class ) . '" data-bundle="' . absint( $card[0] ) . '" data-why-qty="' . absint( $card[0] ) . '" type="button">' . $badge . '<b>' . esc_html( $buy_label ) . '</b><strong>' . esc_html( $card[1] ) . '</strong><small>' . esc_html__( 'per bundle', 'html-landing-page-builder-for-woocommerce' ) . '</small>' . $saving . '</button>';
+			$cards_markup .= '<button class="bundle-card' . esc_attr( $popular_class ) . '" data-bundle="' . absint( $card[0] ) . '" data-why-qty="' . absint( $card[0] ) . '" type="button">' . $badge . '<b>' . esc_html( $buy_label ) . '</b><strong>' . esc_html( $card[1] ) . '</strong><small>' . esc_html__( 'per bundle', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '</small>' . $saving . '</button>';
 		}
 		$stock_icons = self::get_icon_labels();
-		$stock_icons['fire'] = __( 'Fire', 'html-landing-page-builder-for-woocommerce' );
+		$stock_icons['fire'] = __( 'Fire', 'mikhailkyrychenko-offer-builder-for-woocommerce' );
 		$stock_icon = isset( $stock_icons[ $section['stock_icon'] ] ) ? $section['stock_icon'] : 'fire';
 		$stock_markup = '';
 		if ( ! empty( $section['stock_enabled'] ) ) {
 			$stock_markup = '<div class="container stock-note" style="background-color:' . esc_attr( $colors['stock_background'] ) . ';color:' . esc_attr( $colors['stock_icon_color'] ) . '"><svg class="icon" aria-hidden="true"><use href="#i-' . esc_attr( $stock_icon ) . '"></use></svg><div><b style="color:' . esc_attr( $colors['stock_title_color'] ) . '">' . esc_html( $section['stock_title'] ) . '</b><small style="color:' . esc_attr( $colors['stock_text_color'] ) . '">' . nl2br( esc_html( $section['stock_text'] ) ) . '</small></div></div>';
 		}
-		return '<section class="bundle-section hlpb-why-section" id="bundles" style="background-color:' . esc_attr( $colors['background'] ) . ';--hlpb-why-eyebrow:' . esc_attr( $colors['eyebrow_color'] ) . ';--hlpb-why-title:' . esc_attr( $colors['title_color'] ) . ';--hlpb-why-subtitle:' . esc_attr( $colors['subtitle_color'] ) . ';--hlpb-why-benefit:' . esc_attr( $colors['benefit_color'] ) . ';' . esc_attr( $css_vars ) . '"><div class="container bundle-layout"><div class="bundle-copy"><p class="eyebrow" style="color:' . esc_attr( $colors['eyebrow_color'] ) . '">' . esc_html( $section['eyebrow'] ) . '</p><h2 style="color:' . esc_attr( $colors['title_color'] ) . '">' . esc_html( $section['title'] ) . '</h2><p style="color:' . esc_attr( $colors['subtitle_color'] ) . '">' . esc_html( $section['subtitle'] ) . '</p><ul>' . $benefits_markup . '</ul></div><div class="bundle-grid" data-hlpb-why-offers role="group" aria-label="' . esc_attr__( 'Current offer prices', 'html-landing-page-builder-for-woocommerce' ) . '">' . $cards_markup . '</div></div>' . $stock_markup . '</section>';
+		return '<section class="bundle-section hlpb-why-section" id="bundles" style="background-color:' . esc_attr( $colors['background'] ) . ';--hlpb-why-eyebrow:' . esc_attr( $colors['eyebrow_color'] ) . ';--hlpb-why-title:' . esc_attr( $colors['title_color'] ) . ';--hlpb-why-subtitle:' . esc_attr( $colors['subtitle_color'] ) . ';--hlpb-why-benefit:' . esc_attr( $colors['benefit_color'] ) . ';' . esc_attr( $css_vars ) . '"><div class="container bundle-layout"><div class="bundle-copy"><p class="eyebrow" style="color:' . esc_attr( $colors['eyebrow_color'] ) . '">' . esc_html( $section['eyebrow'] ) . '</p><h2 style="color:' . esc_attr( $colors['title_color'] ) . '">' . esc_html( $section['title'] ) . '</h2><p style="color:' . esc_attr( $colors['subtitle_color'] ) . '">' . esc_html( $section['subtitle'] ) . '</p><ul>' . $benefits_markup . '</ul></div><div class="bundle-grid" data-hlpb-why-offers role="group" aria-label="' . esc_attr__( 'Current offer prices', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '">' . $cards_markup . '</div></div>' . $stock_markup . '</section>';
 	}
 
 	/** Render the editable reviews section and its review cards. */
@@ -3517,7 +3818,7 @@ final class HLPB_Landing_Builder {
 			$stars = min( 5, max( 1, absint( $review['stars'] ) ) );
 			$stars_label = sprintf(
 				// translators: %d: review rating on a five-star scale.
-				__( '%d out of 5 stars', 'html-landing-page-builder-for-woocommerce' ),
+				__( '%d out of 5 stars', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 				$stars
 			);
 			$avatar_class = 'avatar-' . ( ( $index % 3 ) + 1 );
@@ -3527,7 +3828,7 @@ final class HLPB_Landing_Builder {
 		}
 		$overall_stars_label = sprintf(
 			// translators: %d: overall rating on a five-star scale.
-			__( '%d out of 5 stars', 'html-landing-page-builder-for-woocommerce' ),
+			__( '%d out of 5 stars', 'mikhailkyrychenko-offer-builder-for-woocommerce' ),
 			$overall_stars
 		);
 		return '<section class="reviews-section" id="reviews" style="background-color:' . esc_attr( $colors['background'] ) . '"><div class="container"><div class="reviews-heading"><div><h2 style="color:' . esc_attr( $colors['heading_color'] ) . '">' . esc_html( $section['title'] ) . '</h2><p style="color:' . esc_attr( $colors['subtitle_color'] ) . '">' . esc_html( $section['subtitle'] ) . '</p></div><div class="review-score"><span class="stars" style="color:' . esc_attr( $colors['star_color'] ) . '" aria-label="' . esc_attr( $overall_stars_label ) . '">' . esc_html( $score_stars ) . '</span><b style="color:' . esc_attr( $colors['score_color'] ) . '">' . esc_html( $section['overall_score'] ) . '</b><small style="color:' . esc_attr( $colors['count_color'] ) . '">' . esc_html( $section['overall_count'] ) . '</small></div></div><div class="review-grid">' . $cards . '</div></div></section>';
@@ -3637,7 +3938,7 @@ final class HLPB_Landing_Builder {
 
 		$copyright = sanitize_text_field( $section['copyright'] );
 		$disclaimer = sanitize_textarea_field( $section['disclaimer'] );
-		return '<footer class="site-footer" id="contact" style="background-color:' . esc_attr( $colors['background'] ) . ';color:' . esc_attr( $colors['text_color'] ) . '"><div class="container footer-main">' . $brand . '<nav>' . $primary_markup . '</nav><div class="socials" aria-label="' . esc_attr__( 'Social media', 'html-landing-page-builder-for-woocommerce' ) . '">' . $social_markup . '</div></div><div class="container footer-bottom" style="color:' . esc_attr( $colors['bottom_text_color'] ) . ';border-top-color:' . esc_attr( $colors['divider_color'] ) . '"><span>' . esc_html( $copyright ) . '</span><nav>' . $legal_markup . '</nav></div><div class="container demo-disclaimer" style="color:' . esc_attr( $colors['disclaimer_color'] ) . '">' . nl2br( esc_html( $disclaimer ) ) . '</div></footer>';
+		return '<footer class="site-footer" id="contact" style="background-color:' . esc_attr( $colors['background'] ) . ';color:' . esc_attr( $colors['text_color'] ) . '"><div class="container footer-main">' . $brand . '<nav>' . $primary_markup . '</nav><div class="socials" aria-label="' . esc_attr__( 'Social media', 'mikhailkyrychenko-offer-builder-for-woocommerce' ) . '">' . $social_markup . '</div></div><div class="container footer-bottom" style="color:' . esc_attr( $colors['bottom_text_color'] ) . ';border-top-color:' . esc_attr( $colors['divider_color'] ) . '"><span>' . esc_html( $copyright ) . '</span><nav>' . $legal_markup . '</nav></div><div class="container demo-disclaimer" style="color:' . esc_attr( $colors['disclaimer_color'] ) . '">' . nl2br( esc_html( $disclaimer ) ) . '</div></footer>';
 	}
 
 	/**

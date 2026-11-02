@@ -2,7 +2,7 @@
 /**
  * Guided documentation screen for the landing page builder.
  *
- * @package HTMLLandingPageBuilderForWooCommerce
+ * @package MikhailKyrychenkoOfferBuilderForWooCommerce
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -102,7 +102,7 @@ final class HLPB_Instructions {
 						<div class="hlpb-guide-steps">
 							<article><span>1</span><div><h3>Import the demo content</h3><p>Open <a href="<?php echo esc_url( $import_url ); ?>">Landing Pages → Import</a>. The importer creates three dedicated demo products with variations and galleries, the Color and Size attributes, and the pages <code>/promo/lp-demo/</code> and <code>/promo/field-notes-demo/</code>.</p></div></article>
 							<article><span>2</span><div><h3>Open a landing page in the editor</h3><p>Under <strong>Landing Pages</strong>, select a page or click <strong>Create Landing Page</strong>. Set its title, choose a template, then review the products and offer in the cart section.</p></div></article>
-							<article><span>3</span><div><h3>Save and check the published page</h3><p>Click <strong>Publish</strong> or <strong>Update</strong>. The plugin generates a static page in the site folder defined by <strong>Promo folder</strong> and <strong>Landing folder</strong>. The editor shows the published link beside the export path.</p></div></article>
+							<article><span>3</span><div><h3>Save and check the published page</h3><p>Click <strong>Publish</strong> or <strong>Update</strong>. The plugin stores the static page and its local assets in the dedicated WordPress uploads folder, using the <strong>Promo folder</strong> and <strong>Landing folder</strong> settings. The editor shows the published link beside the export path.</p></div></article>
 						</div>
 						<div class="hlpb-guide-callout hlpb-guide-callout-note"><strong>Re-running the importer</strong><p>The importer is designed to be run again: products and attributes marked as demo content are refreshed. Existing landing page sections are kept when the template and structure match the demo; if the structure differs, the demo page is restored to its original template structure.</p></div>
 						<div class="hlpb-guide-screen-demo" aria-label="Landing page editor diagram">
