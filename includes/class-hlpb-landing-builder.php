@@ -31,6 +31,9 @@ final class HLPB_Landing_Builder {
 	 */
 	private static $pending_static_exports = array();
 
+	/** @var int Unique suffix for enqueue handles used while writing static exports. */
+	private static $static_export_enqueue_sequence = 0;
+
 	/**
 	 * Connect the builder to WordPress.
 	 *
@@ -2056,6 +2059,124 @@ final class HLPB_Landing_Builder {
 	}
 
 	/**
+	 * Build standalone asset tags through WordPress's enqueue APIs.
+	 *
+	 * Unique handles let multiple exports run in one request without WordPress
+	 * treating later exports' styles or scripts as already printed.
+	 *
+	 * @param int    $post_id Landing page ID.
+	 * @param string $asset_url Public URL for this export's copied assets.
+	 * @param string $styles_path Stylesheet path relative to the asset directory.
+	 * @param string $styles_version Stylesheet cache-busting version.
+	 * @param string $script_path Optional template script path relative to the asset directory.
+	 * @param bool   $has_cart Whether the export includes a Cart Section.
+	 * @param string $script_config_json Encoded template configuration.
+	 * @param string $cart_config_json Encoded Cart Section configuration.
+	 * @return string Enqueued style and script tags for the standalone document.
+	 */
+	private static function render_static_export_assets( $post_id, $asset_url, $styles_path, $styles_version, $script_path, $has_cart, $script_config_json, $cart_config_json ) {
+		++self::$static_export_enqueue_sequence;
+		$handle_prefix = 'hlpb-export-' . absint( $post_id ) . '-' . self::$static_export_enqueue_sequence;
+		$style_handles = array();
+		$script_handles = array();
+		$deferred_handles = array();
+
+		$template_style_handle = $handle_prefix . '-style';
+		wp_register_style( $template_style_handle, $asset_url . $styles_path, array(), $styles_version );
+		wp_enqueue_style( $template_style_handle );
+		$style_handles[] = $template_style_handle;
+
+		if ( $has_cart ) {
+			$cart_css_path = HLPB_LANDING_PAGE_BUILDER_PATH . 'assets/frontend/cart-section.css';
+			$cart_css      = is_readable( $cart_css_path ) ? file_get_contents( $cart_css_path ) : false;
+			if ( false !== $cart_css ) {
+				wp_add_inline_style( $template_style_handle, $cart_css );
+			} else {
+				$cart_style_handle = $handle_prefix . '-cart-style';
+				wp_register_style( $cart_style_handle, $asset_url . 'hlpb-cart.css', array(), HLPB_LANDING_PAGE_BUILDER_VERSION );
+				wp_enqueue_style( $cart_style_handle );
+				$style_handles[] = $cart_style_handle;
+			}
+		}
+
+		if ( $script_config_json ) {
+			$config_script_handle = $handle_prefix . '-config';
+			wp_register_script( $config_script_handle, false, array(), null, false );
+			wp_enqueue_script( $config_script_handle );
+			wp_add_inline_script( $config_script_handle, 'window.HLPBDemo=' . $script_config_json . ';' );
+			$script_handles[] = $config_script_handle;
+		}
+
+		$template_script_handle = '';
+		if ( $script_path ) {
+			$template_script_handle = $handle_prefix . '-template';
+			wp_register_script( $template_script_handle, $asset_url . $script_path, array(), null, false );
+			wp_script_add_data( $template_script_handle, 'strategy', 'defer' );
+			wp_enqueue_script( $template_script_handle );
+			$script_handles[]     = $template_script_handle;
+			$deferred_handles[]   = $template_script_handle;
+		}
+
+		if ( $has_cart ) {
+			if ( $cart_config_json ) {
+				$cart_config_handle = $handle_prefix . '-cart-config';
+				wp_register_script( $cart_config_handle, false, array(), null, false );
+				wp_enqueue_script( $cart_config_handle );
+				wp_add_inline_script( $cart_config_handle, 'window.HLPBCartData=' . $cart_config_json . ';' );
+				$script_handles[] = $cart_config_handle;
+			}
+
+			$cart_script_handle = $handle_prefix . '-cart';
+			$dependencies      = $template_script_handle ? array( $template_script_handle ) : array();
+			wp_register_script( $cart_script_handle, $asset_url . 'hlpb-cart.js', $dependencies, HLPB_LANDING_PAGE_BUILDER_VERSION, false );
+			wp_script_add_data( $cart_script_handle, 'strategy', 'defer' );
+			wp_enqueue_script( $cart_script_handle );
+			$script_handles[]   = $cart_script_handle;
+			$deferred_handles[] = $cart_script_handle;
+		}
+
+		// The script strategy argument was introduced in WordPress 6.3; retain defer on the 6.2 minimum too.
+		$defer_filter = static function ( $tag, $handle ) use ( $deferred_handles ) {
+			if ( ! in_array( $handle, $deferred_handles, true ) || preg_match( '/\sdefer(?:\s|=|>)/i', $tag ) ) {
+				return $tag;
+			}
+
+			return preg_replace( '/^<script\b/i', '<script defer', $tag, 1 );
+		};
+		add_filter( 'script_loader_tag', $defer_filter, 10, 2 );
+
+		$initial_buffer_level = ob_get_level();
+		$styles_markup       = '';
+		$scripts_markup      = '';
+		try {
+			ob_start();
+			wp_print_styles( $style_handles );
+			$styles_markup = (string) ob_get_clean();
+
+			if ( $script_handles ) {
+				ob_start();
+				wp_print_scripts( $script_handles );
+				$scripts_markup = (string) ob_get_clean();
+			}
+		} finally {
+			while ( ob_get_level() > $initial_buffer_level ) {
+				ob_end_clean();
+			}
+			remove_filter( 'script_loader_tag', $defer_filter, 10 );
+			foreach ( $style_handles as $handle ) {
+				wp_dequeue_style( $handle );
+				wp_deregister_style( $handle );
+			}
+			foreach ( $script_handles as $handle ) {
+				wp_dequeue_script( $handle );
+				wp_deregister_script( $handle );
+			}
+		}
+
+		return $styles_markup . $scripts_markup;
+	}
+
+	/**
 	 * Write a standalone HTML page and a copy of its selected template assets.
 	 *
 	 * The export folder is the dedicated uploads directory/{promo-folder}/{landing-folder}.
@@ -2182,7 +2303,6 @@ final class HLPB_Landing_Builder {
 		}
 		$styles_source  = self::resolve_template_file( $template_slug, $template['styles'] );
 		$styles_version = $styles_source && is_file( $styles_source ) ? (string) filemtime( $styles_source ) : HLPB_LANDING_PAGE_BUILDER_VERSION;
-		$styles_url     = add_query_arg( 'ver', $styles_version, $asset_url . $styles_path );
 		$cart_config      = $has_cart ? HLPB_Cart_Section::build_public_config( $post_id, $sections ) : array();
 		$cart_config_json = $cart_config ? wp_json_encode( $cart_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ) : '';
 		$hero_image       = $has_cart ? self::get_initial_cart_hero_image( $cart_config ) : array();
@@ -2208,30 +2328,17 @@ final class HLPB_Landing_Builder {
 			}
 			$html .= ' fetchpriority="high">' . "\n";
 		}
-		// phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- This markup is the standalone static export, not a WordPress page template.
-		$html .= '<link rel="stylesheet" href="' . esc_url( $styles_url ) . '">' . "\n";
-		if ( $script_config ) {
-			$html .= '<script>window.HLPBDemo=' . $script_config . ";</script>\n";
-		}
-		if ( $script_path && is_file( self::resolve_template_file( $template_slug, $template['script'] ) ) ) {
-			// phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- This markup is the standalone static export, not a WordPress page template.
-			$html .= '<script defer src="' . esc_url( $asset_url . $script_path ) . '"></script>' . "\n";
-		}
-		if ( $has_cart ) {
-			$cart_css_path = HLPB_LANDING_PAGE_BUILDER_PATH . 'assets/frontend/cart-section.css';
-			$cart_css      = is_readable( $cart_css_path ) ? file_get_contents( $cart_css_path ) : false;
-			if ( false !== $cart_css ) {
-				$html .= '<style id="hlpb-cart-inline-css">' . $cart_css . '</style>' . "\n";
-			} else {
-				// phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- Fallback asset reference for the standalone static export.
-				$html .= '<link rel="stylesheet" href="' . esc_url( $asset_url . 'hlpb-cart.css' ) . '?v=' . esc_attr( HLPB_LANDING_PAGE_BUILDER_VERSION ) . '">' . "\n";
-			}
-			if ( $cart_config_json ) {
-				$html .= '<script>window.HLPBCartData=' . $cart_config_json . ';</script>' . "\n";
-			}
-			// phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Cart behavior is loaded by the standalone static export.
-			$html .= '<script defer src="' . esc_url( $asset_url . 'hlpb-cart.js' ) . '?v=' . esc_attr( HLPB_LANDING_PAGE_BUILDER_VERSION ) . '"></script>' . "\n";
-		}
+		$has_template_script = $script_path && is_file( self::resolve_template_file( $template_slug, $template['script'] ) );
+		$html .= self::render_static_export_assets(
+			$post_id,
+			$asset_url,
+			$styles_path,
+			$styles_version,
+			$has_template_script ? $script_path : '',
+			$has_cart,
+			$script_config,
+			$cart_config_json
+		);
 		$html .= "</head>\n<body class=\"hlpb-landing-page\">\n<div class=\"hlpb-page\">\n";
 		$html .= self::get_demo_fragment( 'sprite', $template_slug, $asset_url ) . "\n<main id=\"top\">\n";
 		$has_cart = false;
