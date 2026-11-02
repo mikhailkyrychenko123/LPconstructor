@@ -10,17 +10,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class HLPB_Demo_Importer {
-	const PROMPT_OPTION  = 'hlpb_demo_import_prompt';
-	const PRODUCT_META   = '_hlpb_demo_product_key';
-	const VARIATION_META = '_hlpb_demo_variation_key';
-	const MEDIA_META     = '_hlpb_demo_media_key';
-	const TERM_META      = '_hlpb_demo_term_key';
-	const ATTRIBUTES_OPTION = 'hlpb_demo_imported_attributes';
-	const RESULT_OPTION  = 'hlpb_demo_import_last_result';
-	const LOCK_OPTION    = 'hlpb_demo_import_lock';
-	const LANDING_META    = '_hlpb_demo_landing';
-	const MEDIA_PREFIX   = 'hlpb-demo-products-v1:';
-	const NAME_SUFFIX    = 'Landing-demo';
+	const PROMPT_OPTION       = 'hlpb_demo_import_prompt';
+	const REDIRECT_USER_META  = '_hlpb_demo_import_activation_redirect';
+	const PRODUCT_META        = '_hlpb_demo_product_key';
+	const VARIATION_META      = '_hlpb_demo_variation_key';
+	const MEDIA_META          = '_hlpb_demo_media_key';
+	const TERM_META           = '_hlpb_demo_term_key';
+	const ATTRIBUTES_OPTION   = 'hlpb_demo_imported_attributes';
+	const RESULT_OPTION       = 'hlpb_demo_import_last_result';
+	const LOCK_OPTION         = 'hlpb_demo_import_lock';
+	const LANDING_META        = '_hlpb_demo_landing';
+	const MEDIA_PREFIX        = 'hlpb-demo-products-v1:';
+	const NAME_SUFFIX         = 'Landing-demo';
 
 	/** Counts collected during the current import or cleanup. */
 	private static $run_counts = array();
@@ -34,6 +35,7 @@ final class HLPB_Demo_Importer {
 		add_action( 'admin_menu', array( __CLASS__, 'remove_duplicate_create_landing_submenu' ), 999 );
 		add_action( 'admin_notices', array( __CLASS__, 'render_admin_notices' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_onboarding_assets' ) );
+		add_action( 'admin_init', array( __CLASS__, 'maybe_redirect_after_activation' ), 1 );
 		add_action( 'admin_post_hlpb_import_demo_products', array( __CLASS__, 'handle_import' ) );
 		add_action( 'wp_ajax_hlpb_activation_import', array( __CLASS__, 'handle_activation_import' ) );
 		add_action( 'admin_post_hlpb_delete_demo_products', array( __CLASS__, 'handle_delete' ) );
@@ -63,6 +65,37 @@ final class HLPB_Demo_Importer {
 	/** Queue the optional import prompt after plugin activation. */
 	public static function queue_activation_prompt() {
 		update_option( self::PROMPT_OPTION, '1', false );
+
+		$user_id = get_current_user_id();
+		if ( $user_id && ( current_user_can( 'manage_woocommerce' ) || current_user_can( 'manage_options' ) ) ) {
+			update_user_meta( $user_id, self::REDIRECT_USER_META, '1' );
+		}
+	}
+
+	/** Open the Import screen once after an administrator activates the plugin. */
+	public static function maybe_redirect_after_activation() {
+		if ( ! is_admin() || is_network_admin() || wp_doing_ajax() ) {
+			return;
+		}
+
+		$user_id = get_current_user_id();
+		if ( ! $user_id || '1' !== get_user_meta( $user_id, self::REDIRECT_USER_META, true ) ) {
+			return;
+		}
+		if ( ! current_user_can( 'manage_woocommerce' ) && ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		delete_user_meta( $user_id, self::REDIRECT_USER_META );
+		$url = add_query_arg(
+			array(
+				'post_type' => HLPB_Landing_Builder::POST_TYPE,
+				'page'      => 'hlpb-demo-import',
+			),
+			admin_url( 'edit.php' )
+		);
+		wp_safe_redirect( $url );
+		exit;
 	}
 
 	/** Load the activation welcome dialog only while it is pending. */
@@ -94,9 +127,12 @@ final class HLPB_Demo_Importer {
 
 	/** Keep the activation prompt and its assets inside the plugin's Import screen. */
 	private static function is_import_screen() {
-		$post_type = isset( $_GET['post_type'] ) ? sanitize_key( wp_unslash( $_GET['post_type'] ) ) : '';
-		$page      = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
-		return HLPB_Landing_Builder::POST_TYPE === $post_type && 'hlpb-demo-import' === $page;
+		if ( ! is_admin() || ! function_exists( 'get_current_screen' ) ) {
+			return false;
+		}
+
+		$screen = get_current_screen();
+		return $screen && 'hlpb_landing_page_hlpb-demo-import' === $screen->id;
 	}
 
 	/** Show the optional import welcome dialog after activation. */
@@ -972,6 +1008,7 @@ final class HLPB_Demo_Importer {
 		$branding_migration = self::migrate_demo_branding( $sections, 'cozy-mix' );
 		$sections           = $branding_migration['sections'];
 		$sections_changed   = $sections_changed || $branding_migration['changed'];
+		$sections           = self::refresh_demo_product_references( $sections, $product_ids );
 		foreach ( $sections as $index => &$section ) {
 			if ( ! is_array( $section ) ) {
 				continue;
@@ -1107,6 +1144,11 @@ final class HLPB_Demo_Importer {
 			$sections = $branding_migration['sections'];
 			update_post_meta( $landing_id, HLPB_Landing_Builder::META_KEY, $sections );
 		}
+		$rebound_sections = self::refresh_demo_product_references( $sections, $product_ids );
+		if ( $rebound_sections !== $sections ) {
+			$sections = $rebound_sections;
+			update_post_meta( $landing_id, HLPB_Landing_Builder::META_KEY, $sections );
+		}
 
 		// Correct legacy demo records as well as newly created ones so the editor exposes this template's sections.
 		update_post_meta( $landing_id, self::LANDING_META, 'field-notes' );
@@ -1237,6 +1279,60 @@ final class HLPB_Demo_Importer {
 			}
 		}
 		unset( $section );
+		return $sections;
+	}
+
+	/** Repair missing or outdated product references on the plugin's demo landing pages. */
+	private static function refresh_demo_product_references( $sections, $product_ids ) {
+		if ( ! is_array( $sections ) || ! is_array( $product_ids ) ) {
+			return $sections;
+		}
+
+		$expected_products = array(
+			'buy'    => array( 'hoodies' ),
+			'mix'    => array( 'hoodies', 'blankets' ),
+			'bundle' => array( 'hoodies', 'blankets' ),
+		);
+
+		foreach ( $sections as &$section ) {
+			if (
+				! is_array( $section ) ||
+				'cart_section' !== ( $section['type'] ?? '' ) ||
+				empty( $section['modes'] ) ||
+				! is_array( $section['modes'] )
+			) {
+				continue;
+			}
+
+			foreach ( $expected_products as $mode => $source_slugs ) {
+				if (
+					empty( $section['modes'][ $mode ]['products'] ) ||
+					! is_array( $section['modes'][ $mode ]['products'] )
+				) {
+					continue;
+				}
+
+				$mode_products = array_values( $section['modes'][ $mode ]['products'] );
+				foreach ( $source_slugs as $index => $source_slug ) {
+					$current_id = isset( $mode_products[ $index ] ) ? absint( $mode_products[ $index ] ) : 0;
+					$target_id  = isset( $product_ids[ $source_slug ] ) ? absint( $product_ids[ $source_slug ] ) : 0;
+					if ( ! $current_id || ! $target_id || $current_id === $target_id ) {
+						continue;
+					}
+
+					$current_owner   = sanitize_title( (string) get_post_meta( $current_id, self::PRODUCT_META, true ) );
+					$current_product = wc_get_product( $current_id );
+					$is_unavailable  = ! $current_product || 'publish' !== get_post_status( $current_id );
+					if ( $source_slug === $current_owner || $is_unavailable ) {
+						$mode_products[ $index ] = $target_id;
+					}
+				}
+
+				$section['modes'][ $mode ]['products'] = $mode_products;
+			}
+		}
+		unset( $section );
+
 		return $sections;
 	}
 

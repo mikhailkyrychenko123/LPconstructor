@@ -2045,12 +2045,14 @@ final class HLPB_Landing_Builder {
 		if ( ! is_admin() ) {
 			return false;
 		}
-		$post_type = isset( $_GET['post_type'] ) ? sanitize_key( wp_unslash( $_GET['post_type'] ) ) : '';
-		if ( self::POST_TYPE === $post_type ) {
-			return true;
+		if ( ! function_exists( 'get_current_screen' ) ) {
+			return false;
 		}
-		$post_id = isset( $_GET['post'] ) ? absint( wp_unslash( $_GET['post'] ) ) : 0;
-		return $post_id && self::POST_TYPE === get_post_type( $post_id );
+
+		$screen = get_current_screen();
+		return $screen &&
+			self::POST_TYPE === $screen->post_type &&
+			in_array( $screen->base, array( 'edit', 'post' ), true );
 	}
 
 	/**
